@@ -1,15 +1,16 @@
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { type GetServerSidePropsContext } from "next";
+import { compare } from "bcryptjs"
+import { eq } from "drizzle-orm"
+import { type GetServerSidePropsContext } from "next"
 import {
   getServerSession,
   type DefaultSession,
-  type NextAuthOptions,
-} from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
+  type NextAuthOptions
+} from "next-auth"
+import Credentials from "next-auth/providers/credentials"
+import { z } from "zod"
 
-import { env } from "~/env.mjs";
-import { db } from "~/server/db";
-import { mysqlTable } from "~/server/db/schema";
+import { db } from "~/server/db"
+import { users } from "~/server/db/schema"
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -20,10 +21,10 @@ import { mysqlTable } from "~/server/db/schema";
 declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
-      id: string;
+      id: string
       // ...other properties
       // role: UserRole;
-    } & DefaultSession["user"];
+    } & DefaultSession["user"]
   }
 
   // interface User {
@@ -32,6 +33,11 @@ declare module "next-auth" {
   // }
 }
 
+export const authorizeParams = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(50)
+})
+
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
  *
@@ -39,20 +45,58 @@ declare module "next-auth" {
  */
 export const authOptions: NextAuthOptions = {
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-      },
-    }),
+    jwt: ({ token, user }) => {
+      if (user) {
+        token.id = user.id
+      }
+
+      return token
+    },
+    session: ({ session, token }) => {
+      if (token?.id) {
+        session.user.id = token.id as string
+      }
+
+      return session
+    }
   },
-  adapter: DrizzleAdapter(db, mysqlTable),
+
+  session: {
+    strategy: "jwt"
+  },
+
+  pages: {
+    signIn: "/login"
+  },
   providers: [
-    DiscordProvider({
-      clientId: env.DISCORD_CLIENT_ID,
-      clientSecret: env.DISCORD_CLIENT_SECRET,
-    }),
+    Credentials({
+      credentials: {
+        email: { label: "Username", type: "text", placeholder: "jsmith" },
+        password: { label: "Password", type: "password" }
+      },
+      authorize: async (credentials) => {
+        const input = authorizeParams.parse(credentials)
+
+        const user = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, input.email))
+
+        if (!user || user.length === 0) {
+          return null
+        }
+        const isValidPassword = await compare(
+          input.password,
+          user[0]?.password ?? ""
+        )
+
+        if (!isValidPassword) {
+          return null
+        }
+
+        return { id: user[0]?.id ?? "", email: user[0]?.email ?? "" }
+      }
+    })
     /**
      * ...add more providers here.
      *
@@ -62,8 +106,8 @@ export const authOptions: NextAuthOptions = {
      *
      * @see https://next-auth.js.org/providers/github
      */
-  ],
-};
+  ]
+}
 
 /**
  * Wrapper for `getServerSession` so that you don't need to import the `authOptions` in every file.
@@ -71,8 +115,8 @@ export const authOptions: NextAuthOptions = {
  * @see https://next-auth.js.org/configuration/nextjs
  */
 export const getServerAuthSession = (ctx: {
-  req: GetServerSidePropsContext["req"];
-  res: GetServerSidePropsContext["res"];
+  req: GetServerSidePropsContext["req"]
+  res: GetServerSidePropsContext["res"]
 }) => {
-  return getServerSession(ctx.req, ctx.res, authOptions);
-};
+  return getServerSession(ctx.req, ctx.res, authOptions)
+}
