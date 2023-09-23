@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Button } from "~/components/ui/button"
+import { MyErrorMessages } from "~/components/my-error-message"
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -47,16 +47,22 @@ export default function Login() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="grid h-full place-items-center">
-        <form className="" onSubmit={handleSubmit(onSubmit)}>
-          <input placeholder="email" type="text" {...register("email")} />
+      <form className="flex flex-col items-center gap-4 justify-center" onSubmit={handleSubmit(onSubmit)}>
+          <input type="text" placeholder="email" className="input input-bordered w-full max-w-xs" {...register("email")}/>
+          <MyErrorMessages errors={errors} name={"email"} />
 
           <input
             placeholder="password"
             type="password"
+            className="input input-bordered w-full max-w-xs"
             {...register("password")}
           />
 
-          <Button>sign up</Button>
+          <MyErrorMessages errors={errors} name={"password"} />
+
+          <MyErrorMessages errors={errors} name={"passwordConfirmation"} />
+
+          <button type="submit" className="btn btn-outline btn-primary">LogIn</button>
         </form>
         <Link href="/">Create an account</Link>
       </main>
