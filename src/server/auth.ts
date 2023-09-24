@@ -10,7 +10,7 @@ import Credentials from "next-auth/providers/credentials"
 import { z } from "zod"
 
 import { db } from "~/server/db"
-import { users } from "~/server/db/schema"
+import { user } from "~/server/db/schema"
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -77,24 +77,24 @@ export const authOptions: NextAuthOptions = {
       authorize: async (credentials) => {
         const input = authorizeParams.parse(credentials)
 
-        const user = await db
+        const foundUser = await db
           .select()
-          .from(users)
-          .where(eq(users.email, input.email))
+          .from(user)
+          .where(eq(user.email, input.email))
 
-        if (!user || user.length === 0) {
+        if (!foundUser || foundUser.length === 0) {
           return null
         }
         const isValidPassword = await compare(
           input.password,
-          user[0]?.password ?? ""
+          foundUser[0]?.password ?? ""
         )
 
         if (!isValidPassword) {
           return null
         }
 
-        return { id: user[0]?.id ?? "", email: user[0]?.email ?? "" }
+        return { id: foundUser[0]?.id ?? "", email: foundUser[0]?.email ?? "" }
       }
     })
     /**
