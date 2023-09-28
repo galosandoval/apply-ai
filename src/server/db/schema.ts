@@ -12,11 +12,12 @@ export const user = pgTable("user", {
   password: text("password").notNull()
 })
 
-export const userRelations = relations(user, ({ one }) => ({
+export const userRelations = relations(user, ({ one, many }) => ({
   profile: one(profile, {
     fields: [user.id],
     references: [profile.id]
-  })
+  }),
+  resumes: many(resume)
 }))
 
 export const profile = pgTable("profile", {
@@ -29,7 +30,7 @@ export const profile = pgTable("profile", {
 })
 
 export const profileRelations = relations(profile, ({ many, one }) => ({
-  experience: many(job),
+  experience: many(work),
   education: many(school),
   contact: one(contact, {
     fields: [profile.id],
@@ -46,7 +47,7 @@ export const contact = pgTable("contact", {
   profileId: text("profile_id").notNull()
 })
 
-export const job = pgTable("job", {
+export const work = pgTable("work", {
   id: text("id").primaryKey(),
   companyName: text("name").notNull(),
   startDate: text("start_date").notNull(),
@@ -56,9 +57,9 @@ export const job = pgTable("job", {
   resumeId: text("file_id").notNull()
 })
 
-export const jobRelations = relations(job, ({ one }) => ({
+export const workRelations = relations(work, ({ one }) => ({
   file: one(profile, {
-    fields: [job.resumeId],
+    fields: [work.resumeId],
     references: [profile.id]
   })
 }))
@@ -79,5 +80,25 @@ export const schoolRelations = relations(school, ({ one }) => ({
   file: one(profile, {
     fields: [school.resumeId],
     references: [profile.id]
+  })
+}))
+
+export const resume = pgTable("resume", {
+  id: text("id").primaryKey(),
+  jobDescription: text("job_description").notNull(),
+  profession: text("profession").notNull(),
+  skills: text("skills").notNull(),
+  introduction: text("introduction"),
+  interests: text("interests"),
+  experience: text("experience").notNull(),
+  education: text("education").notNull(),
+  contact: text("contact").notNull(),
+  userId: text("user_id").references(() => user.id)
+})
+
+export const resumeRelations = relations(resume, ({ one }) => ({
+  user: one(user, {
+    fields: [resume.userId],
+    references: [user.id]
   })
 }))
