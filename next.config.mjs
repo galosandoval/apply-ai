@@ -2,7 +2,7 @@
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
  * for Docker builds.
  */
-await import("./src/env.mjs");
+await import("./src/env.mjs")
 
 /** @type {import("next").NextConfig} */
 const config = {
@@ -15,8 +15,24 @@ const config = {
    */
   i18n: {
     locales: ["en"],
-    defaultLocale: "en",
+    defaultLocale: "en"
   },
-};
 
-export default config;
+  redirects: async () => {
+    return [
+      {
+        source: "/",
+        destination: "/dashboard",
+        permanent: false,
+        has: [
+          {
+            type: "cookie",
+            key: "next-auth.session-token"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+export default config
