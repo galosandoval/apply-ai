@@ -1,4 +1,3 @@
-<!-- PROJECT LOGO -->
 <div align="center">
   <!-- <a href="https://github.com/yourusername/your-resume-generator-app">
     <img src="images/logo.png" alt="App Logo" width="80" height="80">
@@ -33,10 +32,10 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
-    <li><a href="#features">Features</a></li>
-    <li><a href="#folder-structure">Folder Structure</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
+    <li><a href="#acknowledgments">License</a></li>
   </ol>
 </details>
 
@@ -53,6 +52,7 @@ The Resume Generator with Chat-GPT is a web application that leverages Chat-GPT 
 - [Next.js](https://nextjs.org/)
 - [tailwindcss](https://tailwindcss.com/docs/)
 - [trpc](https://trpc.io/)
+- [Drizzle ORM](https://orm.drizzle.team/docs/overview)
 - [Zod](https://github.com/colinhacks/zod)
 - [React Hook Form](https://react-hook-form.com/)
 - [React Query](https://react-query.tanstack.com/)
@@ -87,8 +87,6 @@ Make sure you have the following software and services installed:
    npm install
    ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ### Configuration
 
 Configure your application by setting up environment variables, such as API keys and database connections. Create a .env file in the root directory and define the necessary variables.
@@ -99,8 +97,6 @@ OPENAI_API_KEY="your openai api key"
 NEXTAUTH_SECRET="your nextauth secret"
 NEXTAUTH_URL="http://localhost:3000"
 ```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Usage
 
@@ -114,8 +110,6 @@ yarn dev
 
 2. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- ROADMAP -->
 
 ## Roadmap
@@ -123,8 +117,6 @@ yarn dev
 - [ ] Interactive chat-based resume input.
 - [ ] Real-time resume generation with Chat-GPT.
 - [ ] Export and download generated resumes.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Contributing
 
@@ -139,17 +131,11 @@ Don't forget to give the project a star! Thanks again!
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 ## License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Acknowledgments
 
 - [Galo Sandoval](https://github.com/galosandoval)
 - [Albert Dang](https://github.com/albertdang8)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
