@@ -7,6 +7,8 @@ import { api } from "~/utils/api"
 import { useRouter } from "next/router"
 import Link from "next/link"
 import { MyErrorMessages } from "~/components/my-error-message"
+import { getServerAuthSession } from "~/server/auth"
+import { type GetServerSidePropsContext } from "next"
 
 const signUpSchema = z
   .object({
