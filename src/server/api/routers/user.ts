@@ -1,14 +1,14 @@
-import { createId } from "@paralleldrive/cuid2";
-import { TRPCError } from "@trpc/server";
-import { hash } from "bcryptjs";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
+import { createId } from "@paralleldrive/cuid2"
+import { TRPCError } from "@trpc/server"
+import { hash } from "bcryptjs"
+import { eq } from "drizzle-orm"
+import { z } from "zod"
 import {
   createTRPCRouter,
   protectedProcedure,
-  publicProcedure,
-} from "~/server/api/trpc";
-import { users } from "~/server/db/schema";
+  publicProcedure
+} from "~/server/api/trpc"
+import { user } from "~/server/db/schema"
 
 export const userRouter = createTRPCRouter({
   create: publicProcedure
@@ -16,34 +16,34 @@ export const userRouter = createTRPCRouter({
       z.object({
         email: z.string().email().max(255),
         password: z.string().min(8).max(50),
-        bio: z.string().min(1).max(255).optional(),
-      }),
+        bio: z.string().min(1).max(255).optional()
+      })
     )
     .mutation(async ({ input, ctx }) => {
-      const { email, password } = input;
+      const { email, password } = input
 
       const foundUser = await ctx.db
         .select()
-        .from(users)
-        .where(eq(users.email, email));
+        .from(user)
+        .where(eq(user.email, email))
 
       if (foundUser.length > 0) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "User already exists.",
-        });
+          message: "User already exists."
+        })
       }
 
-      const hashedPassword = await hash(password, 10);
+      const hashedPassword = await hash(password, 10)
 
       await ctx.db
-        .insert(users)
-        .values({ email, password: hashedPassword, id: createId() });
+        .insert(user)
+        .values({ email, password: hashedPassword, id: createId() })
     }),
 
   readAll: protectedProcedure.query(async ({ ctx }) => {
-    const response = await ctx.db.select().from(users);
+    const response = await ctx.db.select().from(user)
 
-    return response;
-  }),
-});
+    return response
+  })
+})
