@@ -22,6 +22,8 @@ export const userRelations = relations(user, ({ one, many }) => ({
 
 export const profile = pgTable("profile", {
   id: text("id").primaryKey(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
   profession: text("profession").notNull(),
   skills: text("skills").array().notNull(),
   introduction: text("profile"),

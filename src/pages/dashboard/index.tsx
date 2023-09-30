@@ -1,6 +1,4 @@
-import { signOut } from "next-auth/react"
 import Head from "next/head"
-import { useRouter } from "next/router"
 import { Fragment, useEffect } from "react"
 import { api } from "~/utils/api"
 import { z } from "zod"

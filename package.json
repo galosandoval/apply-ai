@@ -33,7 +33,6 @@
     "next-auth": "^4.23.0",
     "openai-edge": "^1.2.2",
     "pg": "^8.11.3",
-    "postgres": "^3.3.5",
     "puppeteer": "^21.3.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
