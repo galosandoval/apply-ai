@@ -8,7 +8,8 @@ import {
   protectedProcedure,
   publicProcedure
 } from "~/server/api/trpc"
-import { user } from "~/server/db/schema"
+import { insertProfileSchema } from "~/server/db/crud-schema"
+import { profile, user } from "~/server/db/schema"
 
 export const userRouter = createTRPCRouter({
   create: publicProcedure

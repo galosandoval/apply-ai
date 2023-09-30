@@ -1,9 +1,9 @@
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import postgres from "postgres"
+import { drizzle } from "drizzle-orm/node-postgres"
+import { Pool } from "pg"
 import { env } from "~/env.mjs"
 
-// for migrations
+const pool = new Pool({
+  connectionString: env.DATABASE_URL
+})
 
-// for query purposes
-const queryClient = postgres(env.DATABASE_URL)
-export const db: PostgresJsDatabase = drizzle(queryClient)
+export const db = drizzle(pool)

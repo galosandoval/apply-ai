@@ -1,6 +1,12 @@
+import { createId } from "@paralleldrive/cuid2"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc"
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure
+} from "~/server/api/trpc"
+import { insertProfileSchema } from "~/server/db/crud-schema"
 import { profile } from "~/server/db/schema"
 
 export const profileRouter = createTRPCRouter({
@@ -15,5 +21,17 @@ export const profileRouter = createTRPCRouter({
         .select()
         .from(profile)
         .where(eq(profile.id, input.userId))
+    }),
+
+  create: protectedProcedure
+    .input(insertProfileSchema)
+    .mutation(async ({ input, ctx }) => {
+      const { profession, skills, interests, introduction, userId } = input
+
+      const id = createId()
+
+      return await ctx.db
+        .update(profile)
+        .set({ id, userId, profession, skills, interests, introduction })
     })
 })
