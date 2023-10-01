@@ -26,12 +26,25 @@ export const profileRouter = createTRPCRouter({
   create: protectedProcedure
     .input(insertProfileSchema)
     .mutation(async ({ input, ctx }) => {
-      const { profession, skills, interests, introduction, userId } = input
+      const {
+        profession,
+        interests,
+        introduction,
+        userId,
+        firstName,
+        lastName
+      } = input
 
       const id = createId()
 
-      return await ctx.db
-        .update(profile)
-        .set({ id, userId, profession, skills, interests, introduction })
+      return await ctx.db.update(profile).set({
+        firstName,
+        lastName,
+        id,
+        userId,
+        profession,
+        interests,
+        introduction
+      })
     })
 })
