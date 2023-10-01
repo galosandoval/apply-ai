@@ -1,61 +1,61 @@
-import { signIn } from "next-auth/react";
-import Head from "next/head";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { api } from "~/utils/api";
-import { useRouter } from "next/router";
-import Link from "next/link";
-import { MyErrorMessages } from "~/components/my-error-message";
+import { signIn } from "next-auth/react"
+import Head from "next/head"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { api } from "~/utils/api"
+import { useRouter } from "next/router"
+import Link from "next/link"
+import { MyErrorMessages } from "~/components/my-error-message"
 
 const signUpSchema = z
   .object({
     email: z.string().email().max(255),
     password: z.string().min(8).max(50),
-    passwordConfirmation: z.string().min(8).max(50),
+    passwordConfirmation: z.string().min(8).max(50)
   })
   .refine((data) => data.passwordConfirmation === data.password, {
     message: "Passwords don't match",
-    path: ["passwordConfirmation"],
-  });
+    path: ["passwordConfirmation"]
+  })
 
-type SignUpFormValues = z.infer<typeof signUpSchema>;
+type SignUpFormValues = z.infer<typeof signUpSchema>
 
 export default function Home() {
-  const router = useRouter();
+  const router = useRouter()
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setError,
+    setError
   } = useForm<SignUpFormValues>({
-    resolver: zodResolver(signUpSchema),
-  });
+    resolver: zodResolver(signUpSchema)
+  })
 
   const { mutate } = api.user.create.useMutation({
     onSuccess: async (_, { password, email }) => {
       const response = await signIn("credentials", {
         email,
         password,
-        redirect: false,
-      });
-      console.log(response);
+        redirect: false
+      })
+      console.log(response)
       if (response?.ok) {
-        await router.push("/dashboard");
+        await router.push("/dashboard")
       }
     },
     onError: (error) => {
-      console.log(error.message);
+      console.log(error.message)
       setError("email", {
-        message: error.message,
-      });
-    },
-  });
+        message: error.message
+      })
+    }
+  })
 
   const onSubmit = (data: SignUpFormValues) => {
-    mutate(data);
-  };
+    mutate(data)
+  }
 
   return (
     <>
@@ -65,8 +65,16 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="grid h-full place-items-center">
-        <form className="flex flex-col items-center gap-4 justify-center" onSubmit={handleSubmit(onSubmit)}>
-          <input type="text" placeholder="email" className="input input-bordered w-full max-w-xs" {...register("email")}/>
+        <form
+          className="flex flex-col items-center justify-center gap-4"
+          onSubmit={handleSubmit(onSubmit)}
+        >
+          <input
+            type="text"
+            placeholder="email"
+            className="input input-bordered w-full max-w-xs"
+            {...register("email")}
+          />
           <MyErrorMessages errors={errors} name={"email"} />
 
           <input
@@ -87,10 +95,12 @@ export default function Home() {
 
           <MyErrorMessages errors={errors} name={"passwordConfirmation"} />
 
-          <button type="submit" className="btn btn-outline btn-primary">Sign Up</button>
+          <button type="submit" className="btn btn-primary btn-outline">
+            Sign Up
+          </button>
         </form>
         <Link href="/login">Login</Link>
       </main>
     </>
-  );
+  )
 }
