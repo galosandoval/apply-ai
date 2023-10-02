@@ -93,11 +93,6 @@ function Step1({
     getValues
   } = useForm<InsertProfileSchema>({
     resolver: zodResolver(insertProfileSchema)
-    // defaultValues: {
-    //   education: initialSchool,
-    //   experience: initialExperience,
-    //   skills: initialSkill
-    // }
   })
 
   return (
