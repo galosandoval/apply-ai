@@ -27,7 +27,7 @@ export const insertExperienceSchema = z.object({
 export type InsertExperienceSchema = z.infer<typeof insertExperienceSchema>
 
 export const insertSkillsSchema = z.object({
-  skills: z.object({ value: z.string() }).array()
+  skills: z.object({ value: z.string().min(3) }).array()
 })
 
 export type InsertSkillsSchema = z.infer<typeof insertSkillsSchema>

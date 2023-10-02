@@ -93,11 +93,6 @@ function Step1({
     getValues
   } = useForm<InsertProfileSchema>({
     resolver: zodResolver(insertProfileSchema)
-    // defaultValues: {
-    //   education: initialSchool,
-    //   experience: initialExperience,
-    //   skills: initialSkill
-    // }
   })
 
   return (
@@ -130,7 +125,7 @@ function Step1({
         <button
           type="button"
           onClick={() => handleChangeStep("second")}
-          className=""
+          className="btn btn-primary"
         >
           Next
         </button>
@@ -216,17 +211,29 @@ function Step2({
               {...register(`education.${index}.description`)}
             />
 
-            <button type="button" onClick={() => removeSchool(index)}>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => removeSchool(index)}
+            >
               Remove
             </button>
           </div>
         ))}
 
-        <button type="button" onClick={() => appendSchool(initialSchool)}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => appendSchool(initialSchool)}
+        >
           Add another
         </button>
 
-        <button type="button" onClick={() => handleChangeStep("third")}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => handleChangeStep("third")}
+        >
           Next
         </button>
       </div>
@@ -300,10 +307,18 @@ function Step3({
             />
           </div>
         ))}
-        <button type="button" onClick={() => appendWork(initialExperience)}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => appendWork(initialExperience)}
+        >
           Add another
         </button>
-        <button type="button" onClick={() => handleChangeStep("fourth")}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => handleChangeStep("fourth")}
+        >
           Next
         </button>
       </div>
@@ -352,10 +367,18 @@ function Step4({
             />
           </div>
         ))}
-        <button type="button" onClick={() => appendSkill(initialSkill)}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => appendSkill(initialSkill)}
+        >
           Add another
         </button>
-        <button type="button" onClick={() => handleChangeStep("first")}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => handleChangeStep("first")}
+        >
           Next
         </button>
       </div>

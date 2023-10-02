@@ -44,6 +44,7 @@ function ProtectedNavbar() {
     <nav className="flex gap-3">
       <Link href="/dashboard">dashboard</Link>
       <Link href="/onboarding">onboarding</Link>
+      <Link href="/resume/pm9ctl649di9bi5ftjsfpexw">resume</Link>
       <button onClick={handleSignOut}>sign out</button>
     </nav>
   )
