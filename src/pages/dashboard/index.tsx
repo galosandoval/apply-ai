@@ -110,6 +110,186 @@ export default function Dashboard() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
+      <button className="btn btn-accent btn-active" onClick={handleSignOut}>
+        Log out
+      </button>
+      <main className="flex min-h-screen w-full py-12">
+        <form action="" className=" flex w-full flex-col items-center">
+          <div id="section1" className="flex w-full max-w-prose flex-col gap-3">
+            <h1>Basics</h1>
+
+            <input
+              type="text"
+              placeholder="first name"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="last name"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="email"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="phone numbah"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="address line"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="desired job title"
+              className="rounded-sm px-2 py-1"
+            />
+            <textarea
+              name=""
+              id=""
+              placeholder="descip"
+              className="rounded-sm px-2 py-1"
+            ></textarea>
+          </div>
+          <div id="section2" className="flex w-full max-w-prose flex-col gap-3">
+            <h1>SkillztoKillz</h1>
+
+            <textarea
+              placeholder="list ur skills"
+              className="min-h-[15ch] rounded-sm px-2 py-1"
+            />
+          </div>
+          <div id="section3" className="flex w-full max-w-prose flex-col gap-3">
+            <h1>Education</h1>
+
+            <input
+              type="text"
+              placeholder="school"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="years"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="degree"
+              className="rounded-sm px-2 py-1"
+            />
+            <input
+              type="text"
+              placeholder="focus/major"
+              className="rounded-sm px-2 py-1"
+            />
+            <textarea
+              placeholder="additional information"
+              className="min-h-[15ch] rounded-sm px-2 py-1"
+            />
+          </div>
+          <div id="section4" className="flex w-full max-w-prose flex-col gap-3">
+            <h1>Summary</h1>
+
+            <textarea
+              placeholder="5-7 sentences about yourself. something along the lines of 'omg my hobbies and passions are all coincidentally what the job responsibilities are. I'm so quirky lol.'"
+              className="min-h-[15ch] rounded-sm px-2 py-1"
+            />
+          </div>
+          <div id="section5" className="flex w-full max-w-prose flex-col gap-3">
+            <h1>Job Experiences</h1>
+            <div className="flex flex-col gap-4">
+              <h2>First Job Title:</h2>
+              <input
+                type="text"
+                placeholder="jobTitle"
+                className="rounded-sm px-2 py-1"
+              />
+              <input
+                type="text"
+                placeholder="company"
+                className="rounded-sm px-2 py-1"
+              />
+              <div className="flex justify-evenly">
+                <div>
+                  <h3>Start date:</h3>
+                  <input type="date" name="" id="" />
+                </div>
+                <div>
+                  <h3>End date:</h3>
+                  <input type="date" name="" id="" />
+                </div>
+              </div>
+              <textarea
+                placeholder="list of first job responsibilities"
+                className="min-h-[15ch] rounded-sm px-2 py-1"
+              />
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <h2>First Job Title:</h2>
+              <input
+                type="text"
+                placeholder="jobTitle"
+                className="rounded-sm px-2 py-1"
+              />
+              <input
+                type="text"
+                placeholder="company"
+                className="rounded-sm px-2 py-1"
+              />
+              <div className="flex justify-evenly">
+                <div>
+                  <h3>Start date:</h3>
+                  <input type="date" name="" id="" />
+                </div>
+                <div>
+                  <h3>End date:</h3>
+                  <input type="date" name="" id="" />
+                </div>
+              </div>
+              <textarea
+                placeholder="list of first job responsibilities"
+                className="min-h-[15ch] rounded-sm px-2 py-1"
+              />
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <h2>Third Job Title:</h2>
+              <input
+                type="text"
+                placeholder="jobTitle"
+                className="rounded-sm px-2 py-1"
+              />
+              <input
+                type="text"
+                placeholder="company"
+                className="rounded-sm px-2 py-1"
+              />
+              <div className="flex justify-evenly">
+                <div>
+                  <h3>Start date:</h3>
+                  <input type="date" name="" id="" />
+                </div>
+                <div>
+                  <h3>End date:</h3>
+                  <input type="date" name="" id="" />
+                </div>
+              </div>
+              <textarea
+                placeholder="list of third job responsibilities"
+                className="min-h-[15ch] rounded-sm px-2 py-1"
+              />
+            </div>
+            <button className="btn btn-primary btn-active">Submit</button>
+          </div>
+        </form>
+      </main>
+
+
       <div className="flex w-full items-center justify-center"></div>
 
       <form onSubmit={handleSubmit}>
@@ -125,6 +305,7 @@ export default function Dashboard() {
       {messages.map((message) => (
         <Fragment key={message.id}>{message.content}</Fragment>
       ))}
+
     </>
   )
 }
