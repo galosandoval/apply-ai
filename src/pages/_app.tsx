@@ -5,6 +5,7 @@ import { api } from "~/utils/api"
 import { Roboto } from "next/font/google"
 import Layout from "~/components/layout"
 import "~/styles/global.css"
+import { Toaster } from "react-hot-toast"
 
 const roboto = Roboto({
   weight: ["100", "300", "400", "500", "700", "900"],
@@ -20,6 +21,7 @@ const MyApp: AppType<{ session: Session | null }> = ({
 
   return (
     <SessionProvider session={session}>
+      <Toaster />
       <Layout font={font}>
         <Component {...pageProps} />
       </Layout>

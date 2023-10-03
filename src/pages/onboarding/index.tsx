@@ -1,6 +1,12 @@
+import { ErrorMessage } from "@hookform/error-message"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useState } from "react"
+import { router } from "@trpc/server"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/router"
+import { use, useState } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
+import toast from "react-hot-toast"
+import { MyErrorMessage } from "~/components/my-error-message"
 import {
   type InsertProfileSchema,
   insertProfileSchema,
@@ -42,26 +48,13 @@ const initialSkill: InsertSkillsSchema["skills"] = [{ value: "" }]
 export default function Onboarding() {
   const [step, setStep] = useState<Step>("first")
 
+  const { id: userId } = useUser()
   const handleChangeStep = (step: Step) => {
     setStep(step)
   }
-  return (
-    <div>
-      <Steps step={step} handleChangeStep={handleChangeStep} />
-    </div>
-  )
-}
 
-function Steps({
-  step,
-
-  handleChangeStep
-}: {
-  step: Step
-  handleChangeStep: (step: Step) => void
-}) {
   if (step === "first") {
-    return <Step1 handleChangeStep={handleChangeStep} />
+    return <Step1 userId={userId} handleChangeStep={handleChangeStep} />
   }
 
   if (step === "second") {
@@ -80,10 +73,19 @@ function Steps({
 }
 
 function Step1({
-  handleChangeStep
+  handleChangeStep,
+  userId
 }: {
   handleChangeStep: (step: Step) => void
+  userId: string
 }) {
+  const { mutate } = api.user.addProfile.useMutation({
+    onError: (error) => {
+      console.log(error)
+      toast.error(error.message)
+      handleChangeStep("first")
+    }
+  })
   const {
     register,
     handleSubmit,
@@ -95,8 +97,20 @@ function Step1({
     resolver: zodResolver(insertProfileSchema)
   })
 
+  const onSubmit = async (data: InsertProfileSchema) => {
+    console.log(data)
+    const params: InsertProfileSchema = {
+      ...data
+    }
+    mutate(params)
+    handleChangeStep("second")
+  }
+  console.log(errors)
   return (
-    <form className="flex w-full max-w-prose flex-col gap-3">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
       <div className="">
         <input
           type="text"
@@ -104,29 +118,39 @@ function Step1({
           className="rounded-sm px-2 py-1"
           {...register("firstName")}
         />
+        <MyErrorMessage errors={errors} name="firstName" />
+
         <input
           type="text"
           placeholder="last name"
           className="rounded-sm px-2 py-1"
           {...register("lastName")}
         />
+        <MyErrorMessage errors={errors} name="lastName" />
+
         <input
           type="text"
-          placeholder="your job title"
+          placeholder="Ex: Full Stack Developer"
           className="rounded-sm px-2 py-1"
           {...register("profession")}
         />
+        <MyErrorMessage errors={errors} name="profession" />
+
         <textarea
-          placeholder="intro"
+          placeholder="Ex: I am a full stack developer with 5 years of experience. I have worked with ..."
           className="rounded-sm px-2 py-1"
           {...register("introduction")}
         ></textarea>
+        <MyErrorMessage errors={errors} name="introduction" />
 
-        <button
-          type="button"
-          onClick={() => handleChangeStep("second")}
-          className="btn btn-primary"
-        >
+        <textarea
+          placeholder="Ex: I like to go hiking, biking, and swimming."
+          className="rounded-sm px-2 py-1"
+          {...register("interests")}
+        ></textarea>
+        <MyErrorMessage errors={errors} name="interests" />
+
+        <button type="submit" className="btn btn-primary">
           Next
         </button>
       </div>
@@ -167,7 +191,7 @@ function Step2({
     <form className="flex w-full max-w-prose flex-col gap-3">
       <div className="">
         {educationFields.map((field, index) => (
-          <div key={index}>
+          <div key={field.id}>
             <input
               type="text"
               placeholder="School Name"
@@ -274,7 +298,7 @@ function Step3({
     <form className="flex w-full max-w-prose flex-col gap-3">
       <div className="">
         {experienceFields.map((field, index) => (
-          <div key={index}>
+          <div key={field.id}>
             <input
               type="text"
               placeholder="Company Name"
@@ -326,11 +350,25 @@ function Step3({
   )
 }
 
+function useUser() {
+  const { data: session } = useSession()
+
+  if (!session) {
+    return { id: "" }
+  }
+
+  return session!.user
+}
+
 function Step4({
   handleChangeStep
 }: {
   handleChangeStep: (step: Step) => void
 }) {
+  const { id } = useUser()
+
+  const { mutate } = api.user.createSkills.useMutation()
+
   const {
     register,
     handleSubmit,
@@ -355,15 +393,27 @@ function Step4({
     rules: { required: true, maxLength: 10 }
   })
 
+  const onSubmit = async (data: InsertSkillsSchema) => {
+    console.log(data)
+    mutate({ skills: data.skills, userId: id })
+  }
+
+  console.log(errors)
+
   return (
-    <form className="flex w-full max-w-prose flex-col gap-3">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
       <div className="">
         {skillFields.map((field, index) => (
-          <div key={index}>
-            <input
-              type="text"
-              placeholder="Skill"
-              {...register(`skills.${index}.value`)}
+          <div key={field.id} className="">
+            <input placeholder="Skill" {...register(`skills.${index}.value`)} />
+            <MyErrorMessage errors={errors} name={`skills.${index}.value`} />
+            <ErrorMessage
+              errors={errors}
+              name={`skills.${index}.value`}
+              render={({ message }) => <p className="text-error">{message}</p>}
             />
           </div>
         ))}
@@ -380,6 +430,10 @@ function Step4({
           onClick={() => handleChangeStep("first")}
         >
           Next
+        </button>
+
+        <button className="btn btn-primary" type="submit">
+          Submit
         </button>
       </div>
     </form>

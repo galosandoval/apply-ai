@@ -1,16 +1,17 @@
-import { ErrorMessage } from "@hookform/error-message"
-import { type FieldErrorsImpl } from "react-hook-form"
+import {
+  ErrorMessage,
+  type FieldValuesFromFieldErrors
+} from "@hookform/error-message"
+import { type FieldName, type FieldErrors } from "react-hook-form"
 
-type Props = {
-  errors: FieldErrorsImpl<{
-    email: string
-    password: string
-    passwordConfirmation: string
-  }>
-  name: string
+type Props<T extends Record<string, string>> = {
+  errors: Partial<FieldErrors<T>> | Partial<FieldErrors<T[]>>
+  name: FieldName<FieldValuesFromFieldErrors<FieldErrors<T>>>
 }
 
-export const MyErrorMessages = (props: Props) => {
+export function MyErrorMessage<T extends Record<string, string>>(
+  props: Props<T>
+) {
   return (
     <ErrorMessage
       errors={props.errors}

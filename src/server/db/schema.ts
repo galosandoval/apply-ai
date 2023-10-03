@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { pgTableCreator, text, varchar } from "drizzle-orm/pg-core"
+import { pgTableCreator, text } from "drizzle-orm/pg-core"
 
 export const pgTable = pgTableCreator((name) => `gptJob_${name}`)
 
@@ -8,14 +8,13 @@ export const user = pgTable("user", {
   name: text("name"),
   email: text("email").notNull(),
   image: text("image"),
-  bio: varchar("bio", { length: 255 }),
   password: text("password").notNull()
 })
 
 export const userRelations = relations(user, ({ one, many }) => ({
   profile: one(profile, {
     fields: [user.id],
-    references: [profile.id]
+    references: [profile.userId]
   }),
   resumes: many(resume)
 }))
