@@ -54,9 +54,11 @@ export default function Step1() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
+      className=""
     >
-      <div className="">
+
+
+      <div className="w-screen flex flex-col justify-center">
         {/* TODO: make this div a component */}
         <div className="">
           <label htmlFor="firstName" className="label">
@@ -75,6 +77,7 @@ export default function Step1() {
           <MyErrorMessage errors={errors} name="firstName" />
         </div>
 
+
         <div className="">
           <label htmlFor="lastName" className="label">
             <span className="label-text">
@@ -92,9 +95,12 @@ export default function Step1() {
           <MyErrorMessage errors={errors} name="lastName" />
         </div>
 
+
         <button type="submit" className="btn btn-primary">
           Next
         </button>
+
+
       </div>
     </form>
   )
