@@ -7,7 +7,7 @@ export const Resume = ({
 }) => {
   const resume = data[0]
   return (
-    <main className="m-12 h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272] shadow-2xl">
+    <main className="h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272]">
       <div className="flex flex-col items-center justify-center">
         <h1 className="mb-4 text-4xl font-semibold uppercase tracking-[.75rem]">
           user.placeholder
