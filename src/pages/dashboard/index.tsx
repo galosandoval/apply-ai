@@ -124,8 +124,9 @@ export default function Dashboard() {
               interests: "",
               introduction: "",
               jobDescription: "",
-              name: "",
+              firstName: "",
               profession: "",
+              lastName: "",
               skills: ""
             }
           ]}
