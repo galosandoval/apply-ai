@@ -214,7 +214,7 @@ export const Resume = ({
                   incorporating Agile values and DevOps practices.
                 </li>
                 <li>
-                  Gained a comprehensive understanding of IBM's Hybrid Cloud
+                  Gained a comprehensive understanding of IBMs Hybrid Cloud
                   Services and their implications.
                 </li>
               </ul>

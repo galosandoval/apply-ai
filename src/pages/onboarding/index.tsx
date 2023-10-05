@@ -1,19 +1,24 @@
+import { ErrorMessage } from "@hookform/error-message"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useState } from "react"
+import { useSession } from "next-auth/react"
+import { useEffect, useState } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
+import toast from "react-hot-toast"
+import { MyErrorMessage } from "~/components/my-error-message"
 import {
-  type InsertProfileSchema,
-  insertProfileSchema,
+  updateProfileSchema,
   insertEducationSchema,
   type InsertEducationSchema,
   insertExperienceSchema,
   type InsertExperienceSchema,
   type InsertSkillsSchema,
-  insertSkillsSchema
+  insertSkillsSchema,
+  type InsertNameSchema,
+  insertNameSchema
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 
-type Step = "first" | "second" | "third" | "fourth"
+type Step = "first" | "second" | "third" | "fourth" | "fifth"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -45,21 +50,7 @@ export default function Onboarding() {
   const handleChangeStep = (step: Step) => {
     setStep(step)
   }
-  return (
-    <div>
-      <Steps step={step} handleChangeStep={handleChangeStep} />
-    </div>
-  )
-}
 
-function Steps({
-  step,
-
-  handleChangeStep
-}: {
-  step: Step
-  handleChangeStep: (step: Step) => void
-}) {
   if (step === "first") {
     return <Step1 handleChangeStep={handleChangeStep} />
   }
@@ -76,6 +67,10 @@ function Steps({
     return <Step4 handleChangeStep={handleChangeStep} />
   }
 
+  if (step === "fifth") {
+    return <Step5 handleChangeStep={handleChangeStep} />
+  }
+
   return <>No step</>
 }
 
@@ -84,52 +79,82 @@ function Step1({
 }: {
   handleChangeStep: (step: Step) => void
 }) {
+  const utils = api.useContext()
+
+  const { mutate } = api.profile.create.useMutation({
+    onError: (error) => {
+      toast.error(error.message)
+      handleChangeStep("first")
+    },
+
+    onSuccess: (data) => {
+      if (data?.userId) {
+        utils.profile.read.setData({ userId: data.userId }, { ...data })
+      }
+    }
+  })
+
   const {
     register,
     handleSubmit,
-    formState: { errors, dirtyFields },
-    setError,
-    control,
-    getValues
-  } = useForm<InsertProfileSchema>({
-    resolver: zodResolver(insertProfileSchema)
+    formState: { errors },
+    setFocus
+  } = useForm<InsertNameSchema>({
+    resolver: zodResolver(insertNameSchema)
   })
 
+  const onSubmit = async (data: InsertNameSchema) => {
+    mutate(data)
+    handleChangeStep("second")
+  }
+
+  useEffect(() => {
+    setFocus("firstName")
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
-    <form className="flex w-full max-w-prose flex-col gap-3">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
       <div className="">
+        <label htmlFor="firstName" className="label">
+          <span className="label-text">
+            First Name <span className="text-error">*</span>
+          </span>
+        </label>
+
         <input
+          id="firstName"
           type="text"
-          placeholder="first name"
-          className="rounded-sm px-2 py-1"
+          className="input input-bordered"
           {...register("firstName")}
         />
+
+        <MyErrorMessage errors={errors} name="firstName" />
+      </div>
+
+      <div className="">
+        <label htmlFor="lastName" className="label">
+          <span className="label-text">
+            Last Name <span className="text-error">*</span>
+          </span>
+        </label>
+
         <input
+          id="lastName"
           type="text"
-          placeholder="last name"
-          className="rounded-sm px-2 py-1"
+          className="input input-bordered"
           {...register("lastName")}
         />
-        <input
-          type="text"
-          placeholder="your job title"
-          className="rounded-sm px-2 py-1"
-          {...register("profession")}
-        />
-        <textarea
-          placeholder="intro"
-          className="rounded-sm px-2 py-1"
-          {...register("introduction")}
-        ></textarea>
 
-        <button
-          type="button"
-          onClick={() => handleChangeStep("second")}
-          className="btn btn-primary"
-        >
-          Next
-        </button>
+        <MyErrorMessage errors={errors} name="lastName" />
       </div>
+      <button type="submit" className="btn btn-primary">
+        Next
+      </button>
     </form>
   )
 }
@@ -139,6 +164,72 @@ function Step2({
 }: {
   handleChangeStep: (step: Step) => void
 }) {
+  const { mutate } = api.profile.update.useMutation({
+    onError: (error) => {
+      toast.error(error.message)
+      handleChangeStep("first")
+    }
+  })
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, dirtyFields },
+    setError,
+    control,
+    getValues
+  } = useForm<updateProfileSchema>({
+    resolver: zodResolver(updateProfileSchema)
+  })
+
+  const onSubmit = async (data: updateProfileSchema) => {
+    mutate(data)
+    handleChangeStep("third")
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
+      <div className="">
+        <input
+          type="text"
+          placeholder="Ex: Full Stack Developer"
+          className="rounded-sm px-2 py-1"
+          {...register("profession")}
+        />
+        <MyErrorMessage errors={errors} name="profession" />
+
+        <textarea
+          placeholder="Ex: I am a full stack developer with 5 years of experience. I have worked with ..."
+          className="rounded-sm px-2 py-1"
+          {...register("introduction")}
+        ></textarea>
+        <MyErrorMessage errors={errors} name="introduction" />
+
+        <textarea
+          placeholder="Ex: I like to go hiking, biking, and swimming."
+          className="rounded-sm px-2 py-1"
+          {...register("interests")}
+        ></textarea>
+        <MyErrorMessage errors={errors} name="interests" />
+
+        <button type="submit" className="btn btn-primary">
+          Next
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function Step3({
+  handleChangeStep
+}: {
+  handleChangeStep: (step: Step) => void
+}) {
+  const { mutate } = api.profile.addEducation.useMutation()
+
   const {
     register,
     handleSubmit,
@@ -163,11 +254,20 @@ function Step2({
     rules: { required: true, maxLength: 5 }
   })
 
+  const onSubmit = async (data: InsertEducationSchema) => {
+    console.log(data)
+    // mutate(data)
+    handleChangeStep("fourth")
+  }
+
   return (
-    <form className="flex w-full max-w-prose flex-col gap-3">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
       <div className="">
         {educationFields.map((field, index) => (
-          <div key={index}>
+          <div key={field.id}>
             <input
               type="text"
               placeholder="School Name"
@@ -218,6 +318,11 @@ function Step2({
             >
               Remove
             </button>
+
+            <MyErrorMessage
+              errors={errors}
+              name={`education.${index}.description`}
+            />
           </div>
         ))}
 
@@ -229,11 +334,7 @@ function Step2({
           Add another
         </button>
 
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => handleChangeStep("third")}
-        >
+        <button className="btn btn-primary" type="submit">
           Next
         </button>
       </div>
@@ -241,7 +342,7 @@ function Step2({
   )
 }
 
-function Step3({
+function Step4({
   handleChangeStep
 }: {
   handleChangeStep: (step: Step) => void
@@ -274,7 +375,7 @@ function Step3({
     <form className="flex w-full max-w-prose flex-col gap-3">
       <div className="">
         {experienceFields.map((field, index) => (
-          <div key={index}>
+          <div key={field.id}>
             <input
               type="text"
               placeholder="Company Name"
@@ -317,7 +418,7 @@ function Step3({
         <button
           className="btn btn-primary"
           type="button"
-          onClick={() => handleChangeStep("fourth")}
+          onClick={() => handleChangeStep("fifth")}
         >
           Next
         </button>
@@ -326,11 +427,25 @@ function Step3({
   )
 }
 
-function Step4({
+function useUser() {
+  const { data: session } = useSession()
+
+  if (!session) {
+    return { id: "" }
+  }
+
+  return session!.user
+}
+
+function Step5({
   handleChangeStep
 }: {
   handleChangeStep: (step: Step) => void
 }) {
+  const { id } = useUser()
+
+  const { mutate } = api.profile.createSkills.useMutation()
+
   const {
     register,
     handleSubmit,
@@ -355,15 +470,27 @@ function Step4({
     rules: { required: true, maxLength: 10 }
   })
 
+  const onSubmit = async (data: InsertSkillsSchema) => {
+    console.log(data)
+    mutate({ skills: data.skills, userId: id })
+  }
+
+  console.log(errors)
+
   return (
-    <form className="flex w-full max-w-prose flex-col gap-3">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
       <div className="">
         {skillFields.map((field, index) => (
-          <div key={index}>
-            <input
-              type="text"
-              placeholder="Skill"
-              {...register(`skills.${index}.value`)}
+          <div key={field.id} className="">
+            <input placeholder="Skill" {...register(`skills.${index}.value`)} />
+            <MyErrorMessage errors={errors} name={`skills.${index}.value`} />
+            <ErrorMessage
+              errors={errors}
+              name={`skills.${index}.value`}
+              render={({ message }) => <p className="text-error">{message}</p>}
             />
           </div>
         ))}
@@ -380,6 +507,10 @@ function Step4({
           onClick={() => handleChangeStep("first")}
         >
           Next
+        </button>
+
+        <button className="btn btn-primary" type="submit">
+          Submit
         </button>
       </div>
     </form>

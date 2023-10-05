@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc"
-import { resume, user } from "~/server/db/schema"
+import { profile, resume, user } from "~/server/db/schema"
 
 export const resumeRouter = createTRPCRouter({
   readById: publicProcedure
@@ -14,7 +14,6 @@ export const resumeRouter = createTRPCRouter({
       return await ctx.db
         .select({
           id: resume.id,
-          name: user.name,
           jobDescription: resume.jobDescription,
           profession: resume.profession,
           skills: resume.skills,
@@ -22,10 +21,13 @@ export const resumeRouter = createTRPCRouter({
           interests: resume.interests,
           experience: resume.experience,
           education: resume.education,
-          contact: resume.contact
+          contact: resume.contact,
+          firstName: profile.firstName,
+          lastName: profile.lastName
         })
         .from(user)
-        .leftJoin(resume, eq(user.id, resume.userId))
+        .innerJoin(resume, eq(user.id, resume.userId))
+        .innerJoin(profile, eq(user.id, profile.userId))
         .where(eq(resume.id, input.resumeId))
     })
 })

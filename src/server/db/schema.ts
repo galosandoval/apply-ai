@@ -1,34 +1,32 @@
 import { relations } from "drizzle-orm"
-import { pgTableCreator, text, varchar } from "drizzle-orm/pg-core"
+import { pgTableCreator, text } from "drizzle-orm/pg-core"
 
-export const pgTable = pgTableCreator((name) => `gptJob_${name}`)
+export const pgTable = pgTableCreator((name) => `gpt-job_${name}`)
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
-  name: text("name"),
   email: text("email").notNull(),
   image: text("image"),
-  bio: varchar("bio", { length: 255 }),
   password: text("password").notNull()
 })
 
 export const userRelations = relations(user, ({ one, many }) => ({
   profile: one(profile, {
     fields: [user.id],
-    references: [profile.id]
+    references: [profile.userId]
   }),
   resumes: many(resume)
 }))
 
 export const profile = pgTable("profile", {
   id: text("id").primaryKey(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  profession: text("profession").notNull(),
-  skills: text("skills").array().notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profession: text("profession"),
+  skills: text("skills").array(),
   introduction: text("profile"),
   interests: text("interests"),
-  userId: text("user_id").references(() => user.id)
+  userId: text("user_id")
 })
 
 export const profileRelations = relations(profile, ({ many, one }) => ({
@@ -37,6 +35,10 @@ export const profileRelations = relations(profile, ({ many, one }) => ({
   contact: one(contact, {
     fields: [profile.id],
     references: [contact.profileId]
+  }),
+  user: one(user, {
+    fields: [profile.userId],
+    references: [user.id]
   })
 }))
 
@@ -72,15 +74,15 @@ export const school = pgTable("school", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   degree: text("degree").notNull(),
-  location: text("location").notNull(),
+  location: text("location"),
   gpa: text("gpa"),
   description: text("description"),
-  resumeId: text("file_id").notNull()
+  profileId: text("file_id")
 })
 
 export const schoolRelations = relations(school, ({ one }) => ({
   file: one(profile, {
-    fields: [school.resumeId],
+    fields: [school.profileId],
     references: [profile.id]
   })
 }))

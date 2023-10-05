@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { MyErrorMessages } from "~/components/my-error-message"
+import { MyErrorMessage } from "~/components/my-error-message"
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -47,9 +47,17 @@ export default function Login() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="grid h-full place-items-center">
-      <form className="flex flex-col items-center gap-4 justify-center" onSubmit={handleSubmit(onSubmit)}>
-          <input type="text" placeholder="email" className="input input-bordered w-full max-w-xs" {...register("email")}/>
-          <MyErrorMessages errors={errors} name={"email"} />
+        <form
+          className="flex flex-col items-center justify-center gap-4"
+          onSubmit={handleSubmit(onSubmit)}
+        >
+          <input
+            type="text"
+            placeholder="email"
+            className="input input-bordered w-full max-w-xs"
+            {...register("email")}
+          />
+          <MyErrorMessage errors={errors} name={"email"} />
 
           <input
             placeholder="password"
@@ -58,11 +66,13 @@ export default function Login() {
             {...register("password")}
           />
 
-          <MyErrorMessages errors={errors} name={"password"} />
+          <MyErrorMessage errors={errors} name={"password"} />
 
-          <MyErrorMessages errors={errors} name={"passwordConfirmation"} />
+          <MyErrorMessage errors={errors} name={"passwordConfirmation"} />
 
-          <button type="submit" className="btn btn-outline btn-primary">LogIn</button>
+          <button type="submit" className="btn btn-primary btn-outline">
+            LogIn
+          </button>
         </form>
         <Link href="/">Create an account</Link>
       </main>

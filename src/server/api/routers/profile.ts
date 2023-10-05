@@ -7,8 +7,12 @@ import {
   protectedProcedure,
   publicProcedure
 } from "~/server/api/trpc"
-import { insertProfileSchema } from "~/server/db/crud-schema"
-import { profile } from "~/server/db/schema"
+import {
+  insertEducationSchema,
+  insertNameSchema,
+  updateProfileSchema
+} from "~/server/db/crud-schema"
+import { profile, school } from "~/server/db/schema"
 
 export const profileRouter = createTRPCRouter({
   read: publicProcedure
@@ -18,35 +22,71 @@ export const profileRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
-      return await ctx.db
+      const foundProfile = await ctx.db
         .select()
         .from(profile)
         .where(eq(profile.id, input.userId))
+
+      if (!foundProfile?.length) {
+        throw new TRPCError({
+          message: "Profile not found",
+          code: "INTERNAL_SERVER_ERROR"
+        })
+      }
+
+      return foundProfile[0]
     }),
 
   create: protectedProcedure
-    .input(insertProfileSchema)
+    .input(insertNameSchema)
     .mutation(async ({ input, ctx }) => {
-      const {
-        profession,
-        interests,
-        introduction,
-        userId,
-        firstName,
-        lastName
-      } = input
+      const { firstName, lastName } = input
 
       const id = createId()
 
-      return await ctx.db.update(profile).set({
-        firstName,
-        lastName,
-        id,
-        userId,
-        profession,
-        interests,
-        introduction
-      })
+      const newProfile = await ctx.db
+        .insert(profile)
+        .values({
+          firstName,
+          lastName,
+          id,
+          userId: ctx.session.user.id
+        })
+        .returning()
+
+      if (!newProfile?.length) {
+        throw new TRPCError({
+          message: "Profile not created",
+          code: "INTERNAL_SERVER_ERROR"
+        })
+      }
+
+      return newProfile[0]
+    }),
+
+  update: protectedProcedure
+    .input(updateProfileSchema)
+    .mutation(async ({ input, ctx }) => {
+      const { profession, interests, introduction } = input
+
+      return await ctx.db
+        .update(profile)
+        .set({
+          profession,
+          introduction,
+          interests
+        })
+        .where(eq(profile.userId, ctx.session.user.id))
+    }),
+
+  addEducation: protectedProcedure
+    .input(insertEducationSchema)
+    .mutation(async ({ input, ctx }) => {
+      const { education } = input
+
+      const schoolsToInsert = education.map((e) => ({ ...e, id: createId() }))
+
+      return await ctx.db.insert(school).values(schoolsToInsert)
     }),
 
   createSkills: protectedProcedure

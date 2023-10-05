@@ -6,7 +6,7 @@ import { z } from "zod"
 import { api } from "~/utils/api"
 import { useRouter } from "next/router"
 import Link from "next/link"
-import { MyErrorMessages } from "~/components/my-error-message"
+import { MyErrorMessage } from "~/components/my-error-message"
 
 const signUpSchema = z
   .object({
@@ -75,7 +75,7 @@ export default function Home() {
             className="input input-bordered w-full max-w-xs"
             {...register("email")}
           />
-          <MyErrorMessages errors={errors} name={"email"} />
+          <MyErrorMessage errors={errors} name={"email"} />
 
           <input
             placeholder="password"
@@ -84,7 +84,7 @@ export default function Home() {
             {...register("password")}
           />
 
-          <MyErrorMessages errors={errors} name={"password"} />
+          <MyErrorMessage errors={errors} name={"password"} />
 
           <input
             placeholder="confirm password"
@@ -93,7 +93,7 @@ export default function Home() {
             {...register("passwordConfirmation")}
           />
 
-          <MyErrorMessages errors={errors} name={"passwordConfirmation"} />
+          <MyErrorMessage errors={errors} name={"passwordConfirmation"} />
 
           <button type="submit" className="btn btn-primary btn-outline">
             Sign Up
