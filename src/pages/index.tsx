@@ -33,7 +33,7 @@ export default function Home() {
     resolver: zodResolver(signUpSchema)
   })
 
-  const { mutate } = api.user.createUser.useMutation({
+  const { mutate } = api.user.create.useMutation({
     onSuccess: async (_, { password, email }) => {
       const response = await signIn("credentials", {
         email,

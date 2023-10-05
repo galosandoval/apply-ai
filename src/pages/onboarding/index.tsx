@@ -1,25 +1,24 @@
 import { ErrorMessage } from "@hookform/error-message"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { router } from "@trpc/server"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/router"
-import { use, useState } from "react"
+import { useEffect, useState } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
 import {
-  type InsertProfileSchema,
-  insertProfileSchema,
+  updateProfileSchema,
   insertEducationSchema,
   type InsertEducationSchema,
   insertExperienceSchema,
   type InsertExperienceSchema,
   type InsertSkillsSchema,
-  insertSkillsSchema
+  insertSkillsSchema,
+  type InsertNameSchema,
+  insertNameSchema
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 
-type Step = "first" | "second" | "third" | "fourth"
+type Step = "first" | "second" | "third" | "fourth" | "fifth"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -48,13 +47,12 @@ const initialSkill: InsertSkillsSchema["skills"] = [{ value: "" }]
 export default function Onboarding() {
   const [step, setStep] = useState<Step>("first")
 
-  const { id: userId } = useUser()
   const handleChangeStep = (step: Step) => {
     setStep(step)
   }
 
   if (step === "first") {
-    return <Step1 userId={userId} handleChangeStep={handleChangeStep} />
+    return <Step1 handleChangeStep={handleChangeStep} />
   }
 
   if (step === "second") {
@@ -69,23 +67,110 @@ export default function Onboarding() {
     return <Step4 handleChangeStep={handleChangeStep} />
   }
 
+  if (step === "fifth") {
+    return <Step5 handleChangeStep={handleChangeStep} />
+  }
+
   return <>No step</>
 }
 
 function Step1({
-  handleChangeStep,
-  userId
+  handleChangeStep
 }: {
   handleChangeStep: (step: Step) => void
-  userId: string
 }) {
-  const { mutate } = api.user.addProfile.useMutation({
+  const utils = api.useContext()
+
+  const { mutate } = api.profile.create.useMutation({
     onError: (error) => {
-      console.log(error)
+      toast.error(error.message)
+      handleChangeStep("first")
+    },
+
+    onSuccess: (data) => {
+      if (data?.userId) {
+        utils.profile.read.setData({ userId: data.userId }, { ...data })
+      }
+    }
+  })
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setFocus
+  } = useForm<InsertNameSchema>({
+    resolver: zodResolver(insertNameSchema)
+  })
+
+  const onSubmit = async (data: InsertNameSchema) => {
+    mutate(data)
+    handleChangeStep("second")
+  }
+
+  useEffect(() => {
+    setFocus("firstName")
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
+      <div className="">
+        <label htmlFor="firstName" className="label">
+          <span className="label-text">
+            First Name <span className="text-error">*</span>
+          </span>
+        </label>
+
+        <input
+          id="firstName"
+          type="text"
+          className="input input-bordered"
+          {...register("firstName")}
+        />
+
+        <MyErrorMessage errors={errors} name="firstName" />
+      </div>
+
+      <div className="">
+        <label htmlFor="lastName" className="label">
+          <span className="label-text">
+            Last Name <span className="text-error">*</span>
+          </span>
+        </label>
+
+        <input
+          id="lastName"
+          type="text"
+          className="input input-bordered"
+          {...register("lastName")}
+        />
+
+        <MyErrorMessage errors={errors} name="lastName" />
+      </div>
+      <button type="submit" className="btn btn-primary">
+        Next
+      </button>
+    </form>
+  )
+}
+
+function Step2({
+  handleChangeStep
+}: {
+  handleChangeStep: (step: Step) => void
+}) {
+  const { mutate } = api.profile.update.useMutation({
+    onError: (error) => {
       toast.error(error.message)
       handleChangeStep("first")
     }
   })
+
   const {
     register,
     handleSubmit,
@@ -93,41 +178,21 @@ function Step1({
     setError,
     control,
     getValues
-  } = useForm<InsertProfileSchema>({
-    resolver: zodResolver(insertProfileSchema)
+  } = useForm<updateProfileSchema>({
+    resolver: zodResolver(updateProfileSchema)
   })
 
-  const onSubmit = async (data: InsertProfileSchema) => {
-    console.log(data)
-    const params: InsertProfileSchema = {
-      ...data
-    }
-    mutate(params)
-    handleChangeStep("second")
+  const onSubmit = async (data: updateProfileSchema) => {
+    mutate(data)
+    handleChangeStep("third")
   }
-  console.log(errors)
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
       className="flex w-full max-w-prose flex-col gap-3"
     >
       <div className="">
-        <input
-          type="text"
-          placeholder="first name"
-          className="rounded-sm px-2 py-1"
-          {...register("firstName")}
-        />
-        <MyErrorMessage errors={errors} name="firstName" />
-
-        <input
-          type="text"
-          placeholder="last name"
-          className="rounded-sm px-2 py-1"
-          {...register("lastName")}
-        />
-        <MyErrorMessage errors={errors} name="lastName" />
-
         <input
           type="text"
           placeholder="Ex: Full Stack Developer"
@@ -158,11 +223,13 @@ function Step1({
   )
 }
 
-function Step2({
+function Step3({
   handleChangeStep
 }: {
   handleChangeStep: (step: Step) => void
 }) {
+  const { mutate } = api.profile.addEducation.useMutation()
+
   const {
     register,
     handleSubmit,
@@ -187,8 +254,17 @@ function Step2({
     rules: { required: true, maxLength: 5 }
   })
 
+  const onSubmit = async (data: InsertEducationSchema) => {
+    console.log(data)
+    // mutate(data)
+    handleChangeStep("fourth")
+  }
+
   return (
-    <form className="flex w-full max-w-prose flex-col gap-3">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex w-full max-w-prose flex-col gap-3"
+    >
       <div className="">
         {educationFields.map((field, index) => (
           <div key={field.id}>
@@ -242,6 +318,11 @@ function Step2({
             >
               Remove
             </button>
+
+            <MyErrorMessage
+              errors={errors}
+              name={`education.${index}.description`}
+            />
           </div>
         ))}
 
@@ -253,11 +334,7 @@ function Step2({
           Add another
         </button>
 
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => handleChangeStep("third")}
-        >
+        <button className="btn btn-primary" type="submit">
           Next
         </button>
       </div>
@@ -265,7 +342,7 @@ function Step2({
   )
 }
 
-function Step3({
+function Step4({
   handleChangeStep
 }: {
   handleChangeStep: (step: Step) => void
@@ -341,7 +418,7 @@ function Step3({
         <button
           className="btn btn-primary"
           type="button"
-          onClick={() => handleChangeStep("fourth")}
+          onClick={() => handleChangeStep("fifth")}
         >
           Next
         </button>
@@ -360,14 +437,14 @@ function useUser() {
   return session!.user
 }
 
-function Step4({
+function Step5({
   handleChangeStep
 }: {
   handleChangeStep: (step: Step) => void
 }) {
   const { id } = useUser()
 
-  const { mutate } = api.user.createSkills.useMutation()
+  const { mutate } = api.profile.createSkills.useMutation()
 
   const {
     register,

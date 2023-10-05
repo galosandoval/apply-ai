@@ -5,7 +5,7 @@ import {
 import { type FieldName, type FieldErrors } from "react-hook-form"
 
 type Props<T extends Record<string, string>> = {
-  errors: Partial<FieldErrors<T>> | Partial<FieldErrors<T[]>>
+  errors: Partial<FieldErrors<T | T[]>>
   name: FieldName<FieldValuesFromFieldErrors<FieldErrors<T>>>
 }
 

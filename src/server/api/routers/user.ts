@@ -8,16 +8,14 @@ import {
   protectedProcedure,
   publicProcedure
 } from "~/server/api/trpc"
-import { insertProfileSchema } from "~/server/db/crud-schema"
-import { profile, user } from "~/server/db/schema"
+import { user } from "~/server/db/schema"
 
 export const userRouter = createTRPCRouter({
   create: publicProcedure
     .input(
       z.object({
         email: z.string().email().max(255),
-        password: z.string().min(8).max(50),
-        bio: z.string().min(1).max(255).optional()
+        password: z.string().min(8).max(50)
       })
     )
     .mutation(async ({ input, ctx }) => {
