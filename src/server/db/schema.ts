@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm"
 import { pgTableCreator, text } from "drizzle-orm/pg-core"
 
-export const pgTable = pgTableCreator((name) => `gpt-job_${name}`)
+export const pgTable = pgTableCreator((name) => `gptJob_${name}`)
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -58,12 +58,12 @@ export const work = pgTable("work", {
   endDate: text("end_date").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  resumeId: text("file_id").notNull()
+  profileId: text("profile_id")
 })
 
 export const workRelations = relations(work, ({ one }) => ({
   file: one(profile, {
-    fields: [work.resumeId],
+    fields: [work.profileId],
     references: [profile.id]
   })
 }))
@@ -77,7 +77,7 @@ export const school = pgTable("school", {
   location: text("location"),
   gpa: text("gpa"),
   description: text("description"),
-  profileId: text("file_id")
+  profileId: text("profile_id")
 })
 
 export const schoolRelations = relations(school, ({ one }) => ({
