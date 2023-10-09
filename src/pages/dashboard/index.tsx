@@ -1,5 +1,4 @@
 import Head from "next/head"
-import { Fragment, useEffect } from "react"
 import { api } from "~/utils/api"
 import { z } from "zod"
 import { type ChatParams } from "../api/resume/chat"
@@ -14,16 +13,10 @@ const generateForm = z.object({
 type GenerateForm = z.infer<typeof generateForm>
 
 export default function Dashboard() {
-  const { data: users, status } = api.user.readAll.useQuery()
   const { data: resume, status: resumeStatus } = api.resume.readById.useQuery(
     { resumeId },
     { enabled: !!resumeId }
   )
-
-  useEffect(() => {
-    console.log(status)
-    console.log(users)
-  }, [status])
 
   interface PdfRequestBody {
     resumeId: string
