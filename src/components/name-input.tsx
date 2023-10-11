@@ -1,10 +1,11 @@
-import type { FieldValues, UseFormRegister } from "react-hook-form";
+// import type { FieldValues, UseFormRegister } from "react-hook-form";
 import React from "react";
 
 type NameInputProps = {
     label: string;
     name: string;
     register: any;
+    // register: UseFormRegister<FieldValues>;
     errors: any;
 
 }
