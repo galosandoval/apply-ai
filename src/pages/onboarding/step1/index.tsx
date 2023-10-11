@@ -11,6 +11,8 @@ import {
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 
+import NameInput from "~/components/name-input"
+
 export default function Step1() {
   const router = useRouter()
   const utils = api.useContext()
@@ -70,50 +72,32 @@ export default function Step1() {
   }, [])
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
-    >
-      <h1>What&rsquo;s your name?</h1>
 
-      {/* TODO: make this div a component */}
-      <div className="">
-        <label htmlFor="firstName" className="label">
-          <span className="label-text">
-            First Name<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <input
-          id="firstName"
-          type="text"
-          className="input input-bordered"
-          {...register("firstName")}
+    <form onSubmit={handleSubmit(onSubmit)} className="">
+    <div className="flex h-screen w-screen flex-col items-center justify-center gap-3">
+      <div>
+        <NameInput
+          label="First Name"
+          name="firstName"
+          register={register}
+          errors={errors}
         />
-
         <MyErrorMessage errors={errors} name="firstName" />
       </div>
-
-      <div className="">
-        <label htmlFor="lastName" className="label">
-          <span className="label-text">
-            Last Name<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <input
-          id="lastName"
-          type="text"
-          className="input input-bordered"
-          {...register("lastName")}
+      <div>
+        <NameInput
+          label="Last Name"
+          name="lastName"
+          register={register}
+          errors={errors}
         />
-
         <MyErrorMessage errors={errors} name="lastName" />
       </div>
 
-      <button type="submit" className="btn btn-primary">
+      <button type="submit" className="btn btn-primary mt-6 w-[200px]">
         Next
       </button>
-    </form>
+    </div>
+  </form>
   )
 }

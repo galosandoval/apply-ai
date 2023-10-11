@@ -4,8 +4,8 @@ import React from "react";
 type NameInputProps = {
     label: string;
     name: string;
-    register: UseFormRegister<FieldValues>;
-    errors: UseFormState<FieldValues>["errors"];
+    register: any;
+    errors: any;
 }
 
 const NameInput: React.FC<NameInputProps> = ({label, name, register, errors}) => {
