@@ -10,7 +10,8 @@ export const insertNameSchema = z.object({
   lastName: z
     .string()
     .min(3, "Must be atleast 3 characters")
-    .max(50, "Must be less than 50 characters")
+    .max(50, "Must be less than 50 characters"),
+  id: z.string().optional()
 })
 
 export type InsertNameSchema = z.infer<typeof insertNameSchema>
@@ -32,7 +33,7 @@ export const updateProfileSchema = createInsertSchema(profile, {
   id: (schema) => schema.id.optional()
 })
 
-export type updateProfileSchema = z.infer<typeof updateProfileSchema>
+export type UpdateProfileSchema = z.infer<typeof updateProfileSchema>
 
 export const insertEducationSchema = z.object({
   education: createInsertSchema(school, {
@@ -55,7 +56,10 @@ export const insertEducationSchema = z.object({
     endDate: (schema) => schema.endDate.min(4).max(50),
     gpa: (schema) => schema.gpa.optional(),
     profileId: (schema) => schema.profileId.cuid2().optional()
-  }).array()
+  })
+    .array()
+    .min(1)
+    .max(4)
 })
 
 export type InsertEducationSchema = z.infer<typeof insertEducationSchema>
@@ -63,14 +67,37 @@ export type InsertEducationSchema = z.infer<typeof insertEducationSchema>
 export const insertExperienceSchema = z.object({
   experience: createInsertSchema(work, {
     id: (schema) => schema.id.optional(),
-    resumeId: (schema) => schema.resumeId.optional()
-  }).array()
+    profileId: (schema) => schema.profileId.optional(),
+    companyName: (schema) =>
+      schema.companyName
+        .min(3, "Must be atleast 3 characters")
+        .max(255, "Must be less than 255 characters"),
+    description: (schema) =>
+      schema.description
+        .min(6, "Must be more than 6 characters")
+        .max(255, "Must be less than 255 characters"),
+    endDate: (schema) => schema.endDate.min(4).max(50),
+    startDate: (schema) => schema.startDate.min(4).max(50),
+    title: (schema) =>
+      schema.title
+        .min(3, "Must be atleast 3 characters")
+        .max(255, "Must be less than 255 characters")
+  })
+    .array()
+    .min(1)
+    .max(5)
 })
 
 export type InsertExperienceSchema = z.infer<typeof insertExperienceSchema>
 
+export const maxSkills = 20
+
 export const insertSkillsSchema = z.object({
-  skills: z.object({ value: z.string().min(3) }).array()
+  skills: z
+    .object({ value: z.string().min(3) })
+    .array()
+    .min(1)
+    .max(maxSkills)
 })
 
 export type InsertSkillsSchema = z.infer<typeof insertSkillsSchema>

@@ -3,11 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { hash } from "bcryptjs"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure
-} from "~/server/api/trpc"
+import { createTRPCRouter, publicProcedure } from "~/server/api/trpc"
 import { user } from "~/server/db/schema"
 
 export const userRouter = createTRPCRouter({
@@ -38,11 +34,5 @@ export const userRouter = createTRPCRouter({
       await ctx.db
         .insert(user)
         .values({ email, password: hashedPassword, id: createId() })
-    }),
-
-  readAll: protectedProcedure.query(async ({ ctx }) => {
-    const response = await ctx.db.select().from(user)
-
-    return response
-  })
+    })
 })

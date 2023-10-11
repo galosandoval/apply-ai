@@ -9,6 +9,7 @@ import {
   insertNameSchema
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
+import { useUser } from "~/utils/useUser"
 
 import NameInput from "~/components/name-input"
 
@@ -16,11 +17,14 @@ export default function Step1() {
   const router = useRouter()
   const utils = api.useContext()
 
-  const handleGoToNextStep = () => {
-    router.push("/onboarding/step2")
-  }
+  const { id } = useUser()
 
-  const { mutate } = api.profile.create.useMutation({
+  const { data: profile } = api.profile.read.useQuery(
+    { userId: id },
+    { enabled: !!id }
+  )
+
+  const { mutate } = api.profile.upsertName.useMutation({
     onError: (error) => {
       toast.error(error.message)
       router.push("/onboarding/step1")
@@ -28,9 +32,14 @@ export default function Step1() {
 
     onSuccess: (data) => {
       if (data?.userId) {
-        utils.profile.read.setData({ userId: data.userId }, { ...data })
+        utils.profile.read.setData(
+          { userId: data.userId },
+          { ...data, education: [], experience: [] }
+        )
       }
-    }
+    },
+
+    onMutate: () => router.push("/onboarding/step2")
   })
 
   const {
@@ -39,12 +48,21 @@ export default function Step1() {
     formState: { errors },
     setFocus
   } = useForm<InsertNameSchema>({
-    resolver: zodResolver(insertNameSchema)
+    resolver: zodResolver(insertNameSchema),
+
+    defaultValues: {
+      firstName: profile?.firstName ?? "",
+      lastName: profile?.lastName ?? ""
+    },
+
+    values: {
+      firstName: profile?.firstName ?? "",
+      lastName: profile?.lastName ?? ""
+    }
   })
 
   const onSubmit = async (data: InsertNameSchema) => {
-    mutate(data)
-    handleGoToNextStep()
+    mutate({ ...data, id: profile?.id })
   }
 
   useEffect(() => {
@@ -54,31 +72,29 @@ export default function Step1() {
   }, [])
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="">
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3">
-        <div>
-          <NameInput
-            label="First Name"
-            name="firstName"
-            register={register}
-            errors={errors}
-          />
-          <MyErrorMessage errors={errors} name="firstName" />
-        </div>
-        <div>
-          <NameInput
-            label="Last Name"
-            name="lastName"
-            register={register}
-            errors={errors}
-          />
-          <MyErrorMessage errors={errors} name="lastName" />
-        </div>
 
-        <button type="submit" className="btn btn-primary mt-6 w-[200px]">
-          Next
-        </button>
       </div>
+
+      <div className="">
+        <label htmlFor="lastName" className="label">
+          <span className="label-text">
+            Last Name<span className="text-error">*</span>
+          </span>
+        </label>
+
+        <input
+          id="lastName"
+          type="text"
+          className="input input-bordered"
+          {...register("lastName")}
+        />
+
+        <MyErrorMessage errors={errors} name="lastName" />
+      </div>
+
+      <button type="submit" className="btn btn-primary">
+        Next
+      </button>
     </form>
   )
 }

@@ -4,21 +4,30 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
-import { updateProfileSchema } from "~/server/db/crud-schema"
+import {
+  type UpdateProfileSchema,
+  updateProfileSchema
+} from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
+import { useUser } from "~/utils/useUser"
 
 export default function Step2() {
   const router = useRouter()
 
-  const handleChangeStep = () => {
-    router.push("/onboarding/step3")
-  }
+  const { id } = useUser()
+
+  const { data: profile } = api.profile.read.useQuery(
+    { userId: id },
+    { enabled: !!id }
+  )
 
   const { mutate } = api.profile.update.useMutation({
     onError: (error) => {
       toast.error(error.message)
       router.push("/onboarding/step2")
-    }
+    },
+
+    onMutate: () => router.push("/onboarding/step3")
   })
 
   const {
@@ -26,14 +35,25 @@ export default function Step2() {
     handleSubmit,
     formState: { errors },
     setFocus
-  } = useForm<updateProfileSchema>({
-    resolver: zodResolver(updateProfileSchema)
+  } = useForm<UpdateProfileSchema>({
+    resolver: zodResolver(updateProfileSchema),
+
+    defaultValues: {
+      profession: profile?.profession ?? "",
+      introduction: profile?.introduction ?? "",
+      interests: profile?.interests ?? ""
+    },
+    values: {
+      profession: profile?.profession ?? "",
+      introduction: profile?.introduction ?? "",
+      interests: profile?.interests ?? ""
+    }
   })
 
-  const onSubmit = async (data: updateProfileSchema) => {
+  const onSubmit = async (data: UpdateProfileSchema) => {
     mutate(data)
-    handleChangeStep()
   }
+
   useEffect(() => {
     setFocus("profession")
 
@@ -45,6 +65,8 @@ export default function Step2() {
       onSubmit={handleSubmit(onSubmit)}
       className="flex w-full max-w-prose flex-col gap-3"
     >
+      <h1>Tell us about yourself</h1>
+
       <div className="">
         <label htmlFor="profession" className="label">
           <span className="label-text">
