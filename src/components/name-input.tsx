@@ -6,6 +6,7 @@ type NameInputProps = {
     name: string;
     register: any;
     errors: any;
+
 }
 
 const NameInput: React.FC<NameInputProps> = ({label, name, register, errors}) => {
