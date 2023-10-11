@@ -37,6 +37,8 @@ export const profileRouter = createTRPCRouter({
         })
       }
 
+      console.log(result)
+
       const education = await ctx.db
         .select()
         .from(school)

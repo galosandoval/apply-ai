@@ -61,13 +61,6 @@ export const work = pgTable("work", {
   profileId: text("profile_id")
 })
 
-export const workRelations = relations(work, ({ one }) => ({
-  file: one(profile, {
-    fields: [work.profileId],
-    references: [profile.id]
-  })
-}))
-
 export const school = pgTable("school", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

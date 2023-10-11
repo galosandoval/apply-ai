@@ -29,7 +29,7 @@ export default function Step4() {
   const { id } = useUser()
 
   const { data: profile } = api.profile.read.useQuery(
-    { userId: id ?? "" },
+    { userId: id },
     { enabled: !!id }
   )
 
@@ -56,6 +56,7 @@ export default function Step4() {
         ? profile.experience
         : initialExperience
     },
+
     values: {
       experience: profile?.experience.length
         ? profile.experience
@@ -88,6 +89,8 @@ export default function Step4() {
       onSubmit={handleSubmit(onSubmit)}
       className="flex w-full max-w-prose flex-col gap-3"
     >
+      <h1>Experience</h1>
+
       {fields.map((field, index) => (
         <div key={field.id}>
           <div className="">
@@ -193,7 +196,7 @@ export default function Step4() {
             <input
               id={`experience.${index}.title`}
               type="text"
-              placeholder="Address Line"
+              placeholder="Ex: Software Engineer"
               className="rounded-sm px-2 py-1"
               {...register(`experience.${index}.title`)}
             />

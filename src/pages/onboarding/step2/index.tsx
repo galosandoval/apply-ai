@@ -53,6 +53,7 @@ export default function Step2() {
   const onSubmit = async (data: UpdateProfileSchema) => {
     mutate(data)
   }
+
   useEffect(() => {
     setFocus("profession")
 
@@ -64,6 +65,8 @@ export default function Step2() {
       onSubmit={handleSubmit(onSubmit)}
       className="flex w-full max-w-prose flex-col gap-3"
     >
+      <h1>Tell us about yourself</h1>
+
       <div className="">
         <label htmlFor="profession" className="label">
           <span className="label-text">
