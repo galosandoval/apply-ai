@@ -73,28 +73,31 @@ export default function Step1() {
 
   return (
 
-      </div>
-
-      <div className="">
-        <label htmlFor="lastName" className="label">
-          <span className="label-text">
-            Last Name<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <input
-          id="lastName"
-          type="text"
-          className="input input-bordered"
-          {...register("lastName")}
+    <form onSubmit={handleSubmit(onSubmit)} className="">
+    <div className="flex h-screen w-screen flex-col items-center justify-center gap-3">
+      <div>
+        <NameInput
+          label="First Name"
+          name="firstName"
+          register={register}
+          errors={errors}
         />
-
+        <MyErrorMessage errors={errors} name="firstName" />
+      </div>
+      <div>
+        <NameInput
+          label="Last Name"
+          name="lastName"
+          register={register}
+          errors={errors}
+        />
         <MyErrorMessage errors={errors} name="lastName" />
       </div>
 
-      <button type="submit" className="btn btn-primary">
+      <button type="submit" className="btn btn-primary mt-6 w-[200px]">
         Next
       </button>
-    </form>
+    </div>
+  </form>
   )
 }
