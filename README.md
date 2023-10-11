@@ -84,7 +84,7 @@ Make sure you have the following software and services installed:
 2. Install dependencies:
 
    ```bash
-   npm install
+   npm install or bun install
    ```
 
 ### Configuration
