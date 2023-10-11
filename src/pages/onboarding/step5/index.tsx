@@ -45,13 +45,13 @@ export default function Step5() {
   } = useForm<InsertSkillsSchema>({
     resolver: zodResolver(insertSkillsSchema),
     defaultValues: {
-      skills: profile?.skills
+      skills: profile?.skills?.length
         ? profile.skills.map((s) => ({ value: s }))
         : initialSkills
     },
 
     values: {
-      skills: profile?.skills
+      skills: profile?.skills?.length
         ? profile.skills.map((s) => ({ value: s }))
         : initialSkills
     }
@@ -73,59 +73,66 @@ export default function Step5() {
   }, [])
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
-    >
-      <div className="">
-        {fields.map((field, index) => (
-          <div key={field.id}>
-            <div className="">
-              <label htmlFor={`skills.${index}.value`} className="label">
-                <span className="label-text">
-                  Skill {index + 1}
-                  <span className="text-error">*</span>
-                </span>
-              </label>
+    <>
+      <h1>Skills</h1>
 
-              <input
-                {...register(`skills.${index}.value`)}
-                type="text"
-                placeholder="Ex: Customer service"
-                className="rounded-sm px-2 py-1"
-              />
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex w-full max-w-prose flex-col gap-3"
+      >
+        <div className="">
+          {fields.map((field, index) => (
+            <div key={field.id}>
+              <div className="">
+                <label htmlFor={`skills.${index}.value`} className="label">
+                  <span className="label-text">
+                    Skill {index + 1}
+                    <span className="text-error">*</span>
+                  </span>
+                </label>
 
-              <MyErrorMessage errors={errors} name={`skills.${index}.value`} />
+                <input
+                  {...register(`skills.${index}.value`)}
+                  type="text"
+                  placeholder="Ex: Customer service"
+                  className="rounded-sm px-2 py-1"
+                />
+
+                <MyErrorMessage
+                  errors={errors}
+                  name={`skills.${index}.value`}
+                />
+              </div>
+
+              {fields.length > 1 ? (
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={() => remove(index)}
+                >
+                  Remove
+                </button>
+              ) : null}
             </div>
+          ))}
 
-            {fields.length > 1 ? (
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={() => remove(index)}
-              >
-                Remove
-              </button>
-            ) : null}
-          </div>
-        ))}
+          <MyErrorMessage errors={errors} name="skills.root" />
 
-        <MyErrorMessage errors={errors} name="skills.root" />
+          {fields.length < maxSkills && (
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => append(initialSkills)}
+            >
+              Add another
+            </button>
+          )}
 
-        {fields.length < maxSkills && (
-          <button
-            className="btn btn-primary"
-            type="button"
-            onClick={() => append(initialSkills)}
-          >
-            Add another
+          <button className="btn btn-primary" type="submit">
+            Next
           </button>
-        )}
-
-        <button className="btn btn-primary" type="submit">
-          Next
-        </button>
-      </div>
-    </form>
+        </div>
+      </form>
+    </>
   )
 }

@@ -74,6 +74,8 @@ export default function Step1() {
       onSubmit={handleSubmit(onSubmit)}
       className="flex w-full max-w-prose flex-col gap-3"
     >
+      <h1>What&rsquo;s your name?</h1>
+
       {/* TODO: make this div a component */}
       <div className="">
         <label htmlFor="firstName" className="label">

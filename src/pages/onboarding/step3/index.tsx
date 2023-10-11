@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
@@ -10,6 +9,7 @@ import {
   type InsertEducationSchema
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
+import { useUser } from "~/utils/useUser"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -27,11 +27,12 @@ const maxSchools = 4
 
 export default function Step3() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { id } = useUser()
+  console.log(id)
 
   const { data: profile } = api.profile.read.useQuery(
-    { userId: session?.user.id ?? "" },
-    { enabled: !!session?.user.id }
+    { userId: id },
+    { enabled: !!id }
   )
 
   const { mutate } = api.profile.addEducation.useMutation({
@@ -67,8 +68,6 @@ export default function Step3() {
   })
 
   const onSubmit = async (data: InsertEducationSchema) => {
-    console.log(data)
-
     const educationToSubmit = data.education.map((s) => ({
       ...s,
       profileId: profile?.id
@@ -87,6 +86,8 @@ export default function Step3() {
       onSubmit={handleSubmit(onSubmit)}
       className="flex w-full max-w-prose flex-col gap-3"
     >
+      <h1>Education</h1>
+
       {fields.map((field, index) => (
         <div key={field.id}>
           <div className="">
