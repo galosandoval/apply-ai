@@ -3,15 +3,13 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
-import { MyErrorMessage } from "~/components/my-error-message"
+import { TextInput } from "~/components/text-input"
 import {
   type InsertNameSchema,
   insertNameSchema
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
-
-import NameInput from "~/components/name-input"
 
 export default function Step1() {
   const router = useRouter()
@@ -72,32 +70,29 @@ export default function Step1() {
   }, [])
 
   return (
-
     <form onSubmit={handleSubmit(onSubmit)} className="">
-    <div className="flex h-screen w-screen flex-col items-center justify-center gap-3">
-      <div>
-        <NameInput
-          label="First Name"
-          name="firstName"
-          register={register}
-          errors={errors}
-        />
-        <MyErrorMessage errors={errors} name="firstName" />
-      </div>
-      <div>
-        <NameInput
-          label="Last Name"
-          name="lastName"
-          register={register}
-          errors={errors}
-        />
-        <MyErrorMessage errors={errors} name="lastName" />
-      </div>
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3">
+        <div>
+          <TextInput
+            label="First Name"
+            name="firstName"
+            register={register}
+            errors={errors}
+          />
+        </div>
+        <div>
+          <TextInput
+            label="Last Name"
+            name="lastName"
+            register={register}
+            errors={errors}
+          />
+        </div>
 
-      <button type="submit" className="btn btn-primary mt-6 w-[200px]">
-        Next
-      </button>
-    </div>
-  </form>
+        <button type="submit" className="btn btn-primary mt-6 w-[200px]">
+          Next
+        </button>
+      </div>
+    </form>
   )
 }

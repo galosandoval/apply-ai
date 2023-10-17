@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
+import { TextInput } from "~/components/text-input"
 import {
   type UpdateProfileSchema,
   updateProfileSchema
@@ -68,7 +69,7 @@ export default function Step2() {
       <h1>Tell us about yourself</h1>
 
       <div className="">
-        <label htmlFor="profession" className="label">
+        {/* <label htmlFor="profession" className="label">
           <span className="label-text">
             Title<span className="text-error">*</span>
           </span>
@@ -81,7 +82,9 @@ export default function Step2() {
           className="rounded-sm px-2 py-1"
           {...register("profession")}
         />
-        <MyErrorMessage errors={errors} name="profession" />
+        <MyErrorMessage errors={errors} name="profession" /> */}
+
+        <TextInput errors={errors} label="Title" name='profession' register={register} />
       </div>
 
       <div className="">
