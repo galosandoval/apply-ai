@@ -23,7 +23,7 @@ const config = {
       {
         source: "/",
         destination: "/dashboard",
-        permanent: false,
+        permanent: true,
         has: [
           {
             type: "cookie",
