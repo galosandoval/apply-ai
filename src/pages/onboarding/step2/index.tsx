@@ -84,7 +84,7 @@ export default function Step2() {
         />
         <MyErrorMessage errors={errors} name="profession" /> */}
 
-        <TextInput errors={errors} label="Title" name='profession' register={register} />
+        <TextInput placeholder="Ex: Full Stack Developer" errors={errors} label="Title" name='profession' register={register} />
       </div>
 
       <div className="">

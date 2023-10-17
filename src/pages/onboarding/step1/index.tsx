@@ -78,6 +78,7 @@ export default function Step1() {
             name="firstName"
             register={register}
             errors={errors}
+            required
           />
         </div>
         <div>

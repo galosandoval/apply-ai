@@ -10,24 +10,30 @@ type NameInputProps<T extends FieldValues> = {
   name: Path<T>
   register: UseFormRegister<T>
   errors: any
+  required?: boolean
+  placeholder?: string
 }
 
 export function TextInput<T extends FieldValues>({
+  placeholder,
   label,
   name,
   register,
-  errors
+  errors,
+  required
 }: NameInputProps<T>) {
   return (
     <div>
       <label htmlFor={name} className="label">
         <span className="label-text">
           {label}
-          <span className="text-error">*</span>
+
+          {required && <span className="text-error">*</span>}
         </span>
       </label>
 
       <input
+        placeholder={placeholder}
         id={name}
         type="text"
         className="input input-bordered"
