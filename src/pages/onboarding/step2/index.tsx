@@ -4,6 +4,8 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
+import { TextAreaInput } from "~/components/text-field"
+import { TextInput } from "~/components/text-input"
 import {
   type UpdateProfileSchema,
   updateProfileSchema
@@ -63,58 +65,32 @@ export default function Step2() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
+      className="min-h-screen flex flex-col gap-3 justify-center items-center"
     >
       <h1>Tell us about yourself</h1>
 
-      <div className="">
-        <label htmlFor="profession" className="label">
-          <span className="label-text">
-            Title<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <input
-          id="profession"
-          type="text"
+        <TextInput
           placeholder="Ex: Full Stack Developer"
-          className="rounded-sm px-2 py-1"
-          {...register("profession")}
+          errors={errors}
+          label="Title"
+          name="profession"
+          register={register}
+          required
         />
-        <MyErrorMessage errors={errors} name="profession" />
-      </div>
-
-      <div className="">
-        <label htmlFor="profession" className="label">
-          <span className="label-text">
-            About Me<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <textarea
-          placeholder="Ex: I am a full stack developer with 5 years of experience. I have worked with ..."
-          className="rounded-sm px-2 py-1"
-          {...register("introduction")}
-        ></textarea>
-
-        <MyErrorMessage errors={errors} name="introduction" />
-      </div>
-
-      <div className="">
-        <label htmlFor="interests" className="label">
-          <span className="label-text">
-            Interests<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <textarea
-          id="interests"
-          placeholder="Ex: I like to go hiking, biking, and swimming."
-          className="rounded-sm px-2 py-1"
-          {...register("interests")}
-        ></textarea>
-        <MyErrorMessage errors={errors} name="interests" />
-      </div>
+      <TextAreaInput
+        errors={errors}
+        label="About Me"
+        name="introduction"
+        register={register}
+        placeholder="Ex: I am a full stack developer with 5 years of experience. I have worked with ..."
+      />
+      <TextAreaInput
+        errors={errors}
+        label="Interests"
+        name="interests"
+        register={register}
+        placeholder="I like turtles"
+      />
 
       <button type="submit" className="btn btn-primary">
         Next
