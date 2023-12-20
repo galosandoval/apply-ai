@@ -5,11 +5,11 @@ import { z } from "zod"
 export const insertNameSchema = z.object({
   firstName: z
     .string()
-    .min(3, "Must be atleast 3 characters")
+    .min(3, "Must be at least 3 characters")
     .max(50, "Must be less than 50 characters"),
   lastName: z
     .string()
-    .min(3, "Must be atleast 3 characters")
+    .min(3, "Must be at least 3 characters")
     .max(50, "Must be less than 50 characters"),
   id: z.string().optional()
 })
@@ -19,7 +19,7 @@ export type InsertNameSchema = z.infer<typeof insertNameSchema>
 export const updateProfileSchema = createInsertSchema(profile, {
   profession: (schema) =>
     schema.profession
-      .min(3, "Must be atleast 3 characters")
+      .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters"),
   introduction: (schema) =>
     schema.introduction
@@ -27,7 +27,7 @@ export const updateProfileSchema = createInsertSchema(profile, {
       .max(500, "Must be less than 500 characters"),
   interests: (schema) =>
     schema.interests
-      .min(3, "Must be atleast 3 characters")
+      .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters"),
   skills: (schema) => schema.skills.optional(),
   id: (schema) => schema.id.optional()
@@ -40,11 +40,11 @@ export const insertEducationSchema = z.object({
     id: (schema) => schema.id.optional(),
     degree: (schema) =>
       schema.degree
-        .min(3, "Must be atleast 3 characters")
+        .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters"),
     name: (schema) =>
       schema.name
-        .min(3, "Must be atleast 3 characters")
+        .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters"),
     description: (schema) =>
       schema.description
@@ -70,7 +70,7 @@ export const insertExperienceSchema = z.object({
     profileId: (schema) => schema.profileId.optional(),
     companyName: (schema) =>
       schema.companyName
-        .min(3, "Must be atleast 3 characters")
+        .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters"),
     description: (schema) =>
       schema.description
@@ -80,7 +80,7 @@ export const insertExperienceSchema = z.object({
     startDate: (schema) => schema.startDate.min(4).max(50),
     title: (schema) =>
       schema.title
-        .min(3, "Must be atleast 3 characters")
+        .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters")
   })
     .array()

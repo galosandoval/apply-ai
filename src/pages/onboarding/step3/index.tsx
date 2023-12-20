@@ -11,6 +11,8 @@ import {
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 
+import { TextInput } from "~/components/text-input"
+
 const initialSchool: InsertEducationSchema["education"] = [
   {
     degree: "",
@@ -84,12 +86,20 @@ export default function Step3() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
+      className="flex min-h-screen flex-col items-center justify-center gap-3"
     >
       <h1>Education</h1>
 
       {fields.map((field, index) => (
         <div key={field.id}>
+          <TextInput
+            placeholder="School"
+            errors={errors}
+            label="School"
+            name= 'education'
+            register={register}
+            required
+          />
           <div className="">
             <label htmlFor={`education.${index}.name`} className="label">
               <span className="label-text">

@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
-import { MyErrorMessage } from "~/components/my-error-message"
+import { TextInput } from "~/components/text-input"
 import {
   type InsertNameSchema,
   insertNameSchema
@@ -70,50 +70,30 @@ export default function Step1() {
   }, [])
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
-    >
-      <h1>What&rsquo;s your name?</h1>
+    <form onSubmit={handleSubmit(onSubmit)} className="">
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3">
+        <div>
+          <TextInput
+            label="First Name"
+            name="firstName"
+            register={register}
+            errors={errors}
+            required
+          />
+        </div>
+        <div>
+          <TextInput
+            label="Last Name"
+            name="lastName"
+            register={register}
+            errors={errors}
+          />
+        </div>
 
-      {/* TODO: make this div a component */}
-      <div className="">
-        <label htmlFor="firstName" className="label">
-          <span className="label-text">
-            First Name<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <input
-          id="firstName"
-          type="text"
-          className="input input-bordered"
-          {...register("firstName")}
-        />
-
-        <MyErrorMessage errors={errors} name="firstName" />
+        <button type="submit" className="btn btn-primary mt-6 w-[200px]">
+          Next
+        </button>
       </div>
-
-      <div className="">
-        <label htmlFor="lastName" className="label">
-          <span className="label-text">
-            Last Name<span className="text-error">*</span>
-          </span>
-        </label>
-
-        <input
-          id="lastName"
-          type="text"
-          className="input input-bordered"
-          {...register("lastName")}
-        />
-
-        <MyErrorMessage errors={errors} name="lastName" />
-      </div>
-
-      <button type="submit" className="btn btn-primary">
-        Next
-      </button>
     </form>
   )
 }
