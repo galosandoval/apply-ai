@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { pgTableCreator, text } from "drizzle-orm/pg-core"
+import { boolean, pgTableCreator, text } from "drizzle-orm/pg-core"
 
 export const pgTable = pgTableCreator((name) => `gptJob_${name}`)
 
@@ -26,6 +26,7 @@ export const profile = pgTable("profile", {
   skills: text("skills").array(),
   introduction: text("profile"),
   interests: text("interests"),
+  isOnboarded: boolean("is_onboarded").default(false),
   userId: text("user_id")
 })
 

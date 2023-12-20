@@ -1,9 +1,9 @@
-import { type Config } from "tailwindcss";
+import { type Config } from "tailwindcss"
 
 export default {
   content: ["./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    extend: {},
+    extend: {}
   },
   plugins: [require("daisyui")],
   daisyui: {
@@ -18,9 +18,9 @@ export default {
           info: "#96bee4",
           success: "#106054",
           warning: "#f6bc0e",
-          error: "#e96f6d",
-        },
-      },
-    ],
-  },
-} satisfies Config;
+          error: "#e96f6d"
+        }
+      }
+    ]
+  }
+} satisfies Config

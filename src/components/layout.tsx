@@ -19,7 +19,7 @@ export default function Layout({
     navbar = <ProtectedNavbar />
   }
   return (
-    <div className={`${font} font-roboto`}>
+    <div className={font}>
       {navbar}
 
       <main className="">{children}</main>

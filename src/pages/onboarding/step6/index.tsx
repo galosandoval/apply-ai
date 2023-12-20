@@ -30,6 +30,50 @@ export default function Step5() {
 
 function Profile({ data }: { data: RouterOutputs["profile"]["read"] }) {
   const router = useRouter()
+  const { id: userId } = useUser()
+
+  const utils = api.useContext()
+
+  const { mutate } = api.profile.finishOnboarding.useMutation({
+    onMutate: async ({ userId }) => {
+      await utils.profile.read.cancel()
+
+      const prevProfile = utils.profile.read.getData({ userId })
+
+      if (!prevProfile) return prevProfile
+
+      utils.profile.read.setData(
+        {
+          userId
+        },
+        (old) => {
+          if (!old) return old
+
+          return { ...old, isOnboarded: true }
+        }
+      )
+
+      return { prevProfile }
+    },
+
+    onSuccess: async (_, { userId }) => {
+      await utils.profile.read.invalidate({ userId })
+    },
+
+    onError: (error, { userId }, ctx) => {
+      const prevProfile = ctx?.prevProfile
+      if (prevProfile) {
+        utils.profile.read.setData({ userId }, prevProfile)
+      }
+      toast.error(error.message)
+    }
+  })
+
+  const handleFinishOnboarding = () => {
+    router.push("/dashboard")
+
+    mutate({ userId })
+  }
 
   return (
     <div className="">
@@ -184,7 +228,7 @@ function Profile({ data }: { data: RouterOutputs["profile"]["read"] }) {
       ))}
 
       <button
-        onClick={() => router.push("/dashboard")}
+        onClick={handleFinishOnboarding}
         className="btn btn-primary"
         type="submit"
       >
