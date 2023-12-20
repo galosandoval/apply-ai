@@ -40,9 +40,9 @@ export default function Home() {
         password,
         redirect: false
       })
-      console.log(response)
+
       if (response?.ok) {
-        await router.push("/dashboard")
+        await router.push("/onboarding/step1")
       }
     },
     onError: (error) => {

@@ -33,11 +33,9 @@ export const profileRouter = createTRPCRouter({
       if (!result) {
         throw new TRPCError({
           message: "Profile not found",
-          code: "INTERNAL_SERVER_ERROR"
+          code: "NOT_FOUND"
         })
       }
-
-      console.log(result)
 
       const education = await ctx.db
         .select()
@@ -167,6 +165,19 @@ export const profileRouter = createTRPCRouter({
         .update(profile)
         .set({
           skills: skills.map((s) => s.value)
+        })
+        .where(eq(profile.userId, userId))
+    }),
+
+  finishOnboarding: protectedProcedure
+    .input(z.object({ userId: z.string().cuid2() }))
+    .mutation(async ({ input, ctx }) => {
+      const { userId } = input
+
+      return await ctx.db
+        .update(profile)
+        .set({
+          isOnboarded: true
         })
         .where(eq(profile.userId, userId))
     })

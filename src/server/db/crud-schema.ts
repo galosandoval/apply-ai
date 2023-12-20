@@ -24,7 +24,7 @@ export const updateProfileSchema = createInsertSchema(profile, {
   introduction: (schema) =>
     schema.introduction
       .min(3, "Must be atleast 3 characters")
-      .max(255, "Must be less than 255 characters"),
+      .max(500, "Must be less than 500 characters"),
   interests: (schema) =>
     schema.interests
       .min(3, "Must be atleast 3 characters")
