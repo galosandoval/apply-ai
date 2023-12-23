@@ -10,7 +10,7 @@ export const user = pgTable("user", {
   password: text("password").notNull()
 })
 
-export const userRelations = relations(user, ({ one, many }) => ({
+export const userRelations = relations(user, ({ one }) => ({
   profile: one(profile, {
     fields: [user.id],
     references: [profile.userId]
@@ -26,7 +26,7 @@ export const profile = pgTable("profile", {
   introduction: text("profile"),
   interests: text("interests"),
   isOnboarded: boolean("is_onboarded").default(false),
-  userId: text("user_id")
+  userId: text("user_id").references(() => user.id)
 })
 
 export const profileRelations = relations(profile, ({ many, one }) => ({
@@ -59,6 +59,7 @@ export const work = pgTable("work", {
   endDate: text("end_date").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  keyAchievements: text("key_achievements").array(),
   profileId: text("profile_id").references(() => profile.id),
   resumeId: text("resume_id").references(() => resume.id)
 })
@@ -83,13 +84,18 @@ export const school = pgTable("school", {
   location: text("location"),
   gpa: text("gpa"),
   description: text("description"),
-  profileId: text("profile_id")
+  profileId: text("profile_id").references(() => profile.id),
+  resumeId: text("resume_id").references(() => resume.id)
 })
 
 export const schoolRelations = relations(school, ({ one }) => ({
-  file: one(profile, {
+  profile: one(profile, {
     fields: [school.profileId],
     references: [profile.id]
+  }),
+  resume: one(resume, {
+    fields: [school.resumeId],
+    references: [resume.id]
   })
 }))
 
@@ -100,9 +106,6 @@ export const resume = pgTable("resume", {
   skills: text("skills").notNull(),
   introduction: text("introduction"),
   interests: text("interests"),
-  experience: text("experience").notNull(),
-  education: text("education").notNull(),
-  contact: text("contact").notNull(),
   profileId: text("user_id").references(() => user.id)
 })
 
@@ -111,5 +114,6 @@ export const resumeRelations = relations(resume, ({ one, many }) => ({
     fields: [resume.profileId],
     references: [profile.id]
   }),
-  experience: many(work)
+  experience: many(work),
+  education: many(school)
 }))
