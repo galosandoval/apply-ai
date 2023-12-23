@@ -14,8 +14,7 @@ export const userRelations = relations(user, ({ one, many }) => ({
   profile: one(profile, {
     fields: [user.id],
     references: [profile.userId]
-  }),
-  resumes: many(resume)
+  })
 }))
 
 export const profile = pgTable("profile", {
@@ -40,7 +39,8 @@ export const profileRelations = relations(profile, ({ many, one }) => ({
   user: one(user, {
     fields: [profile.userId],
     references: [user.id]
-  })
+  }),
+  resumes: many(resume)
 }))
 
 export const contact = pgTable("contact", {
@@ -59,13 +59,18 @@ export const work = pgTable("work", {
   endDate: text("end_date").notNull(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  profileId: text("profile_id")
+  profileId: text("profile_id").references(() => profile.id),
+  resumeId: text("resume_id").references(() => resume.id)
 })
 
 export const workRelations = relations(work, ({ one }) => ({
   file: one(profile, {
     fields: [work.profileId],
     references: [profile.id]
+  }),
+  resume: one(resume, {
+    fields: [work.resumeId],
+    references: [resume.id]
   })
 }))
 
@@ -98,12 +103,13 @@ export const resume = pgTable("resume", {
   experience: text("experience").notNull(),
   education: text("education").notNull(),
   contact: text("contact").notNull(),
-  userId: text("user_id").references(() => user.id)
+  profileId: text("user_id").references(() => user.id)
 })
 
-export const resumeRelations = relations(resume, ({ one }) => ({
-  user: one(user, {
-    fields: [resume.userId],
-    references: [user.id]
-  })
+export const resumeRelations = relations(resume, ({ one, many }) => ({
+  profile: one(profile, {
+    fields: [resume.profileId],
+    references: [profile.id]
+  }),
+  experience: many(work)
 }))
