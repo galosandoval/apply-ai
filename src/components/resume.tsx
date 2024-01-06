@@ -3,17 +3,16 @@ import { type RouterOutputs } from "~/utils/api"
 export const Resume = ({
   data
 }: {
-  data: RouterOutputs["resume"]["readById"]
+  data: RouterOutputs["resume"]["readById"] & { firstAndLastName: string }
 }) => {
-  const resume = data[0]
   return (
     <main className="h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272]">
       <div className="flex flex-col items-center justify-center">
         <h1 className="mb-4 text-4xl font-semibold uppercase tracking-[.75rem]">
-          user.placeholder
+          {data.firstAndLastName}
         </h1>
         <h1 className="text-md mb-8 font-semibold uppercase tracking-[.25rem]">
-          software engineer
+          {data.profession}
         </h1>
       </div>
       <div className="w-full border-b border-[#737373]" />
@@ -123,17 +122,7 @@ export const Resume = ({
             <h2 className="my-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
               Profile
             </h2>
-            <p className="mb-4">
-              Experienced software engineer with a background in full stack web
-              development and a proven track record of optimizing systems and
-              delivering impactful solutions. Seeking a new software engineering
-              position to leverage my technical expertise, problem-solving
-              skills, and passion for creating engaging entertainment
-              experiences. With a strong foundation in computer science and
-              hands-on experience gained from a comprehensive boot camp program,
-              I am dedicated to contributing to the creation of innovative and
-              user-centric software solutions.
-            </p>
+            <p className="mb-4">{data.introduction}</p>
           </div>
 
           <div id="work" className="">

@@ -22,6 +22,7 @@ const MyApp: AppType<{ session: Session | null }> = ({
   return (
     <SessionProvider session={session}>
       <Toaster />
+
       <Layout font={font}>
         <Component {...pageProps} />
       </Layout>

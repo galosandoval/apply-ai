@@ -2,21 +2,14 @@ import Head from "next/head"
 import { api } from "~/utils/api"
 import { type Message, useChat } from "ai/react"
 import { useUser } from "~/utils/useUser"
-import { useRouter } from "next/navigation"
 import { useEffect, type FormEvent } from "react"
 
 export default function Dashboard() {
   const { id } = useUser()
-  const router = useRouter()
 
   const { data } = api.profile.read.useQuery(
     { userId: id },
     {
-      onSuccess(data) {
-        if (!data.isOnboarded) {
-          router.push("/onboarding/step1")
-        }
-      },
       enabled: !!id
     }
   )
@@ -56,7 +49,8 @@ export default function Dashboard() {
             skill: data?.skills?.join(", "),
             experience: JSON.stringify(data.experience),
             education: JSON.stringify(data.education),
-            interests: data.interests
+            interests: data.interests,
+            profession: data.profession
           }
         : {}
     })
@@ -77,7 +71,12 @@ export default function Dashboard() {
       </Head>
       <div>
         {messages.map((m) => (
-          <ChatBubble key={m.id} message={m} isLoading={isLoading} />
+          <ChatMessage
+            profileId={data?.id ?? ""}
+            key={m.id}
+            message={m}
+            isLoading={isLoading}
+          />
         ))}
 
         <form onSubmit={onSubmit}>
@@ -91,126 +90,162 @@ export default function Dashboard() {
   )
 }
 
-function ChatBubble({
+function ChatMessage({
   message,
+  profileId,
   isLoading
 }: {
   message: Message
+  profileId: string
   isLoading: boolean
 }) {
   if (message.role === "user") {
     return null
   }
 
-  if (message.role === "assistant" && !isLoading) {
-    const parsed = JSON.parse(message.content) as FinishedParsed
-    console.log(JSON.parse(message.content))
-
+  if (message.role === "assistant") {
     return (
-      <div className="flex flex-col gap-4">
-        <h1 className="label">Education</h1>
-        {parsed.education.map((s) => (
-          <div className="" key={s.description}>
-            <div className="flex flex-col gap-4">
-              <div className="label">
-                <span className="label-text">School Name</span>
-                <div className="rounded-sm px-2 py-1">{s.schoolName}</div>
-              </div>
-
-              <div className="">
-                <span className="label">Description</span>
-                <div className="rounded-sm px-2 py-1">{s.description}</div>
-              </div>
-
-              <div className="flex justify-around">
-                <div className="text-center">
-                  <span className="label-text">Start Date</span>
-                  <div className="rounded-sm px-2 py-1">{s.startDate}</div>
-                </div>
-                <div className="">
-                  <span className="label-text">End Date</span>
-                  <div className="rounded-sm px-2 py-1">{s.endDate}</div>
-                </div>
-              </div>
-
-              <div className="">
-                <div className="">{s.startDate}</div>
-                <div className="">{s.endDate}</div>
-
-                <div className="">{s.degree}</div>
-                <div className="">{s.gpa}</div>
-                <div className="">{s.keyAchievements}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        <h1 className="">Experience</h1>
-        {parsed.experience.map((s) => (
-          <div className="" key={s.description}>
-            <div className="">
-              <div className="label">
-                <span className="label-text">Company Name</span>
-                <div className="rounded-sm px-2 py-1">{s.companyName}</div>
-              </div>
-
-              <div className="">{s.description}</div>
-
-              <div className="">
-                <div className="">{s.startDate}</div>
-                <div className="">{s.endDate}</div>
-
-                <div className="">{s.title}</div>
-                <div className="">{s.keyAchievements}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {parsed.skills?.length && (
-          <div className="">
-            <h1>Skills</h1>
-
-            {parsed.skills.map((skill) => (
-              <p key={skill}>{skill}</p>
-            ))}
-          </div>
-        )}
-
-        {parsed.interests}
-
-        {parsed.aboutMe}
-      </div>
+      <AssistantMessage
+        profileId={profileId}
+        isLoading={isLoading}
+        content={message.content}
+      />
     )
   }
 
   return <p className="whitespace-pre-line">{message.content}</p>
 }
 
-function parseAssistantMessage(content: string) {
-  const expressionIndices: Record<string, number[]> = {}
+function AssistantMessage({
+  content,
+  isLoading,
+  profileId
+}: {
+  content: string
+  isLoading: boolean
+  profileId: string
+}) {
+  const { mutate } = api.resume.create.useMutation()
 
-  for (let i = content.length - 1; i >= 0; i--) {
-    const char = content[i]
-
-    if (char === "}" || char === "]") {
-      if (!(char in expressionIndices)) {
-        expressionIndices[char] = []
-      }
-
-      expressionIndices[char]?.push(i)
-    }
-
-    if (char === "{" || char === "[") {
-      if (!(char in expressionIndices)) {
-        expressionIndices[char] = []
-      }
-
-      expressionIndices[char]?.push(i)
-    }
+  if (isLoading) {
+    return <p className="whitespace-pre-line">{content}</p>
   }
 
-  console.log(expressionIndices)
+  const parsed = JSON.parse(content) as FinishedParsed
+
+  console.log(parsed.skills)
+
+  const handleSaveAsResume = () => {
+    mutate({
+      education: parsed.education,
+      experience: parsed.experience,
+      skills: parsed.skills,
+      interests: parsed.interests,
+      introduction: parsed.summary,
+      profession: parsed.profession,
+      profileId
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="label">Education</h1>
+      {parsed.education.map((s) => (
+        <div className="" key={s.description}>
+          <div className="flex flex-col gap-4">
+            <div className="label">
+              <span className="label-text">School Name</span>
+              <div className="rounded-sm px-2 py-1">{s.schoolName}</div>
+            </div>
+
+            <div className="">
+              <span className="label">Description</span>
+              <div className="rounded-sm px-2 py-1">{s.description}</div>
+            </div>
+
+            <div className="flex justify-around">
+              <div className="text-center">
+                <span className="label-text">Start Date</span>
+                <div className="rounded-sm px-2 py-1">{s.startDate}</div>
+              </div>
+              <div className="">
+                <span className="label-text">End Date</span>
+                <div className="rounded-sm px-2 py-1">{s.endDate}</div>
+              </div>
+            </div>
+
+            <div className="">
+              <div className="">{s.startDate}</div>
+              <div className="">{s.endDate}</div>
+
+              <div className="">{s.degree}</div>
+              <div className="">{s.gpa}</div>
+              {/* <div className="">{s.keyAchievements}</div> */}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <h1 className="">Experience</h1>
+      {parsed.experience.map((s) => (
+        <div className="" key={s.description}>
+          <div className="">
+            <div className="label">
+              <span className="label-text">Company Name</span>
+              <div className="rounded-sm px-2 py-1">{s.companyName}</div>
+            </div>
+
+            <div className="">{s.description}</div>
+
+            <div className="">
+              <div className="">{s.startDate}</div>
+              <div className="">{s.endDate}</div>
+
+              <div className="">{s.title}</div>
+              {/* <div className="">{s.keyAchievements}</div> */}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {parsed.skills?.length && (
+        <div className="">
+          <h1>Skills</h1>
+
+          {parsed.skills.map((skill) => (
+            <p key={skill}>{skill}</p>
+          ))}
+        </div>
+      )}
+
+      {parsed.interests && (
+        <div className="">
+          <h1>Interests</h1>
+          <p>{parsed.interests}</p>
+        </div>
+      )}
+
+      {parsed.summary && (
+        <div className="">
+          <h1>About Me</h1>
+          <p>{parsed.summary}</p>
+        </div>
+      )}
+
+      {parsed.profession && (
+        <div className="">
+          <h1>Profession</h1>
+          <p>{parsed.profession}</p>
+        </div>
+      )}
+
+      <div className="">
+        <button onClick={handleSaveAsResume} className="btn btn-primary">
+          Save
+        </button>
+      </div>
+    </div>
+  )
 }
 
 type EducationParsed = {
@@ -220,7 +255,7 @@ type EducationParsed = {
   endDate: string
   degree: string
   gpa: string
-  keyAchievements: string[]
+  // keyAchievements: string[]
 }
 
 type SkillParsed = string[]
@@ -231,15 +266,16 @@ type ExperienceParsed = {
   endDate: string
   description: string
   title: string
-  keyAchievements: string[]
+  // keyAchievements: string[]
 }
 
-type InterestsParsed = string
+type InterestsParsed = string[]
 
 type FinishedParsed = {
   education: EducationParsed[]
   skills: SkillParsed
   experience: ExperienceParsed[]
   interests: InterestsParsed
-  aboutMe: string
+  summary: string
+  profession: string
 }
