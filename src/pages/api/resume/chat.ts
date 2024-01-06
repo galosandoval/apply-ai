@@ -19,6 +19,7 @@ export const config = {
 export const chatParams = z.object({
   experience: z.string(),
   education: z.string(),
+  profession: z.string(),
   interests: z.string().optional(),
   messages: z.array(
     z.object({
@@ -35,21 +36,21 @@ export default async function handler(req: NextRequest) {
 
   const input = chatParams.parse(request)
 
-  const { education, experience, interests, messages } = input
+  const { education, experience, interests, messages, profession } = input
 
   const chat: ChatCompletionRequestMessage[] = [
     {
       role: "system",
-      content: `You are a helpful resume building assistant. Generate a resume that is 1 page long based on the following user's information: Work Experience: ${experience}, Interests: ${interests}, Education: ${education}. The following is the job description: ${messages[0]?.content}. Use the job description provided to fill in the resume with keywords for a recruiter or recruiting algorithm. Do not include any explanations, only provide a RFC8259 compliant JSON response following this format without deviation. 
+      content: `You are a helpful resume building assistant. Generate a resume that is 1 page long based on the following user's information: Profession: ${profession} Work Experience: ${experience}, Interests: ${interests}, Education: ${education}. The following is the job description: ${messages[0]?.content}. Use the job description provided to fill in the resume with keywords for a recruiter or recruiting algorithm. Do not include any explanations, only provide a RFC8259 compliant JSON response following this format without deviation:
       {
+        "profession": "Profession of user.",
         "education": [{
           "description": "Description of education.",
           "schoolName": "Name of school.",
           "startDate": "Start date of education.",
           "endDate": "End date of education.",
           "degree": "Degree of education.",
-          "gpa": "GPA of education.",
-          "keyAchievements": ["Array of key achievements."]
+          "gpa": "GPA of education."
         }],
         "skills": ["Array of skills that are relevant to the job description."],
         "experience": [{
@@ -57,11 +58,10 @@ export default async function handler(req: NextRequest) {
           "companyName": "Name of company.",
           "startDate": "Start date of work experience.",
           "endDate": "End date of work experience.",
-          "title": "Title of work experience.",
-          "keyAchievements": ["Array of key achievements."]
+          "title": "Title of work experience."
         }],
-        "interests": "Description of interests.",
-        "aboutMe": "Brief summary of user's abilities, keep it less than 500 characters"
+        "interests": ["Description of interests."],
+        "summary": "Brief summary of resume, keep it less than 500 characters"
       }`
     }
   ]

@@ -5,9 +5,10 @@ import { api } from "~/utils/api"
 
 export default function ResumeView() {
   const router = useRouter()
-  const resumeId = router.query.id as string
+  const { id: resumeId, name } = router.query
+
   const { data, status } = api.resume.readById.useQuery(
-    { resumeId },
+    { resumeId: resumeId as string },
     { enabled: !!resumeId }
   )
 
@@ -32,7 +33,7 @@ export default function ResumeView() {
           <link rel="icon" href="/favicon.ico" />
         </Head>
         {/* <div className="min-h-screen flex justify-center items-center"> */}
-        <Resume data={data} />
+        <Resume data={{ ...data, firstAndLastName: name as string }} />
         {/* </div> */}
       </>
     )

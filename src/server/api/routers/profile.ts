@@ -2,11 +2,7 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { eq, sql } from "drizzle-orm"
 import { z } from "zod"
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure
-} from "~/server/api/trpc"
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import {
   insertEducationSchema,
   insertExperienceSchema,
@@ -16,7 +12,7 @@ import {
 import { profile, school, work } from "~/server/db/schema"
 
 export const profileRouter = createTRPCRouter({
-  read: publicProcedure
+  read: protectedProcedure
     .input(
       z.object({
         userId: z.string().cuid2()
@@ -103,7 +99,8 @@ export const profileRouter = createTRPCRouter({
 
       const schoolsToInsert = education.map((e) => ({
         ...e,
-        id: e?.id ? e.id : createId()
+        id: e?.id ? e.id : createId(),
+        keyAchievements: []
       }))
 
       return await ctx.db
@@ -137,13 +134,24 @@ export const profileRouter = createTRPCRouter({
 
       return await ctx.db
         .insert(work)
-        .values(workToInsert)
+        .values(
+          workToInsert.map((w) => ({
+            companyName: w.companyName,
+            description: w.description,
+            endDate: w.endDate,
+            startDate: w.startDate,
+            title: w.title,
+            id: w.id,
+            profileId: w.profileId
+          }))
+        )
         .onConflictDoUpdate({
           target: work.id,
           set: {
             companyName: sql`excluded.name`,
             description: sql`excluded.description`,
             endDate: sql`excluded.end_date`,
+            title: sql`excluded.title`,
             startDate: sql`excluded.start_date`,
             profileId: sql`excluded.profile_id`,
             id: sql`excluded.id`
