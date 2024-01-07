@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import { type RouterOutputs } from "~/utils/api"
 
 export const Resume = ({
@@ -8,7 +9,7 @@ export const Resume = ({
   return (
     <div className="h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272]">
       <div className="flex h-full overflow-hidden">
-        <div className="my-auto border-b border-[#737373]">
+        <div className="my-auto max-h-full border-b border-[#737373]">
           <div className="flex max-h-[100px] flex-col items-center gap-4 pb-2">
             <h1 className="text-4xl font-semibold uppercase tracking-[.75rem]">
               {data.firstAndLastName}
@@ -21,13 +22,13 @@ export const Resume = ({
           <section className="flex h-full">
             <div
               id="resume__left"
-              className="h-full w-[38.2%] bg-[#f8f8f8] pb-10 text-[.65rem]"
+              className="flex w-[38.2%] flex-col bg-[#f8f8f8] text-[.65rem]"
             >
               <div
                 id="contact"
-                className="w-min border-b border-dotted border-[#737373] px-3"
+                className="w-full border-b border-dotted border-[#737373] px-3"
               >
-                <h2 className="text-[1rem] font-semibold uppercase tracking-[.15em]">
+                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   Contact
                 </h2>
                 <p className="pb-3">714-420-6969</p>
@@ -38,12 +39,12 @@ export const Resume = ({
 
               <div
                 id="skills"
-                className="w-[80%] border-b border-dotted border-[#737373] px-2 leading-tight"
+                className="w-full border-b border-dotted border-[#737373] px-2 leading-tight"
               >
-                <h2 className="text-[1rem] font-semibold uppercase tracking-[.15em]">
+                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   skills
                 </h2>
-                <ul className="ml-2 list-disc">
+                <ul className="grid list-disc grid-cols-2 pb-2 pl-2">
                   {data.skills
                     ?.split(",")
                     .map((skill) => <li key={skill}>{skill}</li>)}
@@ -67,25 +68,27 @@ export const Resume = ({
               </div>
 
               <div
-                id="skills"
-                className="w-full border-b border-dotted border-[#737373] px-3 leading-tight"
+                id="education"
+                className="w-full border-b border-dotted border-[#737373] px-3 pb-3 leading-tight"
               >
-                <h2 className="pb-2 text-[1rem] font-semibold uppercase tracking-[.15em]">
+                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   Education
                 </h2>
-                <h4 className="pb-2 font-bold">Certificate of Endorsement</h4>
-                <h3 className="pb-2 text-[1rem] font-semibold">
-                  Cal State Fullerton
-                </h3>
-                <p className="pb-2">2020-2021</p>
-                <p className="pb-2">
-                  Cal State Fullerton is also famously known for being called
-                  Cal State Orange County because it has an incredibly high
-                  acceptance rate. The majority of the student population are
-                  local commuters.
-                </p>
+                {data.education.map((school) => (
+                  <Fragment key={school.id}>
+                    <h4 className="pb-1 font-bold">{school.degree}</h4>
+                    <h3 className="pb-1 text-[1rem] font-semibold">
+                      {school.name}
+                    </h3>
+                    <p className="pb-1">
+                      {school.startDate} - {school.endDate}
+                    </p>
 
-                <ul className="mx-auto w-[90%] list-disc pb-4">
+                    <p>{school.description}</p>
+                  </Fragment>
+                ))}
+
+                {/* <ul className="mx-auto w-[90%] list-disc pb-4">
                   <li>
                     Completed an intensive full stack web development and
                     computer science program.
@@ -107,11 +110,11 @@ export const Resume = ({
                     included in-depth training in React, Redux, Node, Express,
                     Jest, and Python.
                   </li>
-                </ul>
+                </ul> */}
               </div>
 
-              <div id="contact" className="w-full px-3">
-                <h2 className="pb-4 text-[1rem] font-semibold uppercase tracking-[.15em]">
+              <div id="interests" className="w-full px-3 pb-3">
+                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   Interests
                 </h2>
                 <p className="">{data.interests}</p>
@@ -119,24 +122,24 @@ export const Resume = ({
             </div>
             <div
               id="resume__right"
-              className="w-[61.8%] pl-4 text-[.65rem] leading-tight"
+              className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight"
             >
               <div
                 id="profile"
                 className="border-b border-dotted border-[#737373] pr-2"
               >
-                <h2 className="my-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
+                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   Profile
                 </h2>
                 <p className="pb-4">{data.introduction}</p>
               </div>
 
-              <div id="work" className="">
-                <h2 className="my-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
+              <div id="work">
+                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   Work Experience
                 </h2>
 
-                <div className="flex flex-col justify-between">
+                <div className="flex max-h-full flex-col justify-between">
                   {data.experience.map((job) => (
                     <div className="pb-3" key={job.id}>
                       <h3 className="pb-2 text-[1rem] font-semibold">
