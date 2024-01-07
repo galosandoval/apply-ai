@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
-import { MyErrorMessage } from "~/components/my-error-message"
 import { TextAreaInput } from "~/components/text-field"
 import { TextInput } from "~/components/text-input"
 import {
@@ -42,12 +41,10 @@ export default function Step2() {
 
     defaultValues: {
       profession: profile?.profession ?? "",
-      introduction: profile?.introduction ?? "",
       interests: profile?.interests ?? ""
     },
     values: {
       profession: profile?.profession ?? "",
-      introduction: profile?.introduction ?? "",
       interests: profile?.interests ?? ""
     }
   })
@@ -65,31 +62,25 @@ export default function Step2() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="min-h-screen flex flex-col gap-3 justify-center items-center"
+      className="flex min-h-screen flex-col items-center justify-center gap-3"
     >
       <h1>Tell us about yourself</h1>
 
-        <TextInput
-          placeholder="Ex: Full Stack Developer"
-          errors={errors}
-          label="Title"
-          name="profession"
-          register={register}
-          required
-        />
-      <TextAreaInput
+      <TextInput
+        placeholder="Ex: Full Stack Developer"
         errors={errors}
-        label="About Me"
-        name="introduction"
+        label="Title"
+        name="profession"
         register={register}
-        placeholder="Ex: I am a full stack developer with 5 years of experience. I have worked with ..."
+        required
       />
+
       <TextAreaInput
         errors={errors}
         label="Interests"
         name="interests"
         register={register}
-        placeholder="I like turtles"
+        placeholder="Ex: I like hiking, swimming, and reading fantasy novels."
       />
 
       <button type="submit" className="btn btn-primary">

@@ -103,7 +103,7 @@ export const schoolRelations = relations(school, ({ one }) => ({
 export const resume = pgTable("resume", {
   id: text("id").primaryKey(),
   profession: text("profession").notNull(),
-  skills: text("skills").notNull(),
+  skills: text("skills"),
   introduction: text("introduction"),
   interests: text("interests"),
   profileId: text("profile_id").references(() => profile.id),

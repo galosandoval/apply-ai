@@ -48,14 +48,15 @@ export const insertEducationSchema = z.object({
         .max(255, "Must be less than 255 characters"),
     description: (schema) =>
       schema.description
-        .max(255, "Must be less than 255 characters")
+        .max(500, "Must be less than 500 characters")
         .optional(),
     location: (schema) =>
       schema.location.max(255, "Must be less than 255 characters").optional(),
     startDate: (schema) => schema.startDate.min(4).max(50),
     endDate: (schema) => schema.endDate.min(4).max(50),
     gpa: (schema) => schema.gpa.optional(),
-    profileId: (schema) => schema.profileId.cuid2().optional()
+    profileId: (schema) => schema.profileId.cuid2().optional(),
+    keyAchievements: (schema) => schema.keyAchievements.optional()
   })
     .array()
     .min(1)
@@ -75,7 +76,7 @@ export const insertExperienceSchema = z.object({
     description: (schema) =>
       schema.description
         .min(6, "Must be more than 6 characters")
-        .max(255, "Must be less than 255 characters"),
+        .max(500, "Must be less than 500 characters"),
     endDate: (schema) => schema.endDate.min(4).max(50),
     startDate: (schema) => schema.startDate.min(4).max(50),
     title: (schema) =>

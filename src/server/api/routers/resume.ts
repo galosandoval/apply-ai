@@ -42,9 +42,6 @@ export const resumeRouter = createTRPCRouter({
         .from(school)
         .where(eq(school.resumeId, input.resumeId))
 
-      console.log(experience)
-      console.log(education)
-
       return { ...foundResume, experience, education }
     }),
 
@@ -55,7 +52,7 @@ export const resumeRouter = createTRPCRouter({
         profession: z.string(),
         skills: z.string().array(),
         introduction: z.string(),
-        interests: z.string().array(),
+        interests: z.string(),
         education: z.array(
           z.object({
             schoolName: z.string(),
@@ -98,7 +95,7 @@ export const resumeRouter = createTRPCRouter({
           profession,
           skills: skills.join(","),
           introduction,
-          interests: interests.join(","),
+          interests: interests,
           profileId
         })
         .returning()
