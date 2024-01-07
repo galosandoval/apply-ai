@@ -76,7 +76,7 @@ function Resumes({
           )}`}
           key={resume.id}
         >
-          <h1>{resume.createdAt.toISOString()}</h1>
+          <h1>{resume.createdAt.toDateString()}</h1>
         </Link>
       ))}
     </div>

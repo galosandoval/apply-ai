@@ -131,18 +131,27 @@ function AssistantMessage({
     return <p className="whitespace-pre-line">{content}</p>
   }
 
-  const parsed = JSON.parse(content) as FinishedParsed
+  let parsed: null | FinishedParsed = null
 
-  console.log(parsed.skills)
+  try {
+    parsed = JSON.parse(content) as FinishedParsed
+  } catch (error) {
+    parsed = null
+    console.warn(error)
+  }
+
+  if (!parsed) {
+    return <p className="whitespace-pre-line">{content}</p>
+  }
 
   const handleSaveAsResume = () => {
     mutate({
-      education: parsed.education,
-      experience: parsed.experience,
-      skills: parsed.skills,
-      interests: parsed.interests,
-      introduction: parsed.summary,
-      profession: parsed.profession,
+      education: parsed?.education ?? [],
+      experience: parsed?.experience ?? [],
+      skills: parsed?.skills ?? [],
+      interests: parsed?.interests ?? "",
+      introduction: parsed?.summary ?? "",
+      profession: parsed?.profession ?? "",
       profileId
     })
   }
@@ -269,7 +278,7 @@ type ExperienceParsed = {
   // keyAchievements: string[]
 }
 
-type InterestsParsed = string[]
+type InterestsParsed = string
 
 type FinishedParsed = {
   education: EducationParsed[]

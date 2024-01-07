@@ -11,8 +11,6 @@ import {
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 
-import { TextInput } from "~/components/text-input"
-
 const initialSchool: InsertEducationSchema["education"] = [
   {
     degree: "",
@@ -30,7 +28,6 @@ const maxSchools = 4
 export default function Step3() {
   const router = useRouter()
   const { id } = useUser()
-  console.log(id)
 
   const { data: profile } = api.profile.read.useQuery(
     { userId: id },
@@ -56,11 +53,31 @@ export default function Step3() {
     resolver: zodResolver(insertEducationSchema),
 
     defaultValues: {
-      education: profile?.education.length ? profile.education : initialSchool
+      education: profile?.education.length
+        ? profile.education.map((school) => ({
+            degree: school.degree,
+            endDate: school.endDate,
+            name: school.name,
+            startDate: school.startDate,
+            description: school.description,
+            gpa: school.gpa,
+            location: school.location
+          }))
+        : initialSchool
     },
 
     values: {
-      education: profile?.education.length ? profile.education : initialSchool
+      education: profile?.education.length
+        ? profile.education.map((school) => ({
+            degree: school.degree,
+            endDate: school.endDate,
+            name: school.name,
+            startDate: school.startDate,
+            description: school.description,
+            gpa: school.gpa,
+            location: school.location
+          }))
+        : initialSchool
     }
   })
 
@@ -92,14 +109,6 @@ export default function Step3() {
 
       {fields.map((field, index) => (
         <div key={field.id}>
-          <TextInput
-            placeholder="School"
-            errors={errors}
-            label="School"
-            name= 'education'
-            register={register}
-            required
-          />
           <div className="">
             <label htmlFor={`education.${index}.name`} className="label">
               <span className="label-text">
