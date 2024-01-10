@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { TextInput } from "~/components/text-input"
 import {
-  type InsertNameSchema,
-  insertNameSchema
+  type InsertNameAndContactSchema,
+  insertNameAndContactSchema
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
@@ -22,7 +22,7 @@ export default function Step1() {
     { enabled: !!id }
   )
 
-  const { mutate } = api.profile.upsertName.useMutation({
+  const { mutate } = api.profile.upsertNameAndContact.useMutation({
     onError: (error) => {
       toast.error(error.message)
       router.push("/onboarding/step1")
@@ -32,7 +32,7 @@ export default function Step1() {
       if (data?.userId) {
         utils.profile.read.setData(
           { userId: data.userId },
-          { ...data, education: [], experience: [] }
+          { ...data, education: [], experience: [], contact: [] }
         )
       }
     },
@@ -45,21 +45,29 @@ export default function Step1() {
     handleSubmit,
     formState: { errors },
     setFocus
-  } = useForm<InsertNameSchema>({
-    resolver: zodResolver(insertNameSchema),
+  } = useForm<InsertNameAndContactSchema>({
+    resolver: zodResolver(insertNameAndContactSchema),
 
     defaultValues: {
       firstName: profile?.firstName ?? "",
-      lastName: profile?.lastName ?? ""
+      lastName: profile?.lastName ?? "",
+      phone: profile?.contact?.[0]?.phone ?? "",
+      linkedIn: profile?.contact?.[0]?.linkedIn ?? "",
+      portfolio: profile?.contact?.[0]?.portfolio ?? "",
+      location: profile?.contact?.[0]?.location ?? ""
     },
 
     values: {
       firstName: profile?.firstName ?? "",
-      lastName: profile?.lastName ?? ""
+      lastName: profile?.lastName ?? "",
+      phone: profile?.contact?.[0]?.phone ?? "",
+      linkedIn: profile?.contact?.[0]?.linkedIn ?? "",
+      portfolio: profile?.contact?.[0]?.portfolio ?? "",
+      location: profile?.contact?.[0]?.location ?? ""
     }
   })
 
-  const onSubmit = async (data: InsertNameSchema) => {
+  const onSubmit = async (data: InsertNameAndContactSchema) => {
     mutate({ ...data, id: profile?.id })
   }
 
@@ -87,6 +95,41 @@ export default function Step1() {
             name="lastName"
             register={register}
             errors={errors}
+            required
+          />
+        </div>
+        <div>
+          <TextInput
+            label="LinkedIn URL"
+            name="linkedIn"
+            register={register}
+            errors={errors}
+          />
+        </div>
+        <div>
+          <TextInput
+            label="Website URL"
+            name="portfolio"
+            register={register}
+            errors={errors}
+          />
+        </div>
+        <div>
+          <TextInput
+            label="Phone"
+            name="phone"
+            register={register}
+            errors={errors}
+          />
+        </div>
+        <div>
+          <TextInput
+            label="Location"
+            name="location"
+            register={register}
+            errors={errors}
+            required
+            placeholder="Ex: San Francisco, CA"
           />
         </div>
 

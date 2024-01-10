@@ -6,10 +6,10 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import {
   insertEducationSchema,
   insertExperienceSchema,
-  insertNameSchema,
+  insertNameAndContactSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
-import { profile, school, work } from "~/server/db/schema"
+import { contact, profile, school, work } from "~/server/db/schema"
 
 export const profileRouter = createTRPCRouter({
   read: protectedProcedure
@@ -33,6 +33,11 @@ export const profileRouter = createTRPCRouter({
         })
       }
 
+      const contactInfo = await ctx.db
+        .select()
+        .from(contact)
+        .where(eq(contact.profileId, result.id))
+
       const education = await ctx.db
         .select()
         .from(school)
@@ -43,16 +48,17 @@ export const profileRouter = createTRPCRouter({
         .from(work)
         .where(eq(work.profileId, result.id))
 
-      return { ...result, education, experience }
+      return { ...result, education, experience, contact: contactInfo }
     }),
 
-  upsertName: protectedProcedure
-    .input(insertNameSchema)
+  upsertNameAndContact: protectedProcedure
+    .input(insertNameAndContactSchema)
     .mutation(async ({ input, ctx }) => {
-      const { firstName, lastName, id } = input
+      const { firstName, lastName, linkedIn, location, phone, portfolio, id } =
+        input
 
       const inputId = id ?? createId()
-      console.log(ctx.session.user.id)
+
       const newProfile = await ctx.db
         .insert(profile)
         .values({
@@ -70,6 +76,34 @@ export const profileRouter = createTRPCRouter({
       if (!newProfile?.length) {
         throw new TRPCError({
           message: "Profile not created",
+          code: "INTERNAL_SERVER_ERROR"
+        })
+      }
+
+      const newContact = await ctx.db
+        .insert(contact)
+        .values({
+          id: createId(),
+          location,
+          phone,
+          linkedIn,
+          portfolio,
+          profileId: inputId
+        })
+        .onConflictDoUpdate({
+          set: {
+            phone: sql`excluded.phone`,
+            linkedIn: sql`excluded.linked_in`,
+            portfolio: sql`excluded.portfolio`,
+            location: sql`excluded.location`
+          },
+          target: profile.id
+        })
+        .returning()
+
+      if (!newContact?.length) {
+        throw new TRPCError({
+          message: "Contact not created",
           code: "INTERNAL_SERVER_ERROR"
         })
       }

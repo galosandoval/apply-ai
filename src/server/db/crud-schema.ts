@@ -2,7 +2,7 @@ import { createInsertSchema } from "drizzle-zod"
 import { profile, school, work } from "./schema"
 import { z } from "zod"
 
-export const insertNameSchema = z.object({
+export const insertNameAndContactSchema = z.object({
   firstName: z
     .string()
     .min(3, "Must be at least 3 characters")
@@ -11,10 +11,16 @@ export const insertNameSchema = z.object({
     .string()
     .min(3, "Must be at least 3 characters")
     .max(50, "Must be less than 50 characters"),
+  phone: z.string().min(10, "Must be at least 10 characters"),
+  linkedIn: z.string(),
+  portfolio: z.string(),
+  location: z.string().min(3, "Must be at least 3 characters"),
   id: z.string().optional()
 })
 
-export type InsertNameSchema = z.infer<typeof insertNameSchema>
+export type InsertNameAndContactSchema = z.infer<
+  typeof insertNameAndContactSchema
+>
 
 export const updateProfileSchema = createInsertSchema(profile, {
   profession: (schema) =>
