@@ -2,6 +2,7 @@ import Head from "next/head"
 import { useRouter } from "next/router"
 import { Resume } from "~/components/resume"
 import { api } from "~/utils/api"
+import { useUser } from "~/utils/useUser"
 
 export default function ResumeView() {
   const router = useRouter()
@@ -10,6 +11,13 @@ export default function ResumeView() {
   const { data, status } = api.resume.readById.useQuery(
     { resumeId: resumeId as string },
     { enabled: !!resumeId }
+  )
+
+  const { id: userId, email } = useUser()
+
+  const { data: profile } = api.profile.read.useQuery(
+    { userId },
+    { enabled: !!userId }
   )
 
   if (status === "error")
@@ -25,6 +33,8 @@ export default function ResumeView() {
     )
 
   if (status === "success") {
+    const contact = profile?.contact[0]
+
     return (
       <>
         <Head>
@@ -33,7 +43,17 @@ export default function ResumeView() {
           <link rel="icon" href="/favicon.ico" />
         </Head>
         {/* <div className="min-h-screen flex justify-center items-center"> */}
-        <Resume data={{ ...data, firstAndLastName: name as string }} />
+        <Resume
+          data={{
+            ...data,
+            firstAndLastName: name as string,
+            email: email ?? "",
+            location: contact?.location ?? "",
+            phone: contact?.phone ?? "",
+            linkedIn: contact?.linkedIn ?? "",
+            portfolio: contact?.portfolio ?? ""
+          }}
+        />
         {/* </div> */}
       </>
     )
