@@ -1,319 +1,290 @@
 import Head from "next/head"
 import { api } from "~/utils/api"
-import { z } from "zod"
-import { type ChatParams } from "../api/resume/chat"
-import { useChat } from "ai/react"
-import { Resume } from "~/components/resume"
-
-const resumeId = "pm9ctl649di9bi5ftjsfpexw"
-
-const generateForm = z.object({
-  jobDescription: z.string()
-})
-type GenerateForm = z.infer<typeof generateForm>
+import { type Message, useChat } from "ai/react"
+import { useUser } from "~/utils/useUser"
+import { useEffect, type FormEvent } from "react"
 
 export default function Dashboard() {
-  const { data: resume, status: resumeStatus } = api.resume.readById.useQuery(
-    { resumeId },
-    { enabled: !!resumeId }
+  const { id } = useUser()
+
+  const { data } = api.profile.read.useQuery(
+    { userId: id },
+    {
+      enabled: !!id
+    }
   )
 
-  interface PdfRequestBody {
-    resumeId: string
+  // interface PdfRequestBody {
+  //   resumeId: string
+  // }
+
+  // const handleDownloadPdf = async () => {
+  //   const requestBody: PdfRequestBody = { resumeId }
+
+  //   try {
+  //     const response = await fetch("/api/resume/pdf", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify(requestBody)
+  //     })
+
+  //     const blob = await response.blob()
+
+  //     const link = document.createElement("a")
+  //     link.href = window.URL.createObjectURL(blob)
+  //     link.download = `your-file-name.pdf`
+  //     link.click()
+  //   } catch (error) {
+  //     console.error(error)
+  //   }
+  // }
+
+  const { messages, input, handleInputChange, handleSubmit, isLoading } =
+    useChat({
+      api: "/api/resume/chat",
+      body: data
+        ? {
+            skill: data?.skills?.join(", "),
+            experience: JSON.stringify(data.experience),
+            education: JSON.stringify(data.education),
+            interests: data.interests,
+            profession: data.profession
+          }
+        : {}
+    })
+
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    handleSubmit(e)
   }
 
-  const handleDownloadPdf = async () => {
-    const requestBody: PdfRequestBody = { resumeId }
-
-    try {
-      const response = await fetch("/api/resume/pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(requestBody)
-      })
-
-      const blob = await response.blob()
-
-      const link = document.createElement("a")
-      link.href = window.URL.createObjectURL(blob)
-      link.download = `your-file-name.pdf`
-      link.click()
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  const params: Omit<ChatParams, "messages"> = {
-    education:
-      "Lambda School is a 6+ month Computer Science & Software Engineering Academy that provides an immersive hands-on curriculum with a focus on computer science, web and mobile development, UX design, and data science.\n      • Approached all coding challenges using pair programming\n      • Utilized Git workflow on all projects\n      • Gained hands-on experience with client and server testing\n      • Completed all curriculum course work including: React, Redux, Node, Express, Jest,and Python\n      • Wrote production-ready code using ReactJS, Redux, and CSS on the front end and NodeJS and Express on the back end to build single page applications",
-    experience:
-      "General Manager\n        Go Get Em Tiger · Full-time\n        Feb 2017 - Mar 2020 · 3 yrs 2 mos\n        A high volume coffee bar in Downtown LA\n        • Optimized all systems in the store including administration and the flow of service\n        • Received 2 bonuses after reducing expenses by minimizing waste and correct allocation of staff\n        • Interviewed, hired, and trained new staff",
-    skills: "React, Redux, Node, Express, Jest, Python",
-    name: "John Doe",
-    profession: "Software Engineer",
-    interests:
-      "When I’m not coding you’ll find me cooking, climbing, making ceramic mugs, or playing flag football."
-  }
-
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
-    api: "/api/resume/chat",
-    body: {
-      ...params
-    }
-  })
-
-  console.log(messages)
-  // const { register, handleSubmit } = useForm<GenerateForm>({
-  //   resolver: zodResolver(generateForm)
-  // })
-
-  const onSubmit = async (values: GenerateForm) => {
-    const params: Omit<ChatParams, "messages"> = {
-      education:
-        "Lambda School is a 6+ month Computer Science & Software Engineering Academy that provides an immersive hands-on curriculum with a focus on computer science, web and mobile development, UX design, and data science.\n      • Approached all coding challenges using pair programming\n      • Utilized Git workflow on all projects\n      • Gained hands-on experience with client and server testing\n      • Completed all curriculum course work including: React, Redux, Node, Express, Jest,and Python\n      • Wrote production-ready code using ReactJS, Redux, and CSS on the front end and NodeJS and Express on the back end to build single page applications",
-      experience:
-        "General Manager\n        Go Get Em Tiger · Full-time\n        Feb 2017 - Mar 2020 · 3 yrs 2 mos\n        A high volume coffee bar in Downtown LA\n        • Optimized all systems in the store including administration and the flow of service\n        • Received 2 bonuses after reducing expenses by minimizing waste and correct allocation of staff\n        • Interviewed, hired, and trained new staff",
-      skills: "React, Redux, Node, Express, Jest, Python",
-      name: "John Doe",
-      profession: "Software Engineer",
-      interests:
-        "When I’m not coding you’ll find me cooking, climbing, making ceramic mugs, or playing flag football."
-    }
-
-    try {
-      const response = await fetch("/api/resume/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(params)
-      })
-
-      console.log(await response.json())
-    } catch (error) {
-      console.error(error)
-    }
-  }
+  useEffect(() => {
+    console.log(messages)
+  }, [messages])
   return (
     <>
       <Head>
-        <title>Section1</title>
+        <title>GPT Job</title>
         <meta name="description" content="Generated by create-t3-app" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <div className="">
-        <button onClick={handleDownloadPdf} className="btn btn-primary">
-          generate
-        </button>
-        <Resume
-          data={[
-            {
-              contact: "",
-              education: "",
-              experience: "",
-              id: "",
-              interests: "",
-              introduction: "",
-              jobDescription: "",
-              firstName: "",
-              profession: "",
-              lastName: "",
-              skills: ""
-            }
-          ]}
-        />
-      </div>
-      {/* <main className="flex w-full py-12">
-        <form action="" className=" flex w-full flex-col items-center">
-          <div id="section1" className="flex w-full max-w-prose flex-col gap-3">
-            <h1>Basics</h1>
+      <div>
+        {messages.map((m) => (
+          <ChatMessage
+            profileId={data?.id ?? ""}
+            key={m.id}
+            message={m}
+            isLoading={isLoading}
+          />
+        ))}
 
-            <input
-              type="text"
-              placeholder="first name"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="last name"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="email"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="phone numbah"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="address line"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="desired job title"
-              className="rounded-sm px-2 py-1"
-            />
-            <textarea
-              name=""
-              id=""
-              placeholder="descip"
-              className="rounded-sm px-2 py-1"
-            ></textarea>
-          </div>
-          <div id="section2" className="flex w-full max-w-prose flex-col gap-3">
-            <h1>SkillztoKillz</h1>
-
-            <textarea
-              placeholder="list ur skills"
-              className="min-h-[15ch] rounded-sm px-2 py-1"
-            />
-          </div>
-          <div id="section3" className="flex w-full max-w-prose flex-col gap-3">
-            <h1>Education</h1>
-
-            <input
-              type="text"
-              placeholder="school"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="years"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="degree"
-              className="rounded-sm px-2 py-1"
-            />
-            <input
-              type="text"
-              placeholder="focus/major"
-              className="rounded-sm px-2 py-1"
-            />
-            <textarea
-              placeholder="additional information"
-              className="min-h-[15ch] rounded-sm px-2 py-1"
-            />
-          </div>
-          <div id="section4" className="flex w-full max-w-prose flex-col gap-3">
-            <h1>Summary</h1>
-
-            <textarea
-              placeholder="5-7 sentences about yourself. something along the lines of 'omg my hobbies and passions are all coincidentally what the job responsibilities are. I'm so quirky lol.'"
-              className="min-h-[15ch] rounded-sm px-2 py-1"
-            />
-          </div>
-          <div id="section5" className="flex w-full max-w-prose flex-col gap-3">
-            <h1>Job Experiences</h1>
-            <div className="flex flex-col gap-4">
-              <h2>First Job Title:</h2>
-              <input
-                type="text"
-                placeholder="jobTitle"
-                className="rounded-sm px-2 py-1"
-              />
-              <input
-                type="text"
-                placeholder="company"
-                className="rounded-sm px-2 py-1"
-              />
-              <div className="flex justify-evenly">
-                <div>
-                  <h3>Start date:</h3>
-                  <input type="date" name="" id="" />
-                </div>
-                <div>
-                  <h3>End date:</h3>
-                  <input type="date" name="" id="" />
-                </div>
-              </div>
-              <textarea
-                placeholder="list of first job responsibilities"
-                className="min-h-[15ch] rounded-sm px-2 py-1"
-              />
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h2>First Job Title:</h2>
-              <input
-                type="text"
-                placeholder="jobTitle"
-                className="rounded-sm px-2 py-1"
-              />
-              <input
-                type="text"
-                placeholder="company"
-                className="rounded-sm px-2 py-1"
-              />
-              <div className="flex justify-evenly">
-                <div>
-                  <h3>Start date:</h3>
-                  <input type="date" name="" id="" />
-                </div>
-                <div>
-                  <h3>End date:</h3>
-                  <input type="date" name="" id="" />
-                </div>
-              </div>
-              <textarea
-                placeholder="list of first job responsibilities"
-                className="min-h-[15ch] rounded-sm px-2 py-1"
-              />
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h2>Third Job Title:</h2>
-              <input
-                type="text"
-                placeholder="jobTitle"
-                className="rounded-sm px-2 py-1"
-              />
-              <input
-                type="text"
-                placeholder="company"
-                className="rounded-sm px-2 py-1"
-              />
-              <div className="flex justify-evenly">
-                <div>
-                  <h3>Start date:</h3>
-                  <input type="date" name="" id="" />
-                </div>
-                <div>
-                  <h3>End date:</h3>
-                  <input type="date" name="" id="" />
-                </div>
-              </div>
-              <textarea
-                placeholder="list of third job responsibilities"
-                className="min-h-[15ch] rounded-sm px-2 py-1"
-              />
-            </div>
-            <button className="btn btn-primary btn-active">Submit</button>
-          </div>
+        <form onSubmit={onSubmit}>
+          <label>
+            Paste job description here
+            <input value={input} onChange={handleInputChange} />
+          </label>
         </form>
-      </main>
-      <div className="flex w-full items-center justify-center"></div>
-      <form onSubmit={handleSubmit}>
-        <input
-          placeholder="desciption"
-          onChange={handleInputChange}
-          value={input}
-        />
-        <button type="submit" className="btn btn-primary">
-          generate
-        </button>
-      </form>
-      {messages.map((message) => (
-        <Fragment key={message.id}>{message.content}</Fragment>
-      ))} */}
+      </div>
     </>
   )
+}
+
+function ChatMessage({
+  message,
+  profileId,
+  isLoading
+}: {
+  message: Message
+  profileId: string
+  isLoading: boolean
+}) {
+  if (message.role === "user") {
+    return null
+  }
+
+  if (message.role === "assistant") {
+    return (
+      <AssistantMessage
+        profileId={profileId}
+        isLoading={isLoading}
+        content={message.content}
+      />
+    )
+  }
+
+  return <p className="whitespace-pre-line">{message.content}</p>
+}
+
+function AssistantMessage({
+  content,
+  isLoading,
+  profileId
+}: {
+  content: string
+  isLoading: boolean
+  profileId: string
+}) {
+  const { mutate } = api.resume.create.useMutation()
+
+  if (isLoading) {
+    return <p className="whitespace-pre-line">{content}</p>
+  }
+
+  let parsed: null | FinishedParsed = null
+
+  try {
+    parsed = JSON.parse(content) as FinishedParsed
+  } catch (error) {
+    parsed = null
+    console.warn(error)
+  }
+
+  if (!parsed) {
+    return <p className="whitespace-pre-line">{content}</p>
+  }
+
+  const handleSaveAsResume = () => {
+    mutate({
+      education: parsed?.education ?? [],
+      experience: parsed?.experience ?? [],
+      skills: parsed?.skills ?? [],
+      interests: parsed?.interests ?? "",
+      introduction: parsed?.summary ?? "",
+      profession: parsed?.profession ?? "",
+      profileId
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="label">Education</h1>
+      {parsed.education.map((s) => (
+        <div className="" key={s.description}>
+          <div className="flex flex-col gap-4">
+            <div className="label">
+              <span className="label-text">School Name</span>
+              <div className="rounded-sm px-2 py-1">{s.schoolName}</div>
+            </div>
+
+            <div className="">
+              <span className="label">Description</span>
+              <div className="rounded-sm px-2 py-1">{s.description}</div>
+            </div>
+
+            <div className="flex justify-around">
+              <div className="text-center">
+                <span className="label-text">Start Date</span>
+                <div className="rounded-sm px-2 py-1">{s.startDate}</div>
+              </div>
+              <div className="">
+                <span className="label-text">End Date</span>
+                <div className="rounded-sm px-2 py-1">{s.endDate}</div>
+              </div>
+            </div>
+
+            <div className="">
+              <div className="">{s.startDate}</div>
+              <div className="">{s.endDate}</div>
+
+              <div className="">{s.degree}</div>
+              <div className="">{s.gpa}</div>
+              {/* <div className="">{s.keyAchievements}</div> */}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <h1 className="">Experience</h1>
+      {parsed.experience.map((s) => (
+        <div className="" key={s.description}>
+          <div className="">
+            <div className="label">
+              <span className="label-text">Company Name</span>
+              <div className="rounded-sm px-2 py-1">{s.companyName}</div>
+            </div>
+
+            <div className="">{s.description}</div>
+
+            <div className="">
+              <div className="">{s.startDate}</div>
+              <div className="">{s.endDate}</div>
+
+              <div className="">{s.title}</div>
+              {/* <div className="">{s.keyAchievements}</div> */}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {parsed.skills?.length && (
+        <div className="">
+          <h1>Skills</h1>
+
+          {parsed.skills.map((skill) => (
+            <p key={skill}>{skill}</p>
+          ))}
+        </div>
+      )}
+
+      {parsed.interests && (
+        <div className="">
+          <h1>Interests</h1>
+          <p>{parsed.interests}</p>
+        </div>
+      )}
+
+      {parsed.summary && (
+        <div className="">
+          <h1>About Me</h1>
+          <p>{parsed.summary}</p>
+        </div>
+      )}
+
+      {parsed.profession && (
+        <div className="">
+          <h1>Profession</h1>
+          <p>{parsed.profession}</p>
+        </div>
+      )}
+
+      <div className="">
+        <button onClick={handleSaveAsResume} className="btn btn-primary">
+          Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
+type EducationParsed = {
+  description: string
+  schoolName: string
+  startDate: string
+  endDate: string
+  degree: string
+  gpa: string
+  // keyAchievements: string[]
+}
+
+type SkillParsed = string[]
+
+type ExperienceParsed = {
+  companyName: string
+  startDate: string
+  endDate: string
+  description: string
+  title: string
+  // keyAchievements: string[]
+}
+
+type InterestsParsed = string
+
+type FinishedParsed = {
+  education: EducationParsed[]
+  skills: SkillParsed
+  experience: ExperienceParsed[]
+  interests: InterestsParsed
+  summary: string
+  profession: string
 }

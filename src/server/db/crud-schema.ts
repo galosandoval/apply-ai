@@ -2,7 +2,7 @@ import { createInsertSchema } from "drizzle-zod"
 import { profile, school, work } from "./schema"
 import { z } from "zod"
 
-export const insertNameSchema = z.object({
+export const insertNameAndContactSchema = z.object({
   firstName: z
     .string()
     .min(3, "Must be at least 3 characters")
@@ -11,10 +11,16 @@ export const insertNameSchema = z.object({
     .string()
     .min(3, "Must be at least 3 characters")
     .max(50, "Must be less than 50 characters"),
+  phone: z.string().min(10, "Must be at least 10 characters"),
+  linkedIn: z.string(),
+  portfolio: z.string(),
+  location: z.string().min(3, "Must be at least 3 characters"),
   id: z.string().optional()
 })
 
-export type InsertNameSchema = z.infer<typeof insertNameSchema>
+export type InsertNameAndContactSchema = z.infer<
+  typeof insertNameAndContactSchema
+>
 
 export const updateProfileSchema = createInsertSchema(profile, {
   profession: (schema) =>
@@ -23,8 +29,8 @@ export const updateProfileSchema = createInsertSchema(profile, {
       .max(255, "Must be less than 255 characters"),
   introduction: (schema) =>
     schema.introduction
-      .min(3, "Must be at least 3 characters")
-      .max(255, "Must be less than 255 characters"),
+      .min(3, "Must be atleast 3 characters")
+      .max(500, "Must be less than 500 characters"),
   interests: (schema) =>
     schema.interests
       .min(3, "Must be at least 3 characters")
@@ -48,14 +54,15 @@ export const insertEducationSchema = z.object({
         .max(255, "Must be less than 255 characters"),
     description: (schema) =>
       schema.description
-        .max(255, "Must be less than 255 characters")
+        .max(500, "Must be less than 500 characters")
         .optional(),
     location: (schema) =>
       schema.location.max(255, "Must be less than 255 characters").optional(),
     startDate: (schema) => schema.startDate.min(4).max(50),
     endDate: (schema) => schema.endDate.min(4).max(50),
     gpa: (schema) => schema.gpa.optional(),
-    profileId: (schema) => schema.profileId.cuid2().optional()
+    profileId: (schema) => schema.profileId.cuid2().optional(),
+    keyAchievements: (schema) => schema.keyAchievements.optional()
   })
     .array()
     .min(1)
@@ -75,7 +82,7 @@ export const insertExperienceSchema = z.object({
     description: (schema) =>
       schema.description
         .min(6, "Must be more than 6 characters")
-        .max(255, "Must be less than 255 characters"),
+        .max(500, "Must be less than 500 characters"),
     endDate: (schema) => schema.endDate.min(4).max(50),
     startDate: (schema) => schema.startDate.min(4).max(50),
     title: (schema) =>

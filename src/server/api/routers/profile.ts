@@ -2,21 +2,17 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { eq, sql } from "drizzle-orm"
 import { z } from "zod"
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure
-} from "~/server/api/trpc"
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import {
   insertEducationSchema,
   insertExperienceSchema,
-  insertNameSchema,
+  insertNameAndContactSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
-import { profile, school, work } from "~/server/db/schema"
+import { contact, profile, school, work } from "~/server/db/schema"
 
 export const profileRouter = createTRPCRouter({
-  read: publicProcedure
+  read: protectedProcedure
     .input(
       z.object({
         userId: z.string().cuid2()
@@ -33,11 +29,14 @@ export const profileRouter = createTRPCRouter({
       if (!result) {
         throw new TRPCError({
           message: "Profile not found",
-          code: "INTERNAL_SERVER_ERROR"
+          code: "NOT_FOUND"
         })
       }
 
-      console.log(result)
+      const contactInfo = await ctx.db
+        .select()
+        .from(contact)
+        .where(eq(contact.profileId, result.id))
 
       const education = await ctx.db
         .select()
@@ -49,16 +48,17 @@ export const profileRouter = createTRPCRouter({
         .from(work)
         .where(eq(work.profileId, result.id))
 
-      return { ...result, education, experience }
+      return { ...result, education, experience, contact: contactInfo }
     }),
 
-  upsertName: protectedProcedure
-    .input(insertNameSchema)
+  upsertNameAndContact: protectedProcedure
+    .input(insertNameAndContactSchema)
     .mutation(async ({ input, ctx }) => {
-      const { firstName, lastName, id } = input
+      const { firstName, lastName, linkedIn, location, phone, portfolio, id } =
+        input
 
       const inputId = id ?? createId()
-      console.log(ctx.session.user.id)
+
       const newProfile = await ctx.db
         .insert(profile)
         .values({
@@ -76,6 +76,34 @@ export const profileRouter = createTRPCRouter({
       if (!newProfile?.length) {
         throw new TRPCError({
           message: "Profile not created",
+          code: "INTERNAL_SERVER_ERROR"
+        })
+      }
+
+      const newContact = await ctx.db
+        .insert(contact)
+        .values({
+          id: createId(),
+          location,
+          phone,
+          linkedIn,
+          portfolio,
+          profileId: inputId
+        })
+        .onConflictDoUpdate({
+          set: {
+            phone: sql`excluded.phone`,
+            linkedIn: sql`excluded.linked_in`,
+            portfolio: sql`excluded.portfolio`,
+            location: sql`excluded.location`
+          },
+          target: profile.id
+        })
+        .returning()
+
+      if (!newContact?.length) {
+        throw new TRPCError({
+          message: "Contact not created",
           code: "INTERNAL_SERVER_ERROR"
         })
       }
@@ -105,7 +133,8 @@ export const profileRouter = createTRPCRouter({
 
       const schoolsToInsert = education.map((e) => ({
         ...e,
-        id: e?.id ? e.id : createId()
+        id: e?.id ? e.id : createId(),
+        keyAchievements: []
       }))
 
       return await ctx.db
@@ -139,13 +168,24 @@ export const profileRouter = createTRPCRouter({
 
       return await ctx.db
         .insert(work)
-        .values(workToInsert)
+        .values(
+          workToInsert.map((w) => ({
+            companyName: w.companyName,
+            description: w.description,
+            endDate: w.endDate,
+            startDate: w.startDate,
+            title: w.title,
+            id: w.id,
+            profileId: w.profileId
+          }))
+        )
         .onConflictDoUpdate({
           target: work.id,
           set: {
             companyName: sql`excluded.name`,
             description: sql`excluded.description`,
             endDate: sql`excluded.end_date`,
+            title: sql`excluded.title`,
             startDate: sql`excluded.start_date`,
             profileId: sql`excluded.profile_id`,
             id: sql`excluded.id`
@@ -167,6 +207,19 @@ export const profileRouter = createTRPCRouter({
         .update(profile)
         .set({
           skills: skills.map((s) => s.value)
+        })
+        .where(eq(profile.userId, userId))
+    }),
+
+  finishOnboarding: protectedProcedure
+    .input(z.object({ userId: z.string().cuid2() }))
+    .mutation(async ({ input, ctx }) => {
+      const { userId } = input
+
+      return await ctx.db
+        .update(profile)
+        .set({
+          isOnboarded: true
         })
         .where(eq(profile.userId, userId))
     })

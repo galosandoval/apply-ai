@@ -53,13 +53,25 @@ export default function Step4() {
 
     defaultValues: {
       experience: profile?.experience.length
-        ? profile.experience
+        ? profile.experience.map((experience) => ({
+            companyName: experience.companyName,
+            description: experience.description,
+            startDate: experience.startDate,
+            endDate: experience.endDate,
+            title: experience.title
+          }))
         : initialExperience
     },
 
     values: {
       experience: profile?.experience.length
-        ? profile.experience
+        ? profile.experience.map((experience) => ({
+            companyName: experience.companyName,
+            description: experience.description,
+            startDate: experience.startDate,
+            endDate: experience.endDate,
+            title: experience.title
+          }))
         : initialExperience
     }
   })

@@ -94,7 +94,11 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        return { id: foundUser[0]?.id ?? "", email: foundUser[0]?.email ?? "" }
+        return {
+          id: foundUser[0]?.id ?? "",
+          email: foundUser[0]?.email ?? "",
+          profileId: ""
+        }
       }
     })
     /**

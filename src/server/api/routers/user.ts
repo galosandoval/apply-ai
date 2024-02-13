@@ -4,7 +4,7 @@ import { hash } from "bcryptjs"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc"
-import { user } from "~/server/db/schema"
+import { profile, user } from "~/server/db/schema"
 
 export const userRouter = createTRPCRouter({
   create: publicProcedure
@@ -31,8 +31,20 @@ export const userRouter = createTRPCRouter({
 
       const hashedPassword = await hash(password, 10)
 
-      await ctx.db
+      const createdUser = await ctx.db
         .insert(user)
         .values({ email, password: hashedPassword, id: createId() })
+        .returning()
+
+      if (!createdUser?.length) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong."
+        })
+      }
+
+      await ctx.db
+        .insert(profile)
+        .values({ userId: createdUser[0]?.id, id: createId() })
     })
 })
