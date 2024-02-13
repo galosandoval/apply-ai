@@ -109,6 +109,7 @@ export default function Step3() {
 
       {fields.map((field, index) => (
         <div key={field.id}>
+
           <div className="">
             <label htmlFor={`education.${index}.name`} className="label">
               <span className="label-text">
@@ -120,7 +121,7 @@ export default function Step3() {
               type="text"
               id={`education.${index}.name`}
               placeholder="Ex: University of California, Berkeley"
-              className="rounded-sm px-2 py-1"
+              className="rounded-sm px-2 py-1 input input-bordered w-full"
               {...register(`education.${index}.name`)}
             />
 
@@ -138,7 +139,8 @@ export default function Step3() {
               id={`education.${index}.startDate`}
               type="text"
               placeholder="Ex: Sept 2017"
-              className="rounded-sm px-2 py-1"
+              className="rounded-sm px-2 py-1 input input-bordered  w-full"
+
               {...register(`education.${index}.startDate`)}
             />
             <MyErrorMessage
@@ -158,7 +160,7 @@ export default function Step3() {
               id={`education.${index}.endDate`}
               type="text"
               placeholder="Ex: May 2021"
-              className="rounded-sm px-2 py-1"
+              className="rounded-sm px-2 py-1 input input-bordered  w-full"
               {...register(`education.${index}.endDate`)}
             />
             <MyErrorMessage
@@ -178,7 +180,7 @@ export default function Step3() {
               id={`education.${index}.degree`}
               type="text"
               placeholder="Ex: Computer Science"
-              className="rounded-sm px-2 py-1"
+              className="rounded-sm px-2 py-1 input input-bordered  w-full"
               {...register(`education.${index}.degree`)}
             />
 
@@ -197,7 +199,7 @@ export default function Step3() {
               id={`education.${index}.location`}
               type="text"
               placeholder="Ex: Berkely, CA"
-              className="rounded-sm px-2 py-1"
+              className="rounded-sm px-2 py-1 input input-bordered  w-full"
               {...register(`education.${index}.location`)}
             />
 
@@ -215,7 +217,7 @@ export default function Step3() {
             <input
               id={`education.${index}.gpa`}
               type="text"
-              className="rounded-sm px-2 py-1"
+              className="rounded-sm px-2 py-1 input input-bordered  w-full"
               {...register(`education.${index}.gpa`)}
             />
 
@@ -232,7 +234,7 @@ export default function Step3() {
             <input
               id={`education.${index}.description`}
               type="text"
-              className="rounded-sm px-2 py-1"
+              className="rounded-sm px-2 py-1 input input-bordered  w-full"
               placeholder="Ex: I was the president of the computer science club."
               {...register(`education.${index}.description`)}
             />
