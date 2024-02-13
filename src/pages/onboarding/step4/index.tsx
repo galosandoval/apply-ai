@@ -87,7 +87,7 @@ export default function Step4() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
+      className="flex min-h-screen flex-col items-center justify-center gap-3"
     >
       <h1>Experience</h1>
 
@@ -107,7 +107,7 @@ export default function Step4() {
               id={`experience.${index}.companyName`}
               type="text"
               placeholder="Ex: Google"
-              className="rounded-sm px-2 py-1"
+              className="input input-bordered w-full rounded-sm px-2  py-1"
               {...register(`experience.${index}.companyName`)}
             />
 
@@ -151,9 +151,9 @@ export default function Step4() {
 
             <input
               id={`experience.${index}.startDate`}
-              type="text"
+              type="date"
               placeholder="Start Date"
-              className="rounded-sm px-2 py-1"
+              className="input input-bordered w-full rounded-sm px-2 py-1"
               {...register(`experience.${index}.startDate`)}
             />
 
@@ -173,9 +173,9 @@ export default function Step4() {
 
             <input
               id={`experience.${index}.endDate`}
-              type="text"
+              type="date"
               placeholder="End Date"
-              className="rounded-sm px-2 py-1"
+              className="input input-bordered w-full rounded-sm px-2 py-1"
               {...register(`experience.${index}.endDate`)}
             />
 
@@ -197,7 +197,7 @@ export default function Step4() {
               id={`experience.${index}.title`}
               type="text"
               placeholder="Ex: Software Engineer"
-              className="rounded-sm px-2 py-1"
+              className="input input-bordered w-full rounded-sm px-2 py-1"
               {...register(`experience.${index}.title`)}
             />
 
