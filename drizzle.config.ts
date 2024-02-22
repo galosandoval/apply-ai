@@ -9,5 +9,5 @@ export default {
     connectionString: env.DATABASE_URL
   },
   out: "migrations",
-  tablesFilter: ["gptJob_*"]
+  tablesFilter: ["apply-ai_*"]
 } satisfies Config
