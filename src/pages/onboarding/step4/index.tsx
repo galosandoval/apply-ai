@@ -1,11 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Cross1Icon, InfoCircledIcon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
 import toast from "react-hot-toast"
+import { MyAlert } from "~/components/alert"
 import { MyErrorMessage } from "~/components/my-error-message"
 import { TextAreaInput } from "~/components/text-area"
 import { TextInput } from "~/components/text-input"
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
 import { Button } from "~/components/ui/button"
 import {
   insertExperienceSchema,
@@ -100,13 +103,35 @@ export default function Step4() {
   }, [])
 
   return (
-    <main className="grid h-full place-items-center">
+    <main className="h-full overflow-y-auto py-12 md:grid md:place-items-center">
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
-        <h1 className="mx-auto">Experience</h1>
+        <h1 className="mx-auto text-3xl">Experience</h1>
+
+        <MyAlert
+          title="Note"
+          description="Fill in your experience in reverse chronilogical order"
+        />
 
         {fields.map((field, index) => (
           <div key={field.id} className="flex flex-col gap-2">
-            <div className="">
+            <div>
+              <div className="grid grid-cols-3 place-items-center">
+                <div></div>
+
+                <h2>Experience {index + 1}</h2>
+
+                {fields.length > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-destructive justify-self-end"
+                    size="icon"
+                    onClick={() => remove(index)}
+                  >
+                    <Cross1Icon />
+                  </Button>
+                ) : null}
+              </div>
               <TextInput
                 name={`experience.${index}.companyName`}
                 errors={errors}
@@ -117,27 +142,30 @@ export default function Step4() {
               />
             </div>
 
-            <div className="">
-              <TextInput
-                name={`experience.${index}.title`}
-                errors={errors}
-                label="Title"
-                register={register}
-                placeholder="Ex: Software Engineer"
-                required
-              />
-            </div>
+            <TextInput
+              name={`experience.${index}.title`}
+              errors={errors}
+              label="Title"
+              register={register}
+              placeholder="Ex: Software Engineer"
+              required
+            />
 
-            <div className="">
-              <TextAreaInput
-                name={`experience.${index}.description`}
-                errors={errors}
-                label="Write 3 to 5 accomplishments"
-                placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
-                register={register}
-                required
-              />
-            </div>
+            <MyAlert
+              title="Note"
+              description="Write a paragraph with 3 to 5 sentences, each sentence should be
+                an accomplishment. Be concise and try to use numbers and
+                percentages to your accomplishments."
+            />
+
+            <TextAreaInput
+              name={`experience.${index}.description`}
+              errors={errors}
+              label="Write 3 to 5 accomplishments"
+              placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
+              register={register}
+              required
+            />
 
             <div className="flex gap-2">
               <TextInput
@@ -158,22 +186,12 @@ export default function Step4() {
                 required
               />
             </div>
-
-            {fields.length > 1 ? (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => remove(index)}
-              >
-                Remove
-              </Button>
-            ) : null}
           </div>
         ))}
 
         <MyErrorMessage errors={errors} name="experience.root" />
 
-        <div className="ml-auto">
+        <div className="ml-auto space-x-2">
           {fields.length < maxExperience && (
             <Button
               variant="ghost"

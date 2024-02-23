@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Cross1Icon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
@@ -13,6 +14,8 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
+import { OnboardingLayout } from "../_layout"
+import { MyAlert } from "~/components/alert"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -104,111 +107,110 @@ export default function Step3() {
   }, [])
 
   return (
-    <main className="grid h-full place-items-center">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
-        <h1 className="mx-auto">Education</h1>
+    <OnboardingLayout handleSubmit={handleSubmit(onSubmit)} title="Education">
+      <MyAlert
+        title="Note"
+        description="Fill in your education in reverse chronilogical order"
+      />
 
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex flex-col gap-2">
-            <div className="">
-              <TextInput
-                name={`education.${index}.name`}
-                errors={errors}
-                label="Institution Name"
-                placeholder="Ex: University of California, Berkeley"
-                register={register}
-                required
-              />
+      {fields.map((field, index) => (
+        <div key={field.id} className="flex flex-col gap-2">
+          <div>
+            <div className="grid grid-cols-3 place-items-center">
+              <div></div>
+              <h2>School {index + 1}</h2>
+              {fields.length > 1 ? (
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="text-destructive justify-self-end"
+                  size="icon"
+                  onClick={() => remove(index)}
+                >
+                  <Cross1Icon />
+                </Button>
+              ) : null}
             </div>
 
-            <div className="flex justify-around gap-2">
-              <TextInput
-                name={`education.${index}.startDate`}
-                errors={errors}
-                label="Start"
-                placeholder="Ex: Sept 2017"
-                register={register}
-                required
-              />
-              <TextInput
-                name={`education.${index}.endDate`}
-                errors={errors}
-                label="End"
-                placeholder="Ex: May 2021"
-                register={register}
-                required
-              />
-            </div>
-
-            <div className="">
-              <TextInput
-                name={`education.${index}.degree`}
-                errors={errors}
-                label="Degree/Certificate"
-                placeholder="Ex: Computer Science"
-                register={register}
-                required
-              />
-            </div>
-
-            <div className="">
-              <TextInput
-                name={`education.${index}.location`}
-                errors={errors}
-                label="Location"
-                placeholder="Ex: Berkely, CA"
-                register={register}
-              />
-            </div>
-
-            <div className="">
-              <TextInput
-                name={`education.${index}.gpa`}
-                errors={errors}
-                label="GPA"
-                placeholder="Only if your GPA was 3.5+"
-                register={register}
-              />
-            </div>
-
-            <div className="">
-              <TextAreaInput
-                name={`education.${index}.description`}
-                errors={errors}
-                label="Anything extra you want a hiring manager to know"
-                placeholder="Ex: I was the president of the computer science club."
-                register={register}
-              />
-            </div>
-
-            {fields.length > 1 ? (
-              <Button
-                variant="destructive"
-                type="button"
-                onClick={() => remove(index)}
-              >
-                Remove
-              </Button>
-            ) : null}
+            <TextInput
+              name={`education.${index}.name`}
+              errors={errors}
+              label="Institution Name"
+              placeholder="Ex: University of California, Berkeley"
+              register={register}
+              required
+            />
           </div>
-        ))}
 
-        <MyErrorMessage errors={errors} name="education.root" />
+          <div className="flex justify-around gap-2">
+            <TextInput
+              name={`education.${index}.startDate`}
+              errors={errors}
+              label="Start"
+              placeholder="Ex: Sept 2017"
+              register={register}
+              required
+            />
+            <TextInput
+              name={`education.${index}.endDate`}
+              errors={errors}
+              label="End"
+              placeholder="Ex: May 2021"
+              register={register}
+              required
+            />
+          </div>
 
-        <div className="ml-auto">
-          {fields.length < maxSchools && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => append(initialSchool)}
-            >
-              Add another
-            </Button>
-          )}
+          <TextInput
+            name={`education.${index}.degree`}
+            errors={errors}
+            label="Degree/Certificate"
+            placeholder="Ex: Computer Science"
+            register={register}
+            required
+          />
 
-          <Button type="submit">Next</Button>
+          <TextInput
+            name={`education.${index}.location`}
+            errors={errors}
+            label="Location"
+            placeholder="Ex: Berkely, CA"
+            register={register}
+          />
+
+          <TextInput
+            name={`education.${index}.gpa`}
+            errors={errors}
+            label="GPA"
+            placeholder="Only if your GPA was 3.5+"
+            register={register}
+          />
+
+          <TextAreaInput
+            name={`education.${index}.description`}
+            errors={errors}
+            label="Anything extra you want a hiring manager to know"
+            placeholder="Ex: I was the president of the computer science club."
+            register={register}
+          />
         </div>
-      </form>
-    </main>
+      ))}
+
+      <MyErrorMessage errors={errors} name="education.root" />
+
+      <div className="ml-auto space-x-2">
+        {fields.length < maxSchools && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => append(initialSchool)}
+          >
+            Add another
+          </Button>
+        )}
+
+        <Button type="submit">Next</Button>
+      </div>
+    </OnboardingLayout>
   )
 }

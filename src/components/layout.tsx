@@ -36,7 +36,7 @@ function ProtectedNavbar() {
   }
 
   return (
-    <nav className="absolute top-0 flex gap-3">
+    <nav className="flex gap-3">
       <Link href="/dashboard">dashboard</Link>
       <Link href="/onboarding/step1">onboarding</Link>
       <Link href="/resume">resumes</Link>

@@ -15,7 +15,7 @@ export const insertNameAndContactSchema = z.object({
   linkedIn: z.string(),
   portfolio: z.string(),
   location: z.string().min(3, "Must be at least 3 characters"),
-  id: z.string().optional()
+  id: z.string()
 })
 
 export type InsertNameAndContactSchema = z.infer<

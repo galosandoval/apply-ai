@@ -57,58 +57,62 @@ export const profileRouter = createTRPCRouter({
       const { firstName, lastName, linkedIn, location, phone, portfolio, id } =
         input
 
-      const inputId = id ?? createId()
+      console.log("id", id)
 
-      const newProfile = await ctx.db
-        .insert(profile)
-        .values({
-          firstName,
-          lastName,
-          id: inputId,
-          userId: ctx.session.user.id
-        })
-        .onConflictDoUpdate({
-          set: { firstName, lastName },
-          target: profile.id
-        })
+      const updatedProfile = await ctx.db
+        .update(profile)
+        .set({ firstName, lastName })
+        .where(eq(profile.id, id))
         .returning()
 
-      if (!newProfile?.length) {
+      if (!updatedProfile?.length) {
         throw new TRPCError({
           message: "Profile not created",
           code: "INTERNAL_SERVER_ERROR"
         })
       }
 
-      const newContact = await ctx.db
-        .insert(contact)
-        .values({
-          id: createId(),
-          location,
-          phone,
-          linkedIn,
-          portfolio,
-          profileId: inputId
-        })
-        .onConflictDoUpdate({
-          set: {
-            phone: sql`excluded.phone`,
-            linkedIn: sql`excluded.linked_in`,
-            portfolio: sql`excluded.portfolio`,
-            location: sql`excluded.location`
-          },
-          target: profile.id
-        })
-        .returning()
+      console.log(updatedProfile)
 
-      if (!newContact?.length) {
-        throw new TRPCError({
-          message: "Contact not created",
-          code: "INTERNAL_SERVER_ERROR"
-        })
+      const foundContact = await ctx.db
+        .select({ id: contact.id })
+        .from(contact)
+        .where(eq(contact.profileId, id))
+
+      if (foundContact.length) {
+        const updatedContact = await ctx.db
+          .update(contact)
+          .set({ linkedIn, location, phone, portfolio })
+          .returning()
+
+        if (!updatedContact.length) {
+          throw new TRPCError({
+            message: "Contact not updated",
+            code: "INTERNAL_SERVER_ERROR"
+          })
+        }
+      } else {
+        const newContact = await ctx.db
+          .insert(contact)
+          .values({
+            id: createId(),
+            location,
+            phone,
+            linkedIn,
+            portfolio,
+            profileId: id
+          })
+          .returning()
+
+        if (!newContact.length) {
+          throw new TRPCError({
+            message: "Contact not created",
+            code: "INTERNAL_SERVER_ERROR"
+          })
+        }
       }
 
-      return newProfile[0]
+      return updatedProfile[0]
     }),
 
   update: protectedProcedure
