@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { TextInput } from "~/components/text-input"
+import { Button } from "~/components/ui/button"
 import {
   type InsertNameAndContactSchema,
   insertNameAndContactSchema
@@ -73,13 +74,11 @@ export default function Step1() {
 
   useEffect(() => {
     setFocus("firstName")
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [setFocus])
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="">
-      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3">
+    <main className="grid h-full place-items-center">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
         <div>
           <TextInput
             label="First Name"
@@ -132,11 +131,10 @@ export default function Step1() {
             placeholder="Ex: San Francisco, CA"
           />
         </div>
-
-        <button type="submit" className="btn btn-primary mt-6 w-[200px]">
-          Next
-        </button>
-      </div>
-    </form>
+        <div className="flex w-full justify-end">
+          <Button>Next</Button>
+        </div>
+      </form>
+    </main>
   )
 }

@@ -4,6 +4,9 @@ import { useEffect } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
+import { TextAreaInput } from "~/components/text-area"
+import { TextInput } from "~/components/text-input"
+import { Button } from "~/components/ui/button"
 import {
   insertExperienceSchema,
   type InsertExperienceSchema
@@ -97,155 +100,93 @@ export default function Step4() {
   }, [])
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex w-full max-w-prose flex-col gap-3"
-    >
-      <h1>Experience</h1>
+    <main className="grid h-full place-items-center">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
+        <h1 className="mx-auto">Experience</h1>
 
-      {fields.map((field, index) => (
-        <div key={field.id}>
-          <div className="">
-            <label
-              htmlFor={`experience.${index}.companyName`}
-              className="label"
-            >
-              <span className="label-text">
-                Company Name<span className="text-error">*</span>
-              </span>
-            </label>
+        {fields.map((field, index) => (
+          <div key={field.id} className="flex flex-col gap-2">
+            <div className="">
+              <TextInput
+                name={`experience.${index}.companyName`}
+                errors={errors}
+                label="Company Name"
+                placeholder="Ex: Google"
+                register={register}
+                required
+              />
+            </div>
 
-            <input
-              id={`experience.${index}.companyName`}
-              type="text"
-              placeholder="Ex: Google"
-              className="rounded-sm px-2 py-1"
-              {...register(`experience.${index}.companyName`)}
-            />
+            <div className="">
+              <TextInput
+                name={`experience.${index}.title`}
+                errors={errors}
+                label="Title"
+                register={register}
+                placeholder="Ex: Software Engineer"
+                required
+              />
+            </div>
 
-            <MyErrorMessage
-              errors={errors}
-              name={`experience.${index}.companyName`}
-            />
+            <div className="">
+              <TextAreaInput
+                name={`experience.${index}.description`}
+                errors={errors}
+                label="Write 3 to 5 accomplishments"
+                placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
+                register={register}
+                required
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <TextInput
+                name={`experience.${index}.startDate`}
+                errors={errors}
+                label="Start"
+                register={register}
+                required
+                placeholder="Ex: Sept 2017"
+              />
+
+              <TextInput
+                name={`experience.${index}.endDate`}
+                errors={errors}
+                label="End"
+                register={register}
+                placeholder="Ex: May 2021"
+                required
+              />
+            </div>
+
+            {fields.length > 1 ? (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => remove(index)}
+              >
+                Remove
+              </Button>
+            ) : null}
           </div>
+        ))}
 
-          <div className="">
-            <label
-              htmlFor={`experience.${index}.description`}
-              className="label"
-            >
-              <span className="label-text">
-                Write 3 to 5 accomplishments
-                <span className="text-error">*</span>
-              </span>
-            </label>
+        <MyErrorMessage errors={errors} name="experience.root" />
 
-            <textarea
-              id={`experience.${index}.description`}
-              placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
-              className="rounded-sm px-2 py-1"
-              {...register(`experience.${index}.description`)}
-            />
-
-            <MyErrorMessage
-              errors={errors}
-              name={`experience.${index}.description`}
-            />
-          </div>
-
-          <div className="">
-            <label htmlFor={`experience.${index}.startDate`} className="label">
-              <span className="label-text">
-                Start Date
-                <span className="text-error">*</span>
-              </span>
-            </label>
-
-            <input
-              id={`experience.${index}.startDate`}
-              type="text"
-              placeholder="Start Date"
-              className="rounded-sm px-2 py-1"
-              {...register(`experience.${index}.startDate`)}
-            />
-
-            <MyErrorMessage
-              errors={errors}
-              name={`experience.${index}.startDate`}
-            />
-          </div>
-
-          <div className="">
-            <label htmlFor={`experience.${index}.endDate`} className="label">
-              <span className="label-text">
-                End Date
-                <span className="text-error">*</span>
-              </span>
-            </label>
-
-            <input
-              id={`experience.${index}.endDate`}
-              type="text"
-              placeholder="End Date"
-              className="rounded-sm px-2 py-1"
-              {...register(`experience.${index}.endDate`)}
-            />
-
-            <MyErrorMessage
-              errors={errors}
-              name={`experience.${index}.endDate`}
-            />
-          </div>
-
-          <div className="">
-            <label htmlFor={`experience.${index}.title`} className="label">
-              <span className="label-text">
-                Title
-                <span className="text-error">*</span>
-              </span>
-            </label>
-
-            <input
-              id={`experience.${index}.title`}
-              type="text"
-              placeholder="Ex: Software Engineer"
-              className="rounded-sm px-2 py-1"
-              {...register(`experience.${index}.title`)}
-            />
-
-            <MyErrorMessage
-              errors={errors}
-              name={`experience.${index}.title`}
-            />
-          </div>
-
-          {fields.length > 1 ? (
-            <button
-              className="btn btn-primary"
+        <div className="ml-auto">
+          {fields.length < maxExperience && (
+            <Button
+              variant="ghost"
               type="button"
-              onClick={() => remove(index)}
+              onClick={() => append(initialExperience)}
             >
-              Remove
-            </button>
-          ) : null}
+              Add another
+            </Button>
+          )}
+
+          <Button type="submit">Next</Button>
         </div>
-      ))}
-
-      <MyErrorMessage errors={errors} name="experience.root" />
-
-      {fields.length < maxExperience && (
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => append(initialExperience)}
-        >
-          Add another
-        </button>
-      )}
-
-      <button className="btn btn-primary" type="submit">
-        Next
-      </button>
-    </form>
+      </form>
+    </main>
   )
 }

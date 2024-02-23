@@ -5,13 +5,13 @@ import { z } from "zod"
 export const insertNameAndContactSchema = z.object({
   firstName: z
     .string()
-    .min(3, "Must be at least 3 characters")
+    .min(1, "Must be at least 1 characters")
     .max(50, "Must be less than 50 characters"),
   lastName: z
     .string()
-    .min(3, "Must be at least 3 characters")
+    .min(1, "Must be at least 1 characters")
     .max(50, "Must be less than 50 characters"),
-  phone: z.string().min(10, "Must be at least 10 characters"),
+  phone: z.string(),
   linkedIn: z.string(),
   portfolio: z.string(),
   location: z.string().min(3, "Must be at least 3 characters"),

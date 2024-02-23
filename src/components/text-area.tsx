@@ -4,6 +4,8 @@ import {
   type Path
 } from "react-hook-form"
 import { MyErrorMessage } from "./my-error-message"
+import { Label } from "./ui/label"
+import { Textarea } from "./ui/textarea"
 
 type TextAreaInputProps<T extends FieldValues> = {
   label: string
@@ -24,18 +26,15 @@ export function TextAreaInput<T extends FieldValues>({
 }: TextAreaInputProps<T>) {
   return (
     <div>
-      <label htmlFor={name} className="label">
-        <span className="label-text">
-          {label}
+      <Label htmlFor={name}>
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </Label>
 
-          {required && <span className="text-error">*</span>}
-        </span>
-      </label>
-
-      <textarea
+      <Textarea
         placeholder={placeholder}
         id={name}
-        className="textarea textarea-primary min-h-[180px] min-w-[400px]"
+        className="min-h-[100px] min-w-[400px] resize-none"
         {...register(name)}
       />
 

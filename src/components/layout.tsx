@@ -12,11 +12,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   } else {
     navbar = <ProtectedNavbar />
   }
+
   return (
     <>
       {navbar}
 
-      <main className="">{children}</main>
+      {children}
     </>
   )
 }
@@ -35,7 +36,7 @@ function ProtectedNavbar() {
   }
 
   return (
-    <nav className="flex gap-3">
+    <nav className="absolute top-0 flex gap-3">
       <Link href="/dashboard">dashboard</Link>
       <Link href="/onboarding/step1">onboarding</Link>
       <Link href="/resume">resumes</Link>

@@ -4,6 +4,8 @@ import {
   type Path
 } from "react-hook-form"
 import { MyErrorMessage } from "./my-error-message"
+import { Input } from "./ui/input"
+import { Label } from "./ui/label"
 
 type NameInputProps<T extends FieldValues> = {
   label: string
@@ -23,22 +25,13 @@ export function TextInput<T extends FieldValues>({
   required
 }: NameInputProps<T>) {
   return (
-    <div>
-      <label htmlFor={name} className="label">
-        <span className="label-text">
-          {label}
+    <div className="w-full">
+      <Label htmlFor={name}>
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </Label>
 
-          {required && <span className="text-error">*</span>}
-        </span>
-      </label>
-
-      <input
-        placeholder={placeholder}
-        id={name}
-        type="text"
-        className="input input-bordered"
-        {...register(name)}
-      />
+      <Input placeholder={placeholder} id={name} {...register(name)} />
 
       <MyErrorMessage errors={errors} name={name} />
     </div>

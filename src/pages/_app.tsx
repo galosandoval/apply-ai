@@ -15,7 +15,10 @@ const MyApp: AppType<{ session: Session | null }> = ({
   return (
     <SessionProvider session={session}>
       <div
-        className={cn("min-h-screen font-sans antialiased", GeistSans.variable)}
+        className={cn(
+          "h-full overflow-hidden font-sans antialiased",
+          GeistSans.variable
+        )}
       >
         <Toaster />
 
