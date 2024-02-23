@@ -74,7 +74,7 @@ export default function Step5() {
 
   return (
     <>
-      <h1>Skills</h1>
+      <h1 className="mx-auto">Skills</h1>
 
       <form
         onSubmit={handleSubmit(onSubmit)}

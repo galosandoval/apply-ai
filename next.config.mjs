@@ -18,6 +18,8 @@ const config = {
     defaultLocale: "en"
   },
 
+  transpilePackages: ["geist"],
+
   redirects: async () => {
     return [
       {

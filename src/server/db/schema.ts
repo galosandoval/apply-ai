@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm"
 import { boolean, pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
 
-export const pgTable = pgTableCreator((name) => `gptJob_${name}`)
+export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),

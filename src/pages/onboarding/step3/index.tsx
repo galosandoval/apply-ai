@@ -4,6 +4,9 @@ import { useEffect } from "react"
 import { useFieldArray, useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
+import { TextAreaInput } from "~/components/text-area"
+import { TextInput } from "~/components/text-input"
+import { Button } from "~/components/ui/button"
 import {
   insertEducationSchema,
   type InsertEducationSchema
@@ -101,177 +104,111 @@ export default function Step3() {
   }, [])
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex min-h-screen flex-col items-center justify-center gap-3"
-    >
-      <h1>Education</h1>
+    <main className="grid h-full place-items-center">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
+        <h1 className="mx-auto">Education</h1>
 
-      {fields.map((field, index) => (
-        <div key={field.id}>
+        {fields.map((field, index) => (
+          <div key={field.id} className="flex flex-col gap-2">
+            <div className="">
+              <TextInput
+                name={`education.${index}.name`}
+                errors={errors}
+                label="Institution Name"
+                placeholder="Ex: University of California, Berkeley"
+                register={register}
+                required
+              />
+            </div>
 
-          <div className="">
-            <label htmlFor={`education.${index}.name`} className="label">
-              <span className="label-text">
-                Institution Name <span className="text-error">*</span>
-              </span>
-            </label>
+            <div className="flex justify-around gap-2">
+              <TextInput
+                name={`education.${index}.startDate`}
+                errors={errors}
+                label="Start"
+                placeholder="Ex: Sept 2017"
+                register={register}
+                required
+              />
+              <TextInput
+                name={`education.${index}.endDate`}
+                errors={errors}
+                label="End"
+                placeholder="Ex: May 2021"
+                register={register}
+                required
+              />
+            </div>
 
-            <input
-              type="text"
-              id={`education.${index}.name`}
-              placeholder="Ex: University of California, Berkeley"
-              className="rounded-sm px-2 py-1 input input-bordered w-full"
-              {...register(`education.${index}.name`)}
-            />
+            <div className="">
+              <TextInput
+                name={`education.${index}.degree`}
+                errors={errors}
+                label="Degree/Certificate"
+                placeholder="Ex: Computer Science"
+                register={register}
+                required
+              />
+            </div>
 
-            <MyErrorMessage errors={errors} name={`education.${index}.name`} />
+            <div className="">
+              <TextInput
+                name={`education.${index}.location`}
+                errors={errors}
+                label="Location"
+                placeholder="Ex: Berkely, CA"
+                register={register}
+              />
+            </div>
+
+            <div className="">
+              <TextInput
+                name={`education.${index}.gpa`}
+                errors={errors}
+                label="GPA"
+                placeholder="Only if your GPA was 3.5+"
+                register={register}
+              />
+            </div>
+
+            <div className="">
+              <TextAreaInput
+                name={`education.${index}.description`}
+                errors={errors}
+                label="Anything extra you want a hiring manager to know"
+                placeholder="Ex: I was the president of the computer science club."
+                register={register}
+              />
+            </div>
+
+            {fields.length > 1 ? (
+              <Button
+                variant="destructive"
+                type="button"
+                onClick={() => remove(index)}
+              >
+                Remove
+              </Button>
+            ) : null}
           </div>
+        ))}
 
-          <div className="">
-            <label htmlFor={`education.${index}.startDate`} className="label">
-              <span className="label-text">
-                Start <span className="text-error">*</span>
-              </span>
-            </label>
+        <MyErrorMessage errors={errors} name="education.root" />
 
-            <input
-              id={`education.${index}.startDate`}
-              type="text"
-              placeholder="Ex: Sept 2017"
-              className="rounded-sm px-2 py-1 input input-bordered  w-full"
-
-              {...register(`education.${index}.startDate`)}
-            />
-            <MyErrorMessage
-              errors={errors}
-              name={`education.${index}.startDate`}
-            />
-          </div>
-
-          <div className="">
-            <label htmlFor={`education.${index}.endDate`} className="label">
-              <span className="label-text">
-                End <span className="text-error">*</span>
-              </span>
-            </label>
-
-            <input
-              id={`education.${index}.endDate`}
-              type="text"
-              placeholder="Ex: May 2021"
-              className="rounded-sm px-2 py-1 input input-bordered  w-full"
-              {...register(`education.${index}.endDate`)}
-            />
-            <MyErrorMessage
-              errors={errors}
-              name={`education.${index}.endDate`}
-            />
-          </div>
-
-          <div className="">
-            <label htmlFor={`education.${index}.degree`} className="label">
-              <span className="label-text">
-                Degree/Certificate <span className="text-error">*</span>
-              </span>
-            </label>
-
-            <input
-              id={`education.${index}.degree`}
-              type="text"
-              placeholder="Ex: Computer Science"
-              className="rounded-sm px-2 py-1 input input-bordered  w-full"
-              {...register(`education.${index}.degree`)}
-            />
-
-            <MyErrorMessage
-              errors={errors}
-              name={`education.${index}.degree`}
-            />
-          </div>
-
-          <div className="">
-            <label htmlFor={`education.${index}.location`} className="label">
-              <span className="label-text">Location</span>
-            </label>
-
-            <input
-              id={`education.${index}.location`}
-              type="text"
-              placeholder="Ex: Berkely, CA"
-              className="rounded-sm px-2 py-1 input input-bordered  w-full"
-              {...register(`education.${index}.location`)}
-            />
-
-            <MyErrorMessage
-              errors={errors}
-              name={`education.${index}.location`}
-            />
-          </div>
-
-          <div className="">
-            <label htmlFor={`education.${index}.gpa`} className="label">
-              <span className="label-text">GPA</span>
-            </label>
-
-            <input
-              id={`education.${index}.gpa`}
-              type="text"
-              className="rounded-sm px-2 py-1 input input-bordered  w-full"
-              {...register(`education.${index}.gpa`)}
-            />
-
-            <MyErrorMessage errors={errors} name={`education.${index}.gpa`} />
-          </div>
-
-          <div className="">
-            <label htmlFor={`education.${index}.description`} className="label">
-              <span className="label-text">
-                Anything extra you want a hiring manager to know
-              </span>
-            </label>
-
-            <input
-              id={`education.${index}.description`}
-              type="text"
-              className="rounded-sm px-2 py-1 input input-bordered  w-full"
-              placeholder="Ex: I was the president of the computer science club."
-              {...register(`education.${index}.description`)}
-            />
-
-            <MyErrorMessage
-              errors={errors}
-              name={`education.${index}.description`}
-            />
-          </div>
-
-          {fields.length > 1 ? (
-            <button
-              className="btn btn-primary"
+        <div className="ml-auto">
+          {fields.length < maxSchools && (
+            <Button
               type="button"
-              onClick={() => remove(index)}
+              variant="ghost"
+              onClick={() => append(initialSchool)}
             >
-              Remove
-            </button>
-          ) : null}
+              Add another
+            </Button>
+          )}
+
+          <Button type="submit">Next</Button>
         </div>
-      ))}
-
-      <MyErrorMessage errors={errors} name="education.root" />
-
-      {fields.length < maxSchools && (
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => append(initialSchool)}
-        >
-          Add another
-        </button>
-      )}
-
-      <button className="btn btn-primary" type="submit">
-        Next
-      </button>
-    </form>
+      </form>
+    </main>
   )
 }

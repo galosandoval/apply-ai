@@ -3,8 +3,9 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
-import { TextAreaInput } from "~/components/text-field"
+import { TextAreaInput } from "~/components/text-area"
 import { TextInput } from "~/components/text-input"
+import { Button } from "~/components/ui/button"
 import {
   type UpdateProfileSchema,
   updateProfileSchema
@@ -60,32 +61,30 @@ export default function Step2() {
   }, [])
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex min-h-screen flex-col items-center justify-center gap-3"
-    >
-      <h1>Tell us about yourself</h1>
+    <main className="grid h-full place-items-center">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
+        <h1>Tell us about yourself</h1>
 
-      <TextInput
-        placeholder="Ex: Full Stack Developer"
-        errors={errors}
-        label="Title"
-        name="profession"
-        register={register}
-        required
-      />
+        <TextInput
+          placeholder="Ex: Full Stack Developer"
+          errors={errors}
+          label="Title"
+          name="profession"
+          register={register}
+          required
+        />
 
-      <TextAreaInput
-        errors={errors}
-        label="Interests"
-        name="interests"
-        register={register}
-        placeholder="Ex: I like hiking, swimming, and reading fantasy novels."
-      />
-
-      <button type="submit" className="btn btn-primary">
-        Next
-      </button>
-    </form>
+        <TextAreaInput
+          errors={errors}
+          label="Interests"
+          name="interests"
+          register={register}
+          placeholder="Ex: I like hiking, swimming, and reading fantasy novels."
+        />
+        <div className="flex w-full justify-end">
+          <Button type="submit">Next</Button>
+        </div>
+      </form>
+    </main>
   )
 }
