@@ -2,11 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
-  FieldArrayWithId,
-  FieldErrors,
-  UseFieldArrayRemove,
-  UseFormRegister,
-  UseFormWatch,
+  type FieldArrayWithId,
+  type FieldErrors,
+  type UseFieldArrayRemove,
+  type UseFormRegister,
   useFieldArray,
   useForm
 } from "react-hook-form"
@@ -45,7 +44,7 @@ export default function Step5() {
       router.push("/onboarding/step4")
     },
 
-    onMutate: () => router.push("/onboarding/step6")
+    onMutate: () => router.push("/dashboard")
   })
 
   const {
@@ -53,8 +52,7 @@ export default function Step5() {
     handleSubmit,
     formState: { errors },
     control,
-    setFocus,
-    watch
+    setFocus
   } = useForm<InsertSkillsSchema>({
     resolver: zodResolver(insertSkillsSchema),
     defaultValues: {
@@ -97,7 +95,6 @@ export default function Step5() {
           index={index}
           register={register}
           remove={remove}
-          watch={watch}
           key={field.id}
         />
       ))}
@@ -115,7 +112,7 @@ export default function Step5() {
           </Button>
         )}
 
-        <Button type="submit">Next</Button>
+        <Button type="submit">Finish</Button>
       </div>
     </OnboardingLayout>
   )
@@ -123,7 +120,6 @@ export default function Step5() {
 
 function SkillForm({
   field,
-  watch,
   index,
   errors,
   hasMoreThanOneSkill,
@@ -131,35 +127,15 @@ function SkillForm({
   register
 }: {
   field: FieldArrayWithId<InsertSkillsSchema>
-  watch: UseFormWatch<InsertSkillsSchema>
   index: number
   errors: FieldErrors<InsertSkillsSchema>
   hasMoreThanOneSkill: boolean
   remove: UseFieldArrayRemove
   register: UseFormRegister<InsertSkillsSchema>
 }) {
-  const nameSub = watch(`skills.${index}.value`)
-
-  let fieldTitle = ""
-  if (hasMoreThanOneSkill) {
-    if (nameSub) {
-      fieldTitle = nameSub
-    } else {
-      fieldTitle = `Skill ${index + 1}`
-    }
-  }
-
   return (
     <div key={field.id}>
       <div className="flex gap-2">
-        {/* <div className="grid grid-cols-3 place-items-center">
-          <div></div>
-
-          <div></div>
-
-         
-        </div> */}
-
         <TextInput
           name={`skills.${index}.value`}
           errors={errors}
