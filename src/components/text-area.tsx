@@ -34,7 +34,7 @@ export function TextAreaInput<T extends FieldValues>({
       <Textarea
         placeholder={placeholder}
         id={name}
-        className="min-h-[100px] min-w-[400px] resize-none"
+        className="min-h-[100px] resize-none"
         {...register(name)}
       />
 

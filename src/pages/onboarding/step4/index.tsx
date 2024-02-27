@@ -1,8 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Cross1Icon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { useFieldArray, useForm } from "react-hook-form"
+import {
+  type FieldArrayWithId,
+  type FieldErrors,
+  type UseFieldArrayRemove,
+  type UseFormRegister,
+  type UseFormWatch,
+  useFieldArray,
+  useForm
+} from "react-hook-form"
 import toast from "react-hot-toast"
+import { MyAlert } from "~/components/alert"
 import { MyErrorMessage } from "~/components/my-error-message"
 import { TextAreaInput } from "~/components/text-area"
 import { TextInput } from "~/components/text-input"
@@ -13,6 +23,7 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
+import { OnboardingLayout } from "../_layout"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
@@ -49,6 +60,7 @@ export default function Step4() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
     control,
     setFocus
   } = useForm<InsertExperienceSchema>({
@@ -90,7 +102,7 @@ export default function Step4() {
       profileId: profile?.id
     }))
 
-    mutate({ experience: experienceToSubmit })
+    mutate({ experience: experienceToSubmit, profileId: profile?.id })
   }
 
   useEffect(() => {
@@ -99,94 +111,152 @@ export default function Step4() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const hasMoreThanOneJob = fields.length > 1
+
   return (
-    <main className="grid h-full place-items-center">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
-        <h1 className="mx-auto">Experience</h1>
+    <OnboardingLayout title="Experience" handleSubmit={handleSubmit(onSubmit)}>
+      {hasMoreThanOneJob && (
+        <MyAlert
+          title="Note"
+          description="Fill in your experience in reverse chronological order"
+        />
+      )}
 
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex flex-col gap-2">
-            <div className="">
-              <TextInput
-                name={`experience.${index}.companyName`}
-                errors={errors}
-                label="Company Name"
-                placeholder="Ex: Google"
-                register={register}
-                required
-              />
-            </div>
+      {fields.map((field, index) => (
+        <ExperienceForm
+          errors={errors}
+          field={field}
+          hasMoreThanOneJob={hasMoreThanOneJob}
+          index={index}
+          register={register}
+          remove={remove}
+          watch={watch}
+          key={field.id}
+        />
+      ))}
 
-            <div className="">
-              <TextInput
-                name={`experience.${index}.title`}
-                errors={errors}
-                label="Title"
-                register={register}
-                placeholder="Ex: Software Engineer"
-                required
-              />
-            </div>
+      <MyErrorMessage errors={errors} name="experience.root" />
 
-            <div className="">
-              <TextAreaInput
-                name={`experience.${index}.description`}
-                errors={errors}
-                label="Write 3 to 5 accomplishments"
-                placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
-                register={register}
-                required
-              />
-            </div>
+      <div className="ml-auto space-x-2">
+        {fields.length < maxExperience && (
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={() => append(initialExperience)}
+          >
+            Add another
+          </Button>
+        )}
 
-            <div className="flex gap-2">
-              <TextInput
-                name={`experience.${index}.startDate`}
-                errors={errors}
-                label="Start"
-                register={register}
-                required
-                placeholder="Ex: Sept 2017"
-              />
+        <Button type="submit">Next</Button>
+      </div>
+    </OnboardingLayout>
+  )
+}
 
-              <TextInput
-                name={`experience.${index}.endDate`}
-                errors={errors}
-                label="End"
-                register={register}
-                placeholder="Ex: May 2021"
-                required
-              />
-            </div>
+function ExperienceForm({
+  field,
+  watch,
+  index,
+  errors,
+  hasMoreThanOneJob,
+  remove,
+  register
+}: {
+  field: FieldArrayWithId<InsertExperienceSchema>
+  watch: UseFormWatch<InsertExperienceSchema>
+  index: number
+  errors: FieldErrors<InsertExperienceSchema>
+  hasMoreThanOneJob: boolean
+  remove: UseFieldArrayRemove
+  register: UseFormRegister<InsertExperienceSchema>
+}) {
+  const nameSub = watch(`experience.${index}.companyName`)
 
-            {fields.length > 1 ? (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => remove(index)}
-              >
-                Remove
-              </Button>
-            ) : null}
-          </div>
-        ))}
+  let fieldTitle = ""
+  if (hasMoreThanOneJob) {
+    if (nameSub) {
+      fieldTitle = nameSub
+    } else {
+      fieldTitle = `Job ${index + 1}`
+    }
+  }
 
-        <MyErrorMessage errors={errors} name="experience.root" />
+  return (
+    <div key={field.id} className="flex flex-col gap-2">
+      <div>
+        <div className="grid grid-cols-3 place-items-center">
+          <div></div>
 
-        <div className="ml-auto">
-          {fields.length < maxExperience && (
+          <h2>{fieldTitle}</h2>
+
+          {hasMoreThanOneJob ? (
             <Button
-              variant="ghost"
               type="button"
-              onClick={() => append(initialExperience)}
+              variant="outline"
+              className="justify-self-end text-destructive"
+              size="icon"
+              onClick={() => remove(index)}
             >
-              Add another
+              <Cross1Icon />
             </Button>
-          )}
-
-          <Button type="submit">Next</Button>
+          ) : null}
         </div>
-      </form>
-    </main>
+
+        <TextInput
+          name={`experience.${index}.companyName`}
+          errors={errors}
+          label="Company Name"
+          placeholder="Ex: Google"
+          register={register}
+          required
+        />
+      </div>
+
+      <TextInput
+        name={`experience.${index}.title`}
+        errors={errors}
+        label="Title"
+        register={register}
+        placeholder="Ex: Software Engineer"
+        required
+      />
+
+      <div className="flex gap-2">
+        <TextInput
+          name={`experience.${index}.startDate`}
+          errors={errors}
+          label="Start"
+          register={register}
+          required
+          placeholder="Ex: Sept 2017"
+        />
+
+        <TextInput
+          name={`experience.${index}.endDate`}
+          errors={errors}
+          label="End"
+          register={register}
+          placeholder="Ex: May 2021"
+          required
+        />
+      </div>
+
+      <div className="mx-auto max-w-sm">
+        <MyAlert
+          title="Accomplishments"
+          description={`Write a paragraph with 3 to 5 sentences, each sentence should be an accomplishment. Be concise and try to use numbers and percentages in your accomplishments. Each sentence will be a bullet point on your resume.`}
+        />
+      </div>
+
+      <TextAreaInput
+        name={`experience.${index}.description`}
+        errors={errors}
+        label="Write 3 to 5 accomplishments"
+        placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
+        register={register}
+        required
+      />
+    </div>
   )
 }

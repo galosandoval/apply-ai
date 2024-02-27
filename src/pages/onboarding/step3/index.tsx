@@ -1,7 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Cross1Icon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { useFieldArray, useForm } from "react-hook-form"
+import {
+  type FieldArrayWithId,
+  type FieldErrors,
+  type UseFieldArrayRemove,
+  type UseFormRegister,
+  type UseFormWatch,
+  useFieldArray,
+  useForm
+} from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
 import { TextAreaInput } from "~/components/text-area"
@@ -13,6 +22,8 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
+import { OnboardingLayout } from "../_layout"
+import { MyAlert } from "~/components/alert"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -51,7 +62,8 @@ export default function Step3() {
     handleSubmit,
     formState: { errors },
     control,
-    setFocus
+    setFocus,
+    watch
   } = useForm<InsertEducationSchema>({
     resolver: zodResolver(insertEducationSchema),
 
@@ -94,8 +106,10 @@ export default function Step3() {
       ...s,
       profileId: profile?.id
     }))
-    mutate({ education: educationToSubmit })
+    mutate({ education: educationToSubmit, profileId: profile?.id })
   }
+
+  const hasMoreThanOneSchool = fields.length > 1
 
   useEffect(() => {
     setFocus("education.0.name")
@@ -104,111 +118,153 @@ export default function Step3() {
   }, [])
 
   return (
-    <main className="grid h-full place-items-center">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
-        <h1 className="mx-auto">Education</h1>
+    <OnboardingLayout handleSubmit={handleSubmit(onSubmit)} title="Education">
+      {hasMoreThanOneSchool && (
+        <MyAlert
+          title="Note"
+          description="Fill in your education in reverse chronological order"
+        />
+      )}
 
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex flex-col gap-2">
-            <div className="">
-              <TextInput
-                name={`education.${index}.name`}
-                errors={errors}
-                label="Institution Name"
-                placeholder="Ex: University of California, Berkeley"
-                register={register}
-                required
-              />
-            </div>
+      {fields.map((field, index) => (
+        <EducationForm
+          field={field}
+          watch={watch}
+          index={index}
+          errors={errors}
+          hasMoreThanOneSchool={hasMoreThanOneSchool}
+          remove={remove}
+          register={register}
+          key={field.id}
+        />
+      ))}
 
-            <div className="flex justify-around gap-2">
-              <TextInput
-                name={`education.${index}.startDate`}
-                errors={errors}
-                label="Start"
-                placeholder="Ex: Sept 2017"
-                register={register}
-                required
-              />
-              <TextInput
-                name={`education.${index}.endDate`}
-                errors={errors}
-                label="End"
-                placeholder="Ex: May 2021"
-                register={register}
-                required
-              />
-            </div>
+      <MyErrorMessage errors={errors} name="education.root" />
 
-            <div className="">
-              <TextInput
-                name={`education.${index}.degree`}
-                errors={errors}
-                label="Degree/Certificate"
-                placeholder="Ex: Computer Science"
-                register={register}
-                required
-              />
-            </div>
+      <div className="ml-auto space-x-2">
+        {fields.length < maxSchools && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => append(initialSchool)}
+          >
+            Add another
+          </Button>
+        )}
 
-            <div className="">
-              <TextInput
-                name={`education.${index}.location`}
-                errors={errors}
-                label="Location"
-                placeholder="Ex: Berkely, CA"
-                register={register}
-              />
-            </div>
+        <Button type="submit">Next</Button>
+      </div>
+    </OnboardingLayout>
+  )
+}
 
-            <div className="">
-              <TextInput
-                name={`education.${index}.gpa`}
-                errors={errors}
-                label="GPA"
-                placeholder="Only if your GPA was 3.5+"
-                register={register}
-              />
-            </div>
+function EducationForm({
+  field,
+  watch,
+  index,
+  errors,
+  hasMoreThanOneSchool,
+  remove,
+  register
+}: {
+  field: FieldArrayWithId<InsertEducationSchema>
+  watch: UseFormWatch<InsertEducationSchema>
+  index: number
+  errors: FieldErrors<InsertEducationSchema>
+  hasMoreThanOneSchool: boolean
+  remove: UseFieldArrayRemove
+  register: UseFormRegister<InsertEducationSchema>
+}) {
+  const nameSub = watch(`education.${index}.name`)
 
-            <div className="">
-              <TextAreaInput
-                name={`education.${index}.description`}
-                errors={errors}
-                label="Anything extra you want a hiring manager to know"
-                placeholder="Ex: I was the president of the computer science club."
-                register={register}
-              />
-            </div>
+  let fieldTitle = ""
+  if (hasMoreThanOneSchool) {
+    if (nameSub) {
+      fieldTitle = nameSub
+    } else {
+      fieldTitle = `School ${index + 1}`
+    }
+  }
 
-            {fields.length > 1 ? (
-              <Button
-                variant="destructive"
-                type="button"
-                onClick={() => remove(index)}
-              >
-                Remove
-              </Button>
-            ) : null}
-          </div>
-        ))}
+  return (
+    <div key={field.id} className="flex flex-col gap-2">
+      <div className="flex justify-between">
+        <h2 className="">{fieldTitle}</h2>
 
-        <MyErrorMessage errors={errors} name="education.root" />
+        {hasMoreThanOneSchool ? (
+          <Button
+            variant="outline"
+            type="button"
+            className="justify-self-end text-destructive"
+            size="icon"
+            onClick={() => remove(index)}
+          >
+            <Cross1Icon />
+          </Button>
+        ) : null}
+      </div>
 
-        <div className="ml-auto">
-          {fields.length < maxSchools && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => append(initialSchool)}
-            >
-              Add another
-            </Button>
-          )}
+      <TextInput
+        name={`education.${index}.name`}
+        errors={errors}
+        label="Institution Name"
+        placeholder="Ex: University of California, Berkeley"
+        register={register}
+        required
+      />
 
-          <Button type="submit">Next</Button>
-        </div>
-      </form>
-    </main>
+      <div className="flex justify-around gap-2">
+        <TextInput
+          name={`education.${index}.startDate`}
+          errors={errors}
+          label="Start"
+          placeholder="Ex: Sept 2017"
+          register={register}
+          required
+        />
+
+        <TextInput
+          name={`education.${index}.endDate`}
+          errors={errors}
+          label="End"
+          placeholder="Ex: May 2021"
+          register={register}
+          required
+        />
+      </div>
+
+      <TextInput
+        name={`education.${index}.degree`}
+        errors={errors}
+        label="Degree/Certificate"
+        placeholder="Ex: Computer Science"
+        register={register}
+        required
+      />
+
+      <TextInput
+        name={`education.${index}.location`}
+        errors={errors}
+        label="Location"
+        placeholder="Ex: Berkely, CA"
+        register={register}
+      />
+
+      <TextInput
+        name={`education.${index}.gpa`}
+        errors={errors}
+        label="GPA"
+        placeholder="Only if your GPA was 3.5+"
+        register={register}
+      />
+
+      <TextAreaInput
+        name={`education.${index}.description`}
+        errors={errors}
+        label="Anything extra you want a hiring manager to know"
+        placeholder="Ex: I was the president of the computer science club."
+        register={register}
+      />
+    </div>
   )
 }

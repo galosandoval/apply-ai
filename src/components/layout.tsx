@@ -1,15 +1,20 @@
 import { signOut, useSession } from "next-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/router"
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle
+} from "./ui/navigation-menu"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data } = useSession()
 
   let navbar: React.ReactNode = null
 
-  if (!data) {
-    navbar = <PublicNavbar />
-  } else {
+  if (data) {
     navbar = <ProtectedNavbar />
   }
 
@@ -22,10 +27,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PublicNavbar() {
-  return null
-}
-
 function ProtectedNavbar() {
   const router = useRouter()
 
@@ -36,11 +37,38 @@ function ProtectedNavbar() {
   }
 
   return (
-    <nav className="absolute top-0 flex gap-3">
-      <Link href="/dashboard">dashboard</Link>
-      <Link href="/onboarding/step1">onboarding</Link>
-      <Link href="/resume">resumes</Link>
-      <button onClick={handleSignOut}>sign out</button>
-    </nav>
+    <NavigationMenu>
+      <NavigationMenuList>
+        <MyLink href="/dashboard">dashboard</MyLink>
+        <MyLink href="/onboarding/step1">onboarding</MyLink>
+        <MyLink href="/resume">resume</MyLink>
+        <NavigationMenuItem asChild>
+          <button
+            className={navigationMenuTriggerStyle()}
+            onClick={handleSignOut}
+          >
+            signOut
+          </button>
+        </NavigationMenuItem>
+      </NavigationMenuList>
+    </NavigationMenu>
+  )
+}
+
+function MyLink({
+  href,
+  children
+}: {
+  href: string
+  children: React.ReactNode
+}) {
+  return (
+    <NavigationMenuItem>
+      <Link href={href} legacyBehavior passHref>
+        <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+          {children}
+        </NavigationMenuLink>
+      </Link>
+    </NavigationMenuItem>
   )
 }
