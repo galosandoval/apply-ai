@@ -9,10 +9,12 @@ export function MyAlert({
   description: string
 }) {
   return (
-    <Alert variant="default" className="mx-auto max-w-sm">
+    <Alert variant="default" className="bg-sky-100">
       <InfoCircledIcon className="h-4 w-4" color="#00749E" />
       <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>{description}</AlertDescription>
+      <AlertDescription className="whitespace-pre-line">
+        {description}
+      </AlertDescription>
     </Alert>
   )
 }

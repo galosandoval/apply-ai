@@ -1,7 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { useFieldArray, useForm } from "react-hook-form"
+import {
+  FieldArrayWithId,
+  FieldErrors,
+  UseFieldArrayRemove,
+  UseFormRegister,
+  UseFormWatch,
+  useFieldArray,
+  useForm
+} from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
 import {
@@ -11,6 +19,10 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
+import { OnboardingLayout } from "../_layout"
+import { Button } from "~/components/ui/button"
+import { Cross1Icon } from "@radix-ui/react-icons"
+import { TextInput } from "~/components/text-input"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {
@@ -41,7 +53,8 @@ export default function Step5() {
     handleSubmit,
     formState: { errors },
     control,
-    setFocus
+    setFocus,
+    watch
   } = useForm<InsertSkillsSchema>({
     resolver: zodResolver(insertSkillsSchema),
     defaultValues: {
@@ -72,67 +85,101 @@ export default function Step5() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const hasMoreThanOneSkill = fields.length > 1
+
   return (
-    <>
-      <h1 className="mx-auto">Skills</h1>
+    <OnboardingLayout handleSubmit={handleSubmit(onSubmit)} title="Skills">
+      {fields.map((field, index) => (
+        <SkillForm
+          hasMoreThanOneSkill={hasMoreThanOneSkill}
+          errors={errors}
+          field={field}
+          index={index}
+          register={register}
+          remove={remove}
+          watch={watch}
+          key={field.id}
+        />
+      ))}
 
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="flex w-full max-w-prose flex-col gap-3"
-      >
-        <div className="">
-          {fields.map((field, index) => (
-            <div key={field.id}>
-              <div className="">
-                <label htmlFor={`skills.${index}.value`} className="label">
-                  <span className="label-text">
-                    Skill {index + 1}
-                    <span className="text-error">*</span>
-                  </span>
-                </label>
+      <MyErrorMessage errors={errors} name="skills.root" />
 
-                <input
-                  {...register(`skills.${index}.value`)}
-                  type="text"
-                  placeholder="Ex: Customer service"
-                  className="rounded-sm px-2 py-1"
-                />
+      <div className="ml-auto space-x-2">
+        {fields.length < maxSkills && (
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={() => append(initialSkills)}
+          >
+            Add another
+          </Button>
+        )}
 
-                <MyErrorMessage
-                  errors={errors}
-                  name={`skills.${index}.value`}
-                />
-              </div>
+        <Button type="submit">Next</Button>
+      </div>
+    </OnboardingLayout>
+  )
+}
 
-              {fields.length > 1 ? (
-                <button
-                  className="btn btn-primary"
-                  type="button"
-                  onClick={() => remove(index)}
-                >
-                  Remove
-                </button>
-              ) : null}
-            </div>
-          ))}
+function SkillForm({
+  field,
+  watch,
+  index,
+  errors,
+  hasMoreThanOneSkill,
+  remove,
+  register
+}: {
+  field: FieldArrayWithId<InsertSkillsSchema>
+  watch: UseFormWatch<InsertSkillsSchema>
+  index: number
+  errors: FieldErrors<InsertSkillsSchema>
+  hasMoreThanOneSkill: boolean
+  remove: UseFieldArrayRemove
+  register: UseFormRegister<InsertSkillsSchema>
+}) {
+  const nameSub = watch(`skills.${index}.value`)
 
-          <MyErrorMessage errors={errors} name="skills.root" />
+  let fieldTitle = ""
+  if (hasMoreThanOneSkill) {
+    if (nameSub) {
+      fieldTitle = nameSub
+    } else {
+      fieldTitle = `Skill ${index + 1}`
+    }
+  }
 
-          {fields.length < maxSkills && (
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={() => append(initialSkills)}
-            >
-              Add another
-            </button>
-          )}
+  return (
+    <div key={field.id}>
+      <div className="flex gap-2">
+        {/* <div className="grid grid-cols-3 place-items-center">
+          <div></div>
 
-          <button className="btn btn-primary" type="submit">
-            Next
-          </button>
-        </div>
-      </form>
-    </>
+          <div></div>
+
+         
+        </div> */}
+
+        <TextInput
+          name={`skills.${index}.value`}
+          errors={errors}
+          label={`Skill ${index + 1}`}
+          placeholder="Ex: Customer service"
+          register={register}
+        />
+
+        {hasMoreThanOneSkill && (
+          <Button
+            size="icon"
+            variant="outline"
+            className="self-center justify-self-end text-destructive"
+            type="button"
+            onClick={() => remove(index)}
+          >
+            <Cross1Icon />
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }

@@ -1,14 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Cross1Icon, InfoCircledIcon } from "@radix-ui/react-icons"
+import { Cross1Icon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { useFieldArray, useForm } from "react-hook-form"
+import {
+  type FieldArrayWithId,
+  type FieldErrors,
+  type UseFieldArrayRemove,
+  type UseFormRegister,
+  type UseFormWatch,
+  useFieldArray,
+  useForm
+} from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyAlert } from "~/components/alert"
 import { MyErrorMessage } from "~/components/my-error-message"
 import { TextAreaInput } from "~/components/text-area"
 import { TextInput } from "~/components/text-input"
-import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert"
 import { Button } from "~/components/ui/button"
 import {
   insertExperienceSchema,
@@ -16,6 +23,7 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
+import { OnboardingLayout } from "../_layout"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
@@ -52,6 +60,7 @@ export default function Step4() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
     control,
     setFocus
   } = useForm<InsertExperienceSchema>({
@@ -93,7 +102,7 @@ export default function Step4() {
       profileId: profile?.id
     }))
 
-    mutate({ experience: experienceToSubmit })
+    mutate({ experience: experienceToSubmit, profileId: profile?.id })
   }
 
   useEffect(() => {
@@ -102,109 +111,152 @@ export default function Step4() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return (
-    <main className="h-full overflow-y-auto py-12 md:grid md:place-items-center">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
-        <h1 className="mx-auto text-3xl">Experience</h1>
+  const hasMoreThanOneJob = fields.length > 1
 
+  return (
+    <OnboardingLayout title="Experience" handleSubmit={handleSubmit(onSubmit)}>
+      {hasMoreThanOneJob && (
         <MyAlert
           title="Note"
-          description="Fill in your experience in reverse chronilogical order"
+          description="Fill in your experience in reverse chronological order"
+        />
+      )}
+
+      {fields.map((field, index) => (
+        <ExperienceForm
+          errors={errors}
+          field={field}
+          hasMoreThanOneJob={hasMoreThanOneJob}
+          index={index}
+          register={register}
+          remove={remove}
+          watch={watch}
+          key={field.id}
+        />
+      ))}
+
+      <MyErrorMessage errors={errors} name="experience.root" />
+
+      <div className="ml-auto space-x-2">
+        {fields.length < maxExperience && (
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={() => append(initialExperience)}
+          >
+            Add another
+          </Button>
+        )}
+
+        <Button type="submit">Next</Button>
+      </div>
+    </OnboardingLayout>
+  )
+}
+
+function ExperienceForm({
+  field,
+  watch,
+  index,
+  errors,
+  hasMoreThanOneJob,
+  remove,
+  register
+}: {
+  field: FieldArrayWithId<InsertExperienceSchema>
+  watch: UseFormWatch<InsertExperienceSchema>
+  index: number
+  errors: FieldErrors<InsertExperienceSchema>
+  hasMoreThanOneJob: boolean
+  remove: UseFieldArrayRemove
+  register: UseFormRegister<InsertExperienceSchema>
+}) {
+  const nameSub = watch(`experience.${index}.companyName`)
+
+  let fieldTitle = ""
+  if (hasMoreThanOneJob) {
+    if (nameSub) {
+      fieldTitle = nameSub
+    } else {
+      fieldTitle = `Job ${index + 1}`
+    }
+  }
+
+  return (
+    <div key={field.id} className="flex flex-col gap-2">
+      <div>
+        <div className="grid grid-cols-3 place-items-center">
+          <div></div>
+
+          <h2>{fieldTitle}</h2>
+
+          {hasMoreThanOneJob ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="justify-self-end text-destructive"
+              size="icon"
+              onClick={() => remove(index)}
+            >
+              <Cross1Icon />
+            </Button>
+          ) : null}
+        </div>
+
+        <TextInput
+          name={`experience.${index}.companyName`}
+          errors={errors}
+          label="Company Name"
+          placeholder="Ex: Google"
+          register={register}
+          required
+        />
+      </div>
+
+      <TextInput
+        name={`experience.${index}.title`}
+        errors={errors}
+        label="Title"
+        register={register}
+        placeholder="Ex: Software Engineer"
+        required
+      />
+
+      <div className="flex gap-2">
+        <TextInput
+          name={`experience.${index}.startDate`}
+          errors={errors}
+          label="Start"
+          register={register}
+          required
+          placeholder="Ex: Sept 2017"
         />
 
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex flex-col gap-2">
-            <div>
-              <div className="grid grid-cols-3 place-items-center">
-                <div></div>
+        <TextInput
+          name={`experience.${index}.endDate`}
+          errors={errors}
+          label="End"
+          register={register}
+          placeholder="Ex: May 2021"
+          required
+        />
+      </div>
 
-                <h2>Experience {index + 1}</h2>
+      <div className="mx-auto max-w-sm">
+        <MyAlert
+          title="Accomplishments"
+          description={`Write a paragraph with 3 to 5 sentences, each sentence should be an accomplishment. Be concise and try to use numbers and percentages in your accomplishments. Each sentence will be a bullet point on your resume.`}
+        />
+      </div>
 
-                {fields.length > 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="text-destructive justify-self-end"
-                    size="icon"
-                    onClick={() => remove(index)}
-                  >
-                    <Cross1Icon />
-                  </Button>
-                ) : null}
-              </div>
-              <TextInput
-                name={`experience.${index}.companyName`}
-                errors={errors}
-                label="Company Name"
-                placeholder="Ex: Google"
-                register={register}
-                required
-              />
-            </div>
-
-            <TextInput
-              name={`experience.${index}.title`}
-              errors={errors}
-              label="Title"
-              register={register}
-              placeholder="Ex: Software Engineer"
-              required
-            />
-
-            <MyAlert
-              title="Note"
-              description="Write a paragraph with 3 to 5 sentences, each sentence should be
-                an accomplishment. Be concise and try to use numbers and
-                percentages to your accomplishments."
-            />
-
-            <TextAreaInput
-              name={`experience.${index}.description`}
-              errors={errors}
-              label="Write 3 to 5 accomplishments"
-              placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
-              register={register}
-              required
-            />
-
-            <div className="flex gap-2">
-              <TextInput
-                name={`experience.${index}.startDate`}
-                errors={errors}
-                label="Start"
-                register={register}
-                required
-                placeholder="Ex: Sept 2017"
-              />
-
-              <TextInput
-                name={`experience.${index}.endDate`}
-                errors={errors}
-                label="End"
-                register={register}
-                placeholder="Ex: May 2021"
-                required
-              />
-            </div>
-          </div>
-        ))}
-
-        <MyErrorMessage errors={errors} name="experience.root" />
-
-        <div className="ml-auto space-x-2">
-          {fields.length < maxExperience && (
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => append(initialExperience)}
-            >
-              Add another
-            </Button>
-          )}
-
-          <Button type="submit">Next</Button>
-        </div>
-      </form>
-    </main>
+      <TextAreaInput
+        name={`experience.${index}.description`}
+        errors={errors}
+        label="Write 3 to 5 accomplishments"
+        placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
+        register={register}
+        required
+      />
+    </div>
   )
 }

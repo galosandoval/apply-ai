@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { eq, sql } from "drizzle-orm"
 import { z } from "zod"
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
+import { db } from "~/server/db"
 import {
   insertEducationSchema,
   insertExperienceSchema,
@@ -131,9 +132,26 @@ export const profileRouter = createTRPCRouter({
     }),
 
   addEducation: protectedProcedure
-    .input(insertEducationSchema)
+    .input(
+      insertEducationSchema.merge(
+        z.object({ profileId: z.string().cuid2().optional() })
+      )
+    )
     .mutation(async ({ input, ctx }) => {
-      const { education } = input
+      const { education, profileId } = input
+
+      if (profileId) {
+        const foundEducation = await ctx.db
+          .select()
+          .from(school)
+          .where(eq(school.profileId, profileId))
+
+        const educationToDelete = foundEducation.map((e) => e.id)
+
+        educationToDelete.forEach(
+          async (id) => await db.delete(school).where(eq(school.id, id))
+        )
+      }
 
       const schoolsToInsert = education.map((e) => ({
         ...e,
@@ -161,9 +179,26 @@ export const profileRouter = createTRPCRouter({
     }),
 
   addWork: protectedProcedure
-    .input(insertExperienceSchema)
+    .input(
+      insertExperienceSchema.merge(
+        z.object({ profileId: z.string().cuid2().optional() })
+      )
+    )
     .mutation(async ({ input, ctx }) => {
-      const { experience } = input
+      const { experience, profileId } = input
+
+      if (profileId) {
+        const foundWork = await ctx.db
+          .select()
+          .from(work)
+          .where(eq(work.profileId, profileId))
+
+        const workToDelete = foundWork.map((e) => e.id)
+
+        workToDelete.forEach(
+          async (id) => await db.delete(work).where(eq(work.id, id))
+        )
+      }
 
       const workToInsert = experience.map((e) => ({
         ...e,
