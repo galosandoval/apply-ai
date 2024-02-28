@@ -3,7 +3,7 @@ import { type RouterOutputs, api } from "~/utils/api"
 import { type Message, useChat } from "ai/react"
 import { useUser } from "~/utils/useUser"
 import { type ChangeEvent, useState, type FormEvent } from "react"
-import { ResumeInChat } from "~/components/resume"
+import { type EditableFields, ResumeInChat } from "~/components/resume"
 import { PromptInput } from "~/components/prompt-input"
 
 export default function Dashboard() {
@@ -103,7 +103,6 @@ function PromptForm({ data }: { data: RouterOutputs["profile"]["read"] }) {
         input={input}
         handleInputChange={handleInputChange}
         onSubmit={onSubmit}
-        data={data}
       />
     )
   }
@@ -135,14 +134,12 @@ function Chat({
   messages,
   input,
   handleInputChange,
-  onSubmit,
-  data
+  onSubmit
 }: {
   messages: Message[]
   input: string
   handleInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
-  data: RouterOutputs["profile"]["read"]
 }) {
   // try {
   //   parsed = JSON.parse(resumeMessage?.content ?? "") as FinishedParsed
@@ -159,7 +156,7 @@ function Chat({
     <div className="flex w-full flex-col gap-4 md:max-w-[60%]">
       <div className="flex flex-col gap-4">
         {messages.map((message, index) => (
-          <ChatMessage key={index} message={message} profileId={data.id} />
+          <ChatMessage key={index} message={message} />
         ))}
       </div>
       <form className="flex w-full flex-col gap-2" onSubmit={onSubmit}>
@@ -169,36 +166,26 @@ function Chat({
   )
 }
 
-function ChatMessage({
-  message,
-  profileId
-}: {
-  message: Message
-  profileId: string
-}) {
+function ChatMessage({ message }: { message: Message }) {
   if (message.role === "user") {
     return null
   }
 
   if (message.role === "assistant") {
-    return <AssistantMessage profileId={profileId} content={message.content} />
+    return <AssistantMessage content={message.content} />
   }
 
   return <p className="whitespace-pre-line">{message.content}</p>
 }
 
-function AssistantMessage({
-  content,
-  profileId
+function initialEditingState({
+  education,
+  experience
 }: {
-  content: string
-  profileId: string
+  education: EducationParsed[]
+  experience: ExperienceParsed[]
 }) {
-  const { mutate } = api.resume.create.useMutation()
-
-  const parsedContent = parseContent(content)
-
-  const [isEditing, setIsEditing] = useState({
+  return {
     skills: false,
     interests: false,
     profession: false,
@@ -211,7 +198,7 @@ function AssistantMessage({
     email: false,
     summary: false,
     education:
-      parsedContent?.education.map((_e) => ({
+      education.map((_e) => ({
         schoolName: false,
         degree: false,
         startDate: false,
@@ -221,29 +208,68 @@ function AssistantMessage({
         location: false
       })) ?? [],
     experience:
-      parsedContent?.experience.map((_e) => ({
+      experience.map((_e) => ({
         title: false,
         companyName: false,
         startDate: false,
         endDate: false,
         description: false
       })) ?? []
-  })
+  }
+}
+
+function AssistantMessage({ content }: { content: string }) {
+  // const { mutate } = api.resume.create.useMutation()
+
+  const parsedContent = parseContent(content)
+
+  const [isEditing, setIsEditing] = useState<EditableFields>(
+    initialEditingState({
+      education: parsedContent?.education ?? [],
+      experience: parsedContent?.experience ?? []
+    })
+  )
 
   if (!parsedContent) {
     return <p className="whitespace-pre-line">{content}</p>
   }
 
-  const handleSaveAsResume = () => {
-    mutate({
-      education: parsedContent?.education ?? [],
-      experience: parsedContent?.experience ?? [],
-      skills: parsedContent?.skills ?? [],
-      interests: parsedContent?.interests ?? "",
-      introduction: parsedContent?.summary ?? "",
-      profession: parsedContent?.profession ?? "",
-      profileId
-    })
+  // const handleSaveAsResume = () => {
+  //   mutate({
+  //     education: parsedContent?.education ?? [],
+  //     experience: parsedContent?.experience ?? [],
+  //     skills: parsedContent?.skills ?? [],
+  //     interests: parsedContent?.interests ?? "",
+  //     introduction: parsedContent?.summary ?? "",
+  //     profession: parsedContent?.profession ?? "",
+  //     profileId
+  //   })
+  // }
+
+  const startEditing = (
+    id: keyof typeof isEditing,
+    index?: number,
+    key?:
+      | keyof (typeof isEditing.experience)[number]
+      | keyof (typeof isEditing.education)[number]
+  ) => {
+    const initialState = initialEditingState(parsedContent)
+
+    const toChange = initialState[id]
+
+    if (index !== undefined && key && Array.isArray(toChange)) {
+      // @ts-ignore - key exists
+      toChange[index][key] = !toChange[index][key]
+    } else {
+      // @ts-ignore - key exists
+      initialState[id] = !toChange
+    }
+
+    setIsEditing(initialState)
+  }
+
+  const finishEditing = () => {
+    setIsEditing(initialEditingState(parsedContent))
   }
 
   return (
@@ -258,6 +284,8 @@ function AssistantMessage({
         linkedIn="linkedin.com/in/galo-sandoval"
         portfolio="galosandoval.dev"
         isEditing={isEditing}
+        startEditing={startEditing}
+        finishEditing={finishEditing}
       />
     </div>
   )
