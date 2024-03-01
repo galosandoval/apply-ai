@@ -10,7 +10,7 @@ import {
   insertNameAndContactSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
-import { contact, profile, school, work } from "~/server/db/schema"
+import { contact, profile, school, user, work } from "~/server/db/schema"
 
 export const profileRouter = createTRPCRouter({
   read: protectedProcedure
@@ -34,6 +34,11 @@ export const profileRouter = createTRPCRouter({
         })
       }
 
+      const foundUser = await ctx.db
+        .select({ email: user.email })
+        .from(user)
+        .where(eq(user.id, result.userId!))
+
       const contactInfo = await ctx.db
         .select()
         .from(contact)
@@ -49,7 +54,13 @@ export const profileRouter = createTRPCRouter({
         .from(work)
         .where(eq(work.profileId, result.id))
 
-      return { ...result, education, experience, contact: contactInfo }
+      return {
+        ...result,
+        education,
+        experience,
+        contact: contactInfo[0],
+        email: foundUser[0]?.email
+      }
     }),
 
   upsertNameAndContact: protectedProcedure
@@ -58,7 +69,12 @@ export const profileRouter = createTRPCRouter({
       const { firstName, lastName, linkedIn, location, phone, portfolio, id } =
         input
 
-      console.log("id", id)
+      if (!id) {
+        throw new TRPCError({
+          message: "Profile ID not found",
+          code: "INTERNAL_SERVER_ERROR"
+        })
+      }
 
       const updatedProfile = await ctx.db
         .update(profile)

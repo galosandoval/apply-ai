@@ -5,6 +5,8 @@ import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
 import { Cross1Icon } from "@radix-ui/react-icons"
+import { type UseFormRegister } from "react-hook-form"
+import { type InsertResumeSchema } from "~/server/db/crud-schema"
 
 export const Resume = ({
   data
@@ -153,6 +155,7 @@ export const ResumeInChat = ({
   location,
   parsed,
   isEditing,
+  register,
   startEditing,
   finishEditing
 }: {
@@ -165,6 +168,7 @@ export const ResumeInChat = ({
   location: string
   parsed: FinishedParsed
   isEditing: EditableFields
+  register: UseFormRegister<InsertResumeSchema>
   startEditing: (
     id: keyof typeof isEditing,
     index?: number,
@@ -192,6 +196,7 @@ export const ResumeInChat = ({
             firstName={firstName}
             isEditing={isEditing}
             lastName={lastName}
+            register={register}
             startEditing={startEditing}
             finishEditing={finishEditing}
           />
@@ -294,6 +299,7 @@ function Header({
   firstName,
   lastName,
   parsed,
+  register,
   startEditing,
   finishEditing
 }: {
@@ -301,6 +307,7 @@ function Header({
   firstName: string
   lastName: string
   parsed: FinishedParsed
+  register: UseFormRegister<InsertResumeSchema>
   startEditing: (
     id: keyof typeof isEditing,
     index?: number,
@@ -318,7 +325,7 @@ function Header({
             <Input
               className="w-1/2 text-4xl font-semibold uppercase tracking-[.75rem]"
               autoFocus
-              value={firstName}
+              {...register("firstName")}
             />
 
             <Button onClick={finishEditing} variant="outline" size="icon">
@@ -338,7 +345,7 @@ function Header({
             <Input
               className="w-1/2 text-4xl font-semibold uppercase tracking-[.75rem]"
               autoFocus
-              value={lastName}
+              {...register("lastName")}
             />
 
             <Button onClick={finishEditing} variant="outline" size="icon">
@@ -360,7 +367,7 @@ function Header({
           <Input
             autoFocus
             className="text-md mb-4 w-fit border border-transparent font-semibold uppercase tracking-[.25rem]"
-            value={parsed.profession}
+            {...register("profession")}
           />
 
           <Button onClick={finishEditing} variant="outline" size="icon">
