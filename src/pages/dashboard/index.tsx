@@ -5,6 +5,9 @@ import { useUser } from "~/utils/useUser"
 import { type ChangeEvent, useState, type FormEvent } from "react"
 import { type EditableFields, ResumeInChat } from "~/components/resume"
 import { PromptInput } from "~/components/prompt-input"
+import { useFieldArray, useForm } from "react-hook-form"
+import { InsertResumeSchema, insertResumeSchema } from "~/server/db/crud-schema"
+import { zodResolver } from "@hookform/resolvers/zod"
 
 export default function Dashboard() {
   // interface PdfRequestBody {
@@ -77,7 +80,7 @@ function PromptForm({ data }: { data: RouterOutputs["profile"]["read"] }) {
       api: "/api/resume/chat",
       body: data
         ? {
-            skill: data?.skills?.join(", "),
+            s: data?.skills?.join(", "),
             experience: JSON.stringify(data.experience),
             education: JSON.stringify(data.education),
             interests: data.interests,
@@ -101,6 +104,7 @@ function PromptForm({ data }: { data: RouterOutputs["profile"]["read"] }) {
       <Chat
         messages={messages}
         input={input}
+        profile={data}
         handleInputChange={handleInputChange}
         onSubmit={onSubmit}
       />
@@ -117,62 +121,49 @@ function PromptForm({ data }: { data: RouterOutputs["profile"]["read"] }) {
   )
 }
 
-function parseContent(content: string) {
-  let parsed: null | FinishedParsed = null
-
-  try {
-    parsed = JSON.parse(content) as FinishedParsed
-  } catch (error) {
-    parsed = null
-    console.warn(error)
-  }
-
-  return parsed
-}
-
 function Chat({
   messages,
   input,
+  profile,
   handleInputChange,
   onSubmit
 }: {
   messages: Message[]
   input: string
+  profile: RouterOutputs["profile"]["read"]
   handleInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
 }) {
-  // try {
-  //   parsed = JSON.parse(resumeMessage?.content ?? "") as FinishedParsed
-  // } catch (error) {
-  //   parsed = null
-  //   console.warn(error)
-  // }
-
-  // if (!parsed) {
-  //   return <p className="whitespace-pre-line">{content}</p>
-  // }
-
   return (
-    <div className="flex w-full flex-col gap-4 md:max-w-[60%]">
+    <div className="flex w-full flex-col gap-4">
       <div className="flex flex-col gap-4">
         {messages.map((message, index) => (
-          <ChatMessage key={index} message={message} />
+          <ChatMessage profile={profile} key={index} message={message} />
         ))}
       </div>
-      <form className="flex w-full flex-col gap-2" onSubmit={onSubmit}>
+      <form
+        className="mx-auto flex w-full max-w-md flex-col gap-2"
+        onSubmit={onSubmit}
+      >
         <PromptInput handleInputChange={handleInputChange} input={input} />
       </form>
     </div>
   )
 }
 
-function ChatMessage({ message }: { message: Message }) {
+function ChatMessage({
+  message,
+  profile
+}: {
+  message: Message
+  profile: RouterOutputs["profile"]["read"]
+}) {
   if (message.role === "user") {
     return null
   }
 
   if (message.role === "assistant") {
-    return <AssistantMessage content={message.content} />
+    return <AssistantMessage content={message.content} profile={profile} />
   }
 
   return <p className="whitespace-pre-line">{message.content}</p>
@@ -218,7 +209,13 @@ function initialEditingState({
   }
 }
 
-function AssistantMessage({ content }: { content: string }) {
+function AssistantMessage({
+  content,
+  profile
+}: {
+  content: string
+  profile: RouterOutputs["profile"]["read"]
+}) {
   // const { mutate } = api.resume.create.useMutation()
 
   const parsedContent = parseContent(content)
@@ -229,6 +226,45 @@ function AssistantMessage({ content }: { content: string }) {
       experience: parsedContent?.experience ?? []
     })
   )
+
+  const { control, register } = useForm<InsertResumeSchema>({
+    resolver: zodResolver(insertResumeSchema),
+    values: {
+      education:
+        parsedContent?.education.map((e) => ({ ...e, name: e.schoolName })) ??
+        [],
+      experience: parsedContent?.experience ?? [],
+      skills: parsedContent?.skills?.join(", ") ?? "",
+      interests: parsedContent?.interests ?? "",
+      introduction: parsedContent?.summary ?? "",
+      profession: parsedContent?.profession ?? "",
+      firstName: profile.firstName ?? "",
+      lastName: profile.lastName ?? "",
+      email: profile.email ?? "",
+      phone: profile.contact?.phone ?? "",
+      location: profile.contact?.location ?? "",
+      portfolio: profile.contact?.portfolio ?? "",
+      linkedIn: profile.contact?.linkedIn ?? ""
+    }
+  })
+
+  const {
+    fields: educationFields,
+    append: appendEducation,
+    remove: removeEducation
+  } = useFieldArray({
+    name: "education",
+    control
+  })
+
+  const {
+    fields: experienceFields,
+    append: appendExperience,
+    remove: removeExperience
+  } = useFieldArray({
+    name: "experience",
+    control
+  })
 
   if (!parsedContent) {
     return <p className="whitespace-pre-line">{content}</p>
@@ -273,7 +309,7 @@ function AssistantMessage({ content }: { content: string }) {
   }
 
   return (
-    <div className="flex max-h-[80svh] flex-col gap-4 overflow-y-auto">
+    <div className="flex max-h-[80svh] flex-col items-center gap-4 overflow-y-auto">
       <ResumeInChat
         email="galo.sandoval.dev@gmail.com"
         firstName="Galo"
@@ -286,9 +322,23 @@ function AssistantMessage({ content }: { content: string }) {
         isEditing={isEditing}
         startEditing={startEditing}
         finishEditing={finishEditing}
+        register={register}
       />
     </div>
   )
+}
+
+function parseContent(content: string) {
+  let parsed: null | FinishedParsed = null
+
+  try {
+    parsed = JSON.parse(content) as FinishedParsed
+  } catch (error) {
+    parsed = null
+    console.warn(error)
+  }
+
+  return parsed
 }
 
 type EducationParsed = {
