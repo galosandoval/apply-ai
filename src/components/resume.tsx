@@ -1,11 +1,11 @@
-import { Fragment } from "react"
+import { FormEvent, Fragment } from "react"
 import { type FinishedParsed } from "~/pages/dashboard"
 import { type RouterOutputs } from "~/utils/api"
 import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
 import { Cross1Icon } from "@radix-ui/react-icons"
-import { type UseFormRegister } from "react-hook-form"
+import { type UseFormWatch, type UseFormRegister } from "react-hook-form"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
 
 export const Resume = ({
@@ -146,50 +146,47 @@ export const Resume = ({
 }
 
 export const ResumeInChat = ({
-  firstName,
-  lastName,
-  email,
-  phone,
-  linkedIn,
-  portfolio,
-  location,
   parsed,
   isEditing,
+  handleSubmit,
+  watch,
   register,
   startEditing,
   finishEditing
 }: {
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  linkedIn?: string
-  portfolio?: string
-  location: string
   parsed: FinishedParsed
   isEditing: EditableFields
+  handleSubmit: (e: FormEvent<HTMLFormElement>) => void
+  watch: UseFormWatch<InsertResumeSchema>
   register: UseFormRegister<InsertResumeSchema>
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  startEditing: StartEditing
   finishEditing: () => void
 }) => {
   const handleFinishEditingOnEscape = (
     e: React.KeyboardEvent<HTMLDivElement>
   ) => {
-    if (e.key === "Escape") finishEditing()
+    if (e.key === "Escape" || e.key === "Enter") finishEditing()
   }
 
+  const email = watch("email")
+  const firstName = watch("firstName")
+  const lastName = watch("lastName")
+  const phone = watch("phone")
+  const linkedIn = watch("linkedIn")
+  const portfolio = watch("portfolio")
+  const location = watch("location")
+  const skills = watch("skills")
+  const introduction = watch("introduction")
+  const experience = watch("experience")
+  const education = watch("education")
+  const interests = watch("interests")
+
   return (
-    <div
-      className="h-[29.7cm] w-[21cm] px-20 py-16"
-      onKeyDown={handleFinishEditingOnEscape}
-    >
-      <div className="flex h-full overflow-hidden">
+    <form onSubmit={handleSubmit} className="h-[29.7cm] w-[21cm] px-20 py-16">
+      <div
+        onKeyDown={handleFinishEditingOnEscape}
+        className="flex h-full overflow-hidden"
+      >
         <div className="my-auto max-h-full border-b border-[#737373]">
           <Header
             parsed={parsed}
@@ -202,11 +199,10 @@ export const ResumeInChat = ({
           />
 
           <div className="w-full border-b border-[#737373]" />
-          <section className="flex h-full">
-            <div
-              id="resume__left"
-              className="flex w-[38.2%] flex-col bg-[#f8f8f8] text-[.65rem]"
-            >
+
+          <div className="flex h-full">
+            {/* left */}
+            <div className="flex w-[38.2%] flex-col bg-[#f8f8f8] text-[.65rem]">
               <Contact
                 isEditing={isEditing}
                 phone={phone}
@@ -214,53 +210,60 @@ export const ResumeInChat = ({
                 linkedIn={linkedIn}
                 portfolio={portfolio}
                 location={location}
+                register={register}
                 startEditing={startEditing}
                 finishEditing={finishEditing}
               />
 
               <Skills
                 isEditing={isEditing}
-                parsed={parsed}
+                skills={skills}
+                register={register}
                 startEditing={startEditing}
                 finishEditing={finishEditing}
               />
 
               <Education
                 isEditing={isEditing}
-                parsed={parsed}
+                register={register}
+                education={education}
                 startEditing={startEditing}
                 finishEditing={finishEditing}
               />
 
               <Interests
                 isEditing={isEditing}
-                parsed={parsed}
+                register={register}
+                interests={interests}
                 startEditing={startEditing}
                 finishEditing={finishEditing}
               />
             </div>
-            <div
-              id="resume__right"
-              className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight"
-            >
+
+            {/* right */}
+
+            <div className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight">
               <Profile
                 isEditing={isEditing}
-                parsed={parsed}
+                introduction={introduction}
+                register={register}
                 startEditing={startEditing}
                 finishEditing={finishEditing}
               />
 
               <Experience
-                parsed={parsed}
                 isEditing={isEditing}
+                experience={experience}
+                register={register}
                 startEditing={startEditing}
                 finishEditing={finishEditing}
               />
             </div>
-          </section>
+          </div>
         </div>
       </div>
-    </div>
+      <Button type="submit">Submit</Button>
+    </form>
   )
 }
 
@@ -308,13 +311,7 @@ function Header({
   lastName: string
   parsed: FinishedParsed
   register: UseFormRegister<InsertResumeSchema>
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  startEditing: StartEditing
   finishEditing: () => void
 }) {
   return (
@@ -394,6 +391,7 @@ function Contact({
   linkedIn,
   portfolio,
   location,
+  register,
   finishEditing,
   startEditing
 }: {
@@ -403,13 +401,8 @@ function Contact({
   linkedIn?: string
   portfolio?: string
   location: string
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  register: UseFormRegister<InsertResumeSchema>
+  startEditing: StartEditing
   finishEditing: () => void
 }) {
   return (
@@ -422,7 +415,7 @@ function Contact({
       </h2>
       {isEditing.phone ? (
         <div className="">
-          <Input autoFocus className="text-xs" value={phone} />
+          <Input autoFocus className="text-xs" {...register("phone")} />
 
           <Button
             onClick={finishEditing}
@@ -447,7 +440,7 @@ function Contact({
           <Input
             autoFocus
             className="rounded border border-transparent text-xs"
-            value={email}
+            {...register("email")}
           />
 
           <Button
@@ -470,7 +463,7 @@ function Contact({
 
       {isEditing.linkedIn ? (
         <div className="flex gap-1">
-          <Input autoFocus className="text-xs" value={linkedIn} id="linkedIn" />
+          <Input autoFocus className="text-xs" {...register("linkedIn")} />
 
           <Button
             onClick={finishEditing}
@@ -492,7 +485,7 @@ function Contact({
 
       {isEditing.portfolio ? (
         <div className="flex gap-1">
-          <Input autoFocus className="text-xs" value={portfolio} />
+          <Input autoFocus className="text-xs" {...register("portfolio")} />
 
           <Button
             onClick={finishEditing}
@@ -514,7 +507,7 @@ function Contact({
 
       {isEditing.location ? (
         <div className="flex gap-1">
-          <Input autoFocus className="text-xs" value={location} id="location" />
+          <Input autoFocus className="text-xs" {...register("location")} />
 
           <Button
             onClick={finishEditing}
@@ -539,19 +532,15 @@ function Contact({
 
 function Skills({
   isEditing,
-  parsed,
+  skills,
+  register,
   finishEditing,
   startEditing
 }: {
   isEditing: EditableFields
-  parsed: FinishedParsed
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  skills?: string | null
+  register: UseFormRegister<InsertResumeSchema>
+  startEditing: StartEditing
   finishEditing: () => void
 }) {
   return (
@@ -564,11 +553,7 @@ function Skills({
       </h2>
       {isEditing.skills ? (
         <div className="flex gap-1">
-          <Textarea
-            className="text-xs"
-            value={parsed.skills.join(", ")}
-            autoFocus
-          />
+          <Textarea className="text-xs" autoFocus {...register("skills")} />
 
           <Button
             onClick={finishEditing}
@@ -579,35 +564,31 @@ function Skills({
             <Cross1Icon />
           </Button>
         </div>
-      ) : (
+      ) : skills ? (
         <ul
           onClick={() => startEditing("skills")}
           className="grid cursor-pointer list-disc rounded border border-transparent pb-2 pl-2 hover:border-blue-800 hover:bg-sky-200"
         >
-          {parsed.skills.map((skill) => (
+          {skills.split(", ").map((skill) => (
             <li key={skill}>{skill}</li>
           ))}
         </ul>
-      )}
+      ) : null}
     </div>
   )
 }
 
 function Education({
   isEditing,
-  parsed,
+  education,
+  register,
   finishEditing,
   startEditing
 }: {
   isEditing: EditableFields
-  parsed: FinishedParsed
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  education: InsertResumeSchema["education"]
+  register: UseFormRegister<InsertResumeSchema>
+  startEditing: StartEditing
   finishEditing: () => void
 }) {
   return (
@@ -619,14 +600,14 @@ function Education({
         Education
       </h2>
       <div className="flex flex-col gap-2">
-        {parsed.education.map((school, index) => (
-          <Fragment key={school.schoolName}>
+        {education.map((school, index) => (
+          <Fragment key={school.name}>
             {isEditing.education[index]?.schoolName ? (
               <div className="flex gap-1">
                 <Input
                   autoFocus
                   className="w-fit text-[1rem] font-semibold"
-                  value={school.schoolName}
+                  {...register(`education.${index}.name`)}
                 />
 
                 <Button
@@ -643,17 +624,13 @@ function Education({
                 onClick={() => startEditing("education", index, "schoolName")}
                 className="cursor-pointer rounded border border-transparent text-[1rem] font-semibold hover:border-blue-800 hover:bg-sky-200"
               >
-                {school.schoolName}
+                {school.name}
               </h3>
             )}
 
             {isEditing.education[index]?.degree ? (
               <div className="flex gap-1">
-                <Input
-                  autoFocus
-                  className="text-xs font-bold"
-                  value={school.degree}
-                />
+                <Input autoFocus {...register(`education.${index}.degree`)} />
 
                 <Button onClick={finishEditing} variant="outline" size="icon">
                   <Cross1Icon />
@@ -674,7 +651,7 @@ function Education({
                   <Input
                     autoFocus
                     className="w-1/2 text-xs"
-                    value={school.startDate}
+                    {...register(`education.${index}.startDate`)}
                   />
 
                   <Button onClick={finishEditing} variant="outline" size="icon">
@@ -695,7 +672,7 @@ function Education({
                   <Input
                     autoFocus
                     className="w-1/2 text-xs"
-                    value={school.endDate}
+                    {...register(`education.${index}.endDate`)}
                   />
 
                   <Button onClick={finishEditing} variant="outline" size="icon">
@@ -720,19 +697,15 @@ function Education({
 
 function Interests({
   isEditing,
-  parsed,
+  interests,
+  register,
   finishEditing,
   startEditing
 }: {
   isEditing: EditableFields
-  parsed: FinishedParsed
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  interests: string | null | undefined
+  register: UseFormRegister<InsertResumeSchema>
+  startEditing: StartEditing
   finishEditing: () => void
 }) {
   return (
@@ -742,7 +715,7 @@ function Interests({
       </h2>
       {isEditing.interests ? (
         <div className="flex gap-1">
-          <Textarea className="text-xs" value={parsed.interests} autoFocus />
+          <Textarea className="text-xs" autoFocus {...register("interests")} />
 
           <Button onClick={finishEditing} variant="outline" size="icon">
             <Cross1Icon />
@@ -753,7 +726,7 @@ function Interests({
           onClick={() => startEditing("interests")}
           className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
         >
-          {parsed.interests}
+          {interests}
         </p>
       )}
     </div>
@@ -762,19 +735,15 @@ function Interests({
 
 function Profile({
   isEditing,
-  parsed,
+  introduction,
+  register,
   finishEditing,
   startEditing
 }: {
   isEditing: EditableFields
-  parsed: FinishedParsed
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  introduction: string | null | undefined
+  register: UseFormRegister<InsertResumeSchema>
+  startEditing: StartEditing
   finishEditing: () => void
 }) {
   return (
@@ -784,7 +753,11 @@ function Profile({
       </h2>
       {isEditing.summary ? (
         <div className="flex gap-1">
-          <Textarea autoFocus className="text-xs" value={parsed.summary} />
+          <Textarea
+            autoFocus
+            className="text-xs"
+            {...register("introduction")}
+          />
 
           <Button onClick={finishEditing} variant="outline" size="icon">
             <Cross1Icon />
@@ -795,29 +768,33 @@ function Profile({
           onClick={() => startEditing("summary")}
           className="cursor-pointer rounded border border-transparent pb-4 hover:border-blue-800 hover:bg-sky-200"
         >
-          {parsed.summary}
+          {introduction}
         </p>
       )}
     </div>
   )
 }
 
+type StartEditing = (
+  id: keyof EditableFields,
+  index?: number,
+  key?:
+    | keyof EditableFields["experience"][number]
+    | keyof EditableFields["education"][number]
+) => void
+
 function Experience({
-  parsed,
   isEditing,
+  experience,
   finishEditing,
-  startEditing
+  startEditing,
+  register
 }: {
-  parsed: FinishedParsed
   isEditing: EditableFields
-  startEditing: (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => void
+  experience: InsertResumeSchema["experience"]
+  startEditing: StartEditing
   finishEditing: () => void
+  register: UseFormRegister<InsertResumeSchema>
 }) {
   return (
     <div id="work">
@@ -826,135 +803,148 @@ function Experience({
       </h2>
 
       <div className="flex max-h-full flex-col justify-between">
-        {parsed.experience.map((job, index) => (
-          <div className="pb-3" key={job.companyName + index}>
-            {isEditing.experience[index]?.title ? (
-              <div className="flex gap-1">
-                <Input
-                  autoFocus
-                  className="w-fit text-[1rem] font-semibold"
-                  value={job.title}
-                />
-
-                <Button onClick={finishEditing} variant="outline" size="icon">
-                  <Cross1Icon />
-                </Button>
-              </div>
-            ) : (
-              <h3
-                onClick={() => startEditing("experience", index, "title")}
-                id={`title.${index}`}
-                className="cursor-pointer rounded border border-transparent pb-2 text-[1rem] font-semibold hover:border-blue-800 hover:bg-sky-200"
-              >
-                {job.title}
-              </h3>
-            )}
-
-            <div className="flex justify-between pb-2">
-              {isEditing.experience[index]?.companyName ? (
-                <div className="flex gap-1">
-                  <Input
-                    autoFocus
-                    className="w-fit text-xs"
-                    value={job.companyName}
-                    id="companyName"
-                  />
-
-                  <Button onClick={finishEditing} variant="outline" size="icon">
-                    <Cross1Icon />
-                  </Button>
-                </div>
-              ) : (
-                <p
-                  className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-                  onClick={() =>
-                    startEditing("experience", index, "companyName")
-                  }
-                >
-                  {job.companyName}
-                </p>
-              )}
-              <div className="flex w-max gap-1">
-                {isEditing.experience[index]?.startDate ? (
-                  <div className="flex gap-1">
-                    <Input
-                      autoFocus
-                      className="w-fit text-xs"
-                      value={job.startDate}
-                      id="startDate"
-                    />
-                    <Button
-                      onClick={finishEditing}
-                      variant="outline"
-                      size="icon"
-                    >
-                      <Cross1Icon />
-                    </Button>
-                  </div>
-                ) : (
-                  <span
-                    className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-                    onClick={() =>
-                      startEditing("experience", index, "startDate")
-                    }
-                  >
-                    {job.startDate}
-                  </span>
-                )}
-                <span> - </span>
-                {isEditing.experience[index]?.endDate ? (
-                  <div className="flex gap-1">
-                    <Input
-                      autoFocus
-                      className="w-fit text-xs"
-                      value={job.endDate}
-                      id="endDate"
-                    />
-
-                    <Button
-                      onClick={finishEditing}
-                      variant="outline"
-                      size="icon"
-                    >
-                      <Cross1Icon />
-                    </Button>
-                  </div>
-                ) : (
-                  <span
-                    className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-                    onClick={() => startEditing("experience", index, "endDate")}
-                  >
-                    {job.endDate}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {isEditing.experience[index]?.description ? (
-              <div className="flex gap-1">
-                <Textarea
-                  className="text-xs"
-                  value={job.description}
-                  autoFocus
-                />
-
-                <Button onClick={finishEditing} variant="outline" size="icon">
-                  <Cross1Icon />
-                </Button>
-              </div>
-            ) : (
-              <ul
-                onClick={() => startEditing("experience", index, "description")}
-                className="ml-2 cursor-pointer list-disc rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-              >
-                {job.description.split(". ").map((ka) => (
-                  <li key={ka}>{ka}</li>
-                ))}
-              </ul>
-            )}
-          </div>
+        {experience.map((job, index) => (
+          <Job
+            key={`${job.companyName}_${index}`}
+            index={index}
+            isEditing={isEditing}
+            data={job}
+            finishEditing={finishEditing}
+            startEditing={startEditing}
+            register={register}
+          />
         ))}
       </div>
+    </div>
+  )
+}
+
+function Job({
+  isEditing,
+  index,
+  data,
+  startEditing,
+  finishEditing,
+  register
+}: {
+  isEditing: EditableFields
+  index: number
+  data: InsertResumeSchema["experience"][number]
+  finishEditing: () => void
+  startEditing: StartEditing
+  register: UseFormRegister<InsertResumeSchema>
+}) {
+  return (
+    <div className="pb-3">
+      {isEditing.experience[index]?.title ? (
+        <div className="flex gap-1">
+          <Input
+            autoFocus
+            className="w-fit text-[1rem] font-semibold"
+            {...register(`experience.${index}.title`)}
+          />
+
+          <Button onClick={finishEditing} variant="outline" size="icon">
+            <Cross1Icon />
+          </Button>
+        </div>
+      ) : (
+        <h3
+          onClick={() => startEditing("experience", index, "title")}
+          className="cursor-pointer rounded border border-transparent pb-2 text-[1rem] font-semibold hover:border-blue-800 hover:bg-sky-200"
+        >
+          {data.title}
+        </h3>
+      )}
+
+      <div className="flex justify-between pb-2">
+        {isEditing.experience[index]?.companyName ? (
+          <div className="flex gap-1">
+            <Input
+              autoFocus
+              className="w-fit text-xs"
+              {...register(`experience.${index}.companyName`)}
+            />
+
+            <Button onClick={finishEditing} variant="outline" size="icon">
+              <Cross1Icon />
+            </Button>
+          </div>
+        ) : (
+          <p
+            className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
+            onClick={() => startEditing("experience", index, "companyName")}
+          >
+            {data.companyName}
+          </p>
+        )}
+
+        <div className="flex w-max gap-1">
+          {isEditing.experience[index]?.startDate ? (
+            <div className="flex gap-1">
+              <Input
+                autoFocus
+                className="w-fit text-xs"
+                {...register(`experience.${index}.startDate`)}
+              />
+              <Button onClick={finishEditing} variant="outline" size="icon">
+                <Cross1Icon />
+              </Button>
+            </div>
+          ) : (
+            <span
+              className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
+              onClick={() => startEditing("experience", index, "startDate")}
+            >
+              {data.startDate}
+            </span>
+          )}
+          <span> - </span>
+          {isEditing.experience[index]?.endDate ? (
+            <div className="flex gap-1">
+              <Input
+                autoFocus
+                className="w-fit text-xs"
+                {...register(`experience.${index}.endDate`)}
+              />
+
+              <Button onClick={finishEditing} variant="outline" size="icon">
+                <Cross1Icon />
+              </Button>
+            </div>
+          ) : (
+            <span
+              className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
+              onClick={() => startEditing("experience", index, "endDate")}
+            >
+              {data.endDate}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {isEditing.experience[index]?.description ? (
+        <div className="flex gap-1">
+          <Textarea
+            className="text-xs"
+            autoFocus
+            {...register(`experience.${index}.description`)}
+          />
+
+          <Button onClick={finishEditing} variant="outline" size="icon">
+            <Cross1Icon />
+          </Button>
+        </div>
+      ) : (
+        <ul
+          onClick={() => startEditing("experience", index, "description")}
+          className="ml-2 cursor-pointer list-disc rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
+        >
+          {data.description.split(". ").map((ka) => (
+            <li key={ka}>{ka}</li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

@@ -29,13 +29,14 @@ export function PromptInput({
       </label>
 
       <Textarea
-        className="max-h-[60svh] min-h-[42px] resize-none pr-10"
+        className="max-h-[60svh] min-h-[40px] resize-none pr-10"
         ref={textareaRef}
         value={input}
         onChange={handleInputChange}
         id="prompt"
         placeholder="Paste job description here"
         onKeyDown={onEnter}
+        style={{ height: "0px" }}
       />
 
       <div className="absolute right-[3px] top-[3px] flex gap-1">
