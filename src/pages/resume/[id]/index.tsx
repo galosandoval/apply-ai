@@ -32,8 +32,8 @@ export default function ResumeView() {
       </div>
     )
 
-  if (status === "success") {
-    const contact = profile?.contact[0]
+  if (status === "success" && profile?.contact) {
+    const contact = profile?.contact
 
     return (
       <>

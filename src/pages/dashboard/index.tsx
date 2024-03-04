@@ -5,8 +5,11 @@ import { useUser } from "~/utils/useUser"
 import { type ChangeEvent, useState, type FormEvent } from "react"
 import { type EditableFields, ResumeInChat } from "~/components/resume"
 import { PromptInput } from "~/components/prompt-input"
-import { useFieldArray, useForm } from "react-hook-form"
-import { InsertResumeSchema, insertResumeSchema } from "~/server/db/crud-schema"
+import { useForm } from "react-hook-form"
+import {
+  type InsertResumeSchema,
+  insertResumeSchema
+} from "~/server/db/crud-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
 
 export default function Dashboard() {
@@ -227,7 +230,7 @@ function AssistantMessage({
     })
   )
 
-  const { control, register } = useForm<InsertResumeSchema>({
+  const { register, watch, handleSubmit } = useForm<InsertResumeSchema>({
     resolver: zodResolver(insertResumeSchema),
     values: {
       education:
@@ -246,24 +249,6 @@ function AssistantMessage({
       portfolio: profile.contact?.portfolio ?? "",
       linkedIn: profile.contact?.linkedIn ?? ""
     }
-  })
-
-  const {
-    fields: educationFields,
-    append: appendEducation,
-    remove: removeEducation
-  } = useFieldArray({
-    name: "education",
-    control
-  })
-
-  const {
-    fields: experienceFields,
-    append: appendExperience,
-    remove: removeExperience
-  } = useFieldArray({
-    name: "experience",
-    control
   })
 
   if (!parsedContent) {
@@ -308,17 +293,16 @@ function AssistantMessage({
     setIsEditing(initialEditingState(parsedContent))
   }
 
+  const onSubmit = async (data: InsertResumeSchema) => {
+    console.log(data)
+  }
+
   return (
     <div className="flex max-h-[80svh] flex-col items-center gap-4 overflow-y-auto">
       <ResumeInChat
-        email="galo.sandoval.dev@gmail.com"
-        firstName="Galo"
-        lastName="Sandoval"
-        location="Remote"
+        handleSubmit={handleSubmit(onSubmit)}
+        watch={watch}
         parsed={parsedContent}
-        phone="714-944-3655"
-        linkedIn="linkedin.com/in/galo-sandoval"
-        portfolio="galosandoval.dev"
         isEditing={isEditing}
         startEditing={startEditing}
         finishEditing={finishEditing}
