@@ -1,4 +1,4 @@
-import { FormEvent, Fragment } from "react"
+import { type FormEvent, Fragment } from "react"
 import { type FinishedParsed } from "~/pages/dashboard"
 import { type RouterOutputs } from "~/utils/api"
 import { Input } from "./ui/input"
@@ -121,7 +121,7 @@ export const Resume = ({
                         {job.title}
                       </h3>
                       <div className="flex justify-between pb-2">
-                        <p>{job.companyName}</p>
+                        <p>{job.name}</p>
                         <p className="capitalize">
                           {job.startDate} - {job.endDate}
                         </p>
@@ -148,7 +148,7 @@ export const Resume = ({
 export const ResumeInChat = ({
   parsed,
   isEditing,
-  handleSubmit,
+  fullName,
   watch,
   register,
   startEditing,
@@ -156,7 +156,7 @@ export const ResumeInChat = ({
 }: {
   parsed: FinishedParsed
   isEditing: EditableFields
-  handleSubmit: (e: FormEvent<HTMLFormElement>) => void
+  fullName: string
   watch: UseFormWatch<InsertResumeSchema>
   register: UseFormRegister<InsertResumeSchema>
   startEditing: StartEditing
@@ -169,8 +169,6 @@ export const ResumeInChat = ({
   }
 
   const email = watch("email")
-  const firstName = watch("firstName")
-  const lastName = watch("lastName")
   const phone = watch("phone")
   const linkedIn = watch("linkedIn")
   const portfolio = watch("portfolio")
@@ -182,17 +180,16 @@ export const ResumeInChat = ({
   const interests = watch("interests")
 
   return (
-    <form onSubmit={handleSubmit} className="h-[29.7cm] w-[21cm] px-20 py-16">
-      <div
-        onKeyDown={handleFinishEditingOnEscape}
-        className="flex h-full overflow-hidden"
-      >
+    <div
+      onKeyDown={handleFinishEditingOnEscape}
+      className="h-[29.7cm] w-[21cm] px-20 py-16"
+    >
+      <div className="flex h-full overflow-hidden">
         <div className="my-auto max-h-full border-b border-[#737373]">
           <Header
             parsed={parsed}
-            firstName={firstName}
+            fullName={fullName}
             isEditing={isEditing}
-            lastName={lastName}
             register={register}
             startEditing={startEditing}
             finishEditing={finishEditing}
@@ -262,8 +259,7 @@ export const ResumeInChat = ({
           </div>
         </div>
       </div>
-      <Button type="submit">Submit</Button>
-    </form>
+    </div>
   )
 }
 
@@ -275,12 +271,10 @@ export type EditableFields = {
   portfolio: boolean
   location: boolean
   phone: boolean
-  firstName: boolean
-  lastName: boolean
   email: boolean
   summary: boolean
   education: {
-    schoolName: boolean
+    name: boolean
     degree: boolean
     startDate: boolean
     endDate: boolean
@@ -290,7 +284,7 @@ export type EditableFields = {
   }[]
   experience: {
     title: boolean
-    companyName: boolean
+    name: boolean
     startDate: boolean
     endDate: boolean
     description: boolean
@@ -299,16 +293,14 @@ export type EditableFields = {
 
 function Header({
   isEditing,
-  firstName,
-  lastName,
+  fullName,
   parsed,
   register,
   startEditing,
   finishEditing
 }: {
   isEditing: EditableFields
-  firstName: string
-  lastName: string
+  fullName: string
   parsed: FinishedParsed
   register: UseFormRegister<InsertResumeSchema>
   startEditing: StartEditing
@@ -317,46 +309,9 @@ function Header({
   return (
     <div className="flex max-h-[100px] flex-col items-center gap-4 pb-2">
       <div className="flex gap-5 justify-self-center">
-        {isEditing.firstName ? (
-          <div className="flex justify-end gap-1">
-            <Input
-              className="w-1/2 text-4xl font-semibold uppercase tracking-[.75rem]"
-              autoFocus
-              {...register("firstName")}
-            />
-
-            <Button onClick={finishEditing} variant="outline" size="icon">
-              <Cross1Icon />
-            </Button>
-          </div>
-        ) : (
-          <h1
-            onClick={() => startEditing("firstName")}
-            className="cursor-pointer rounded border border-transparent text-4xl font-semibold uppercase tracking-[.75rem] hover:border-blue-800 hover:bg-sky-200"
-          >
-            {firstName}
-          </h1>
-        )}
-        {isEditing.lastName ? (
-          <div className="flex justify-start gap-1">
-            <Input
-              className="w-1/2 text-4xl font-semibold uppercase tracking-[.75rem]"
-              autoFocus
-              {...register("lastName")}
-            />
-
-            <Button onClick={finishEditing} variant="outline" size="icon">
-              <Cross1Icon />
-            </Button>
-          </div>
-        ) : (
-          <h1
-            onClick={() => startEditing("lastName")}
-            className="cursor-pointer rounded border border-transparent text-4xl font-semibold uppercase tracking-[.75rem] hover:border-blue-800 hover:bg-sky-200"
-          >
-            {lastName}
-          </h1>
-        )}
+        <h1 className="rounded border border-transparent text-4xl font-semibold uppercase tracking-[.75rem]">
+          {fullName}
+        </h1>
       </div>
 
       {isEditing.profession ? (
@@ -602,7 +557,7 @@ function Education({
       <div className="flex flex-col gap-2">
         {education.map((school, index) => (
           <Fragment key={school.name}>
-            {isEditing.education[index]?.schoolName ? (
+            {isEditing.education[index]?.name ? (
               <div className="flex gap-1">
                 <Input
                   autoFocus
@@ -621,7 +576,7 @@ function Education({
               </div>
             ) : (
               <h3
-                onClick={() => startEditing("education", index, "schoolName")}
+                onClick={() => startEditing("education", index, "name")}
                 className="cursor-pointer rounded border border-transparent text-[1rem] font-semibold hover:border-blue-800 hover:bg-sky-200"
               >
                 {school.name}
@@ -805,7 +760,7 @@ function Experience({
       <div className="flex max-h-full flex-col justify-between">
         {experience.map((job, index) => (
           <Job
-            key={`${job.companyName}_${index}`}
+            key={`${job.name}_${index}`}
             index={index}
             isEditing={isEditing}
             data={job}
@@ -858,12 +813,12 @@ function Job({
       )}
 
       <div className="flex justify-between pb-2">
-        {isEditing.experience[index]?.companyName ? (
+        {isEditing.experience[index]?.name ? (
           <div className="flex gap-1">
             <Input
               autoFocus
               className="w-fit text-xs"
-              {...register(`experience.${index}.companyName`)}
+              {...register(`experience.${index}.name`)}
             />
 
             <Button onClick={finishEditing} variant="outline" size="icon">
@@ -871,12 +826,12 @@ function Job({
             </Button>
           </div>
         ) : (
-          <p
+          <span
             className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-            onClick={() => startEditing("experience", index, "companyName")}
+            onClick={() => startEditing("experience", index, "name")}
           >
-            {data.companyName}
-          </p>
+            {data.name}
+          </span>
         )}
 
         <div className="flex w-max gap-1">

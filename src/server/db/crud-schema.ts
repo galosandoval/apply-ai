@@ -75,14 +75,14 @@ export const insertExperienceSchema = z.object({
   experience: createInsertSchema(work, {
     id: (schema) => schema.id.optional(),
     profileId: (schema) => schema.profileId.optional(),
-    companyName: (schema) =>
-      schema.companyName
+    name: (schema) =>
+      schema.name
         .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters"),
     description: (schema) =>
       schema.description
         .min(6, "Must be more than 6 characters")
-        .max(500, "Must be less than 500 characters")
+        .max(1000, "Must be less than 1000 characters")
         .refine(
           (arg) => arg.split(".").length > 3,
           "Must be at least 3 sentences"
@@ -133,7 +133,14 @@ export const insertResumeSchema = createInsertSchema(resume, {
 
   profileId: (schema) => schema.profileId.cuid2().optional()
 })
-  .merge(insertNameAndContactSchema)
+  .merge(
+    z.object({
+      phone: z.string(),
+      linkedIn: z.string(),
+      portfolio: z.string(),
+      location: z.string().min(3, "Must be at least 3 characters")
+    })
+  )
   .merge(insertEducationSchema)
   .merge(insertExperienceSchema)
   .merge(z.object({ email: z.string().email() }))

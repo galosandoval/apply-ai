@@ -6,7 +6,7 @@ import { useUser } from "~/utils/useUser"
 
 export default function ResumeView() {
   const router = useRouter()
-  const { id: resumeId, name } = router.query
+  const { id: resumeId } = router.query
 
   const { data, status } = api.resume.readById.useQuery(
     { resumeId: resumeId as string },
@@ -14,6 +14,8 @@ export default function ResumeView() {
   )
 
   const { id: userId, email } = useUser()
+
+  console.log("userId", userId)
 
   const { data: profile } = api.profile.read.useQuery(
     { userId },
@@ -32,7 +34,7 @@ export default function ResumeView() {
       </div>
     )
 
-  if (status === "success" && profile?.contact) {
+  if (status === "success") {
     const contact = profile?.contact
 
     return (
@@ -46,7 +48,7 @@ export default function ResumeView() {
         <Resume
           data={{
             ...data,
-            firstAndLastName: name as string,
+            firstAndLastName: `${profile?.firstName} ${profile?.lastName}`,
             email: email ?? "",
             location: contact?.location ?? "",
             phone: contact?.phone ?? "",

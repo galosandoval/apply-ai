@@ -1,7 +1,11 @@
 import { createId } from "@paralleldrive/cuid2"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure
+} from "~/server/api/trpc"
 import { resume, school, work } from "~/server/db/schema"
 
 export const resumeRouter = createTRPCRouter({
@@ -55,19 +59,19 @@ export const resumeRouter = createTRPCRouter({
         interests: z.string(),
         education: z.array(
           z.object({
-            schoolName: z.string(),
+            name: z.string(),
             startDate: z.string(),
             endDate: z.string(),
             degree: z.string(),
-            description: z.string(),
-            gpa: z.string().optional(),
-            location: z.string().optional()
+            description: z.string().optional().nullable(),
+            gpa: z.string().optional().nullable(),
+            location: z.string().optional().nullable()
             // keyAchievements: z.string().array()
           })
         ),
         experience: z.array(
           z.object({
-            companyName: z.string(),
+            name: z.string(),
             startDate: z.string(),
             endDate: z.string(),
             title: z.string(),
@@ -112,7 +116,7 @@ export const resumeRouter = createTRPCRouter({
         education.map((e) => ({
           ...e,
           id: createId(),
-          name: e.schoolName,
+          name: e.name,
           resumeId
         }))
       )

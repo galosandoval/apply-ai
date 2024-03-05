@@ -2,7 +2,11 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { eq, sql } from "drizzle-orm"
 import { z } from "zod"
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure
+} from "~/server/api/trpc"
 import { db } from "~/server/db"
 import {
   insertEducationSchema,
@@ -225,7 +229,7 @@ export const profileRouter = createTRPCRouter({
         .insert(work)
         .values(
           workToInsert.map((w) => ({
-            companyName: w.companyName,
+            name: w.name,
             description: w.description,
             endDate: w.endDate,
             startDate: w.startDate,
@@ -237,7 +241,7 @@ export const profileRouter = createTRPCRouter({
         .onConflictDoUpdate({
           target: work.id,
           set: {
-            companyName: sql`excluded.name`,
+            name: sql`excluded.name`,
             description: sql`excluded.description`,
             endDate: sql`excluded.end_date`,
             title: sql`excluded.title`,

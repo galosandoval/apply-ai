@@ -46,7 +46,7 @@ export default async function handler(req: NextRequest) {
         "profession": "Profession of user.",
         "education": [{
           "description": "Description of education.",
-          "schoolName": "Name of school.",
+          "name": "Name of school.",
           "startDate": "Start date of education.",
           "endDate": "End date of education.",
           "degree": "Degree of education.",
@@ -55,7 +55,7 @@ export default async function handler(req: NextRequest) {
         "skills": ["Array of skills that are relevant to the job description. Includes 5 to 10 hard or soft skills."],
         "experience": [{
           "description": "Description of work experience that is 3-6 sentences.",
-          "companyName": "Name of company.",
+          "name": "Name of company.",
           "startDate": "Start date of work experience.",
           "endDate": "End date of work experience.",
           "title": "Title of work experience."

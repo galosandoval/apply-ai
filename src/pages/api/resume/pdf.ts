@@ -9,6 +9,20 @@ export default async function handler(
   try {
     const browser = await puppeteer.launch({ headless: "new" })
     const page = await browser.newPage()
+
+    await page.goto(env.NEXTAUTH_URL + `/login`, {
+      waitUntil: "networkidle2"
+    })
+
+    await page.type("#email", "galosan@gmail.com")
+    await page.type("#password", "Admin@123")
+
+    await page.click("#login-btn")
+    await page.waitForNavigation()
+
+    const cookies = await page.cookies()
+    console.log("plz work", cookies)
+
     await page.goto(env.NEXTAUTH_URL + `/resume/${req.body.resumeId}`, {
       waitUntil: "networkidle0"
     })
@@ -18,6 +32,8 @@ export default async function handler(
     res.setHeader("Content-Type", "application/pdf")
     res.status(200).send(pdf)
   } catch (error) {
+    console.error(error)
+
     if (error instanceof Error) throw new Error(error.message)
 
     throw new Error(

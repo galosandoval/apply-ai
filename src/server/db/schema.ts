@@ -54,7 +54,7 @@ export const contact = pgTable("contact", {
 
 export const work = pgTable("work", {
   id: text("id").primaryKey(),
-  companyName: text("name").notNull(),
+  name: text("name").notNull(),
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   title: text("title").notNull(),
@@ -103,8 +103,8 @@ export const schoolRelations = relations(school, ({ one }) => ({
 export const resume = pgTable("resume", {
   id: text("id").primaryKey(),
   profession: text("profession").notNull(),
-  skills: text("skills"),
-  introduction: text("introduction"),
+  skills: text("skills").notNull(),
+  introduction: text("introduction").notNull(),
   interests: text("interests"),
   profileId: text("profile_id").references(() => profile.id),
   createdAt: timestamp("created_at").defaultNow().notNull()

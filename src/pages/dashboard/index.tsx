@@ -11,35 +11,9 @@ import {
   insertResumeSchema
 } from "~/server/db/crud-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Button } from "~/components/ui/button"
 
 export default function Dashboard() {
-  // interface PdfRequestBody {
-  //   resumeId: string
-  // }
-
-  // const handleDownloadPdf = async () => {
-  //   const requestBody: PdfRequestBody = { resumeId }
-
-  //   try {
-  //     const response = await fetch("/api/resume/pdf", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json"
-  //       },
-  //       body: JSON.stringify(requestBody)
-  //     })
-
-  //     const blob = await response.blob()
-
-  //     const link = document.createElement("a")
-  //     link.href = window.URL.createObjectURL(blob)
-  //     link.download = `your-file-name.pdf`
-  //     link.click()
-  //   } catch (error) {
-  //     console.error(error)
-  //   }
-  // }
-
   return (
     <>
       <Head>
@@ -193,7 +167,7 @@ function initialEditingState({
     summary: false,
     education:
       education.map((_e) => ({
-        schoolName: false,
+        name: false,
         degree: false,
         startDate: false,
         endDate: false,
@@ -204,7 +178,7 @@ function initialEditingState({
     experience:
       experience.map((_e) => ({
         title: false,
-        companyName: false,
+        name: false,
         startDate: false,
         endDate: false,
         description: false
@@ -219,7 +193,13 @@ function AssistantMessage({
   content: string
   profile: RouterOutputs["profile"]["read"]
 }) {
-  // const { mutate } = api.resume.create.useMutation()
+  const [savedResumeId, setSavedResumeId] = useState("")
+
+  const { mutate } = api.resume.create.useMutation({
+    onSuccess: (data) => {
+      setSavedResumeId(data.resumeId)
+    }
+  })
 
   const parsedContent = parseContent(content)
 
@@ -234,15 +214,12 @@ function AssistantMessage({
     resolver: zodResolver(insertResumeSchema),
     values: {
       education:
-        parsedContent?.education.map((e) => ({ ...e, name: e.schoolName })) ??
-        [],
+        parsedContent?.education.map((e) => ({ ...e, name: e.name })) ?? [],
       experience: parsedContent?.experience ?? [],
       skills: parsedContent?.skills?.join(", ") ?? "",
       interests: parsedContent?.interests ?? "",
       introduction: parsedContent?.summary ?? "",
       profession: parsedContent?.profession ?? "",
-      firstName: profile.firstName ?? "",
-      lastName: profile.lastName ?? "",
       email: profile.email ?? "",
       phone: profile.contact?.phone ?? "",
       location: profile.contact?.location ?? "",
@@ -254,18 +231,6 @@ function AssistantMessage({
   if (!parsedContent) {
     return <p className="whitespace-pre-line">{content}</p>
   }
-
-  // const handleSaveAsResume = () => {
-  //   mutate({
-  //     education: parsedContent?.education ?? [],
-  //     experience: parsedContent?.experience ?? [],
-  //     skills: parsedContent?.skills ?? [],
-  //     interests: parsedContent?.interests ?? "",
-  //     introduction: parsedContent?.summary ?? "",
-  //     profession: parsedContent?.profession ?? "",
-  //     profileId
-  //   })
-  // }
 
   const startEditing = (
     id: keyof typeof isEditing,
@@ -293,14 +258,47 @@ function AssistantMessage({
     setIsEditing(initialEditingState(parsedContent))
   }
 
-  const onSubmit = async (data: InsertResumeSchema) => {
-    console.log(data)
+  const onSubmitSaveResume = async (data: InsertResumeSchema) => {
+    mutate({
+      ...data,
+      education: data.education.map((e) => ({ ...e })),
+      skills: data?.skills?.length ? data.skills.split(",") : [],
+      introduction: data.introduction,
+      interests: data.interests ?? "",
+      profileId: profile.id
+    })
+  }
+
+  const handleDownloadPdf = async () => {
+    const requestBody: PdfRequestBody = { resumeId: savedResumeId }
+
+    try {
+      const response = await fetch("/api/resume/pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      const blob = await response.blob()
+
+      const link = document.createElement("a")
+      link.href = window.URL.createObjectURL(blob)
+      link.download = `your-file-name.pdf`
+      link.click()
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   return (
-    <div className="flex max-h-[80svh] flex-col items-center gap-4 overflow-y-auto">
+    <form
+      onSubmit={handleSubmit(onSubmitSaveResume)}
+      className="flex max-h-[80svh] flex-col items-center gap-4 overflow-y-auto"
+    >
       <ResumeInChat
-        handleSubmit={handleSubmit(onSubmit)}
+        fullName={`${profile.firstName} ${profile.lastName}`}
         watch={watch}
         parsed={parsedContent}
         isEditing={isEditing}
@@ -308,8 +306,19 @@ function AssistantMessage({
         finishEditing={finishEditing}
         register={register}
       />
-    </div>
+      {savedResumeId ? (
+        <Button onClick={handleDownloadPdf} type="button">
+          Download
+        </Button>
+      ) : (
+        <Button type="submit">Save</Button>
+      )}
+    </form>
   )
+}
+
+interface PdfRequestBody {
+  resumeId: string
 }
 
 function parseContent(content: string) {
@@ -327,7 +336,7 @@ function parseContent(content: string) {
 
 type EducationParsed = {
   description: string
-  schoolName: string
+  name: string
   startDate: string
   endDate: string
   degree: string
@@ -338,7 +347,7 @@ type EducationParsed = {
 type SkillParsed = string[]
 
 type ExperienceParsed = {
-  companyName: string
+  name: string
   startDate: string
   endDate: string
   description: string
