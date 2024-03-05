@@ -51,19 +51,19 @@ function NameAndContactForm({
     defaultValues: {
       firstName: profile?.firstName ?? "",
       lastName: profile?.lastName ?? "",
-      phone: profile?.contact?.[0]?.phone ?? "",
-      linkedIn: profile?.contact?.[0]?.linkedIn ?? "",
-      portfolio: profile?.contact?.[0]?.portfolio ?? "",
-      location: profile?.contact?.[0]?.location ?? ""
+      phone: profile?.contact?.phone ?? "",
+      linkedIn: profile?.contact?.linkedIn ?? "",
+      portfolio: profile?.contact?.portfolio ?? "",
+      location: profile?.contact?.location ?? ""
     },
 
     values: {
       firstName: profile?.firstName ?? "",
       lastName: profile?.lastName ?? "",
-      phone: profile?.contact?.[0]?.phone ?? "",
-      linkedIn: profile?.contact?.[0]?.linkedIn ?? "",
-      portfolio: profile?.contact?.[0]?.portfolio ?? "",
-      location: profile?.contact?.[0]?.location ?? "",
+      phone: profile?.contact?.phone ?? "",
+      linkedIn: profile?.contact?.linkedIn ?? "",
+      portfolio: profile?.contact?.portfolio ?? "",
+      location: profile?.contact?.location ?? "",
       id: profile.id
     }
   })
@@ -74,11 +74,24 @@ function NameAndContactForm({
       router.push("/onboarding/step1")
     },
 
-    onSuccess: (data) => {
+    onSuccess: (data, input) => {
       if (data?.userId) {
         utils.profile.read.setData(
           { userId: data.userId },
-          { ...data, education: [], experience: [], contact: [] }
+          {
+            ...data,
+            education: [],
+            experience: [],
+            email: profile.email,
+            contact: {
+              linkedIn: input.linkedIn,
+              location: input.location,
+              id: "",
+              phone: input.phone,
+              portfolio: input.portfolio,
+              profileId: ""
+            }
+          }
         )
       }
     },

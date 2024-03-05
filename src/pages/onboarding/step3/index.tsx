@@ -189,7 +189,7 @@ function EducationForm({
   return (
     <div key={field.id} className="flex flex-col gap-2">
       <div className="flex justify-between">
-        <h2 className="">{fieldTitle}</h2>
+        <h2>{fieldTitle}</h2>
 
         {hasMoreThanOneSchool ? (
           <Button

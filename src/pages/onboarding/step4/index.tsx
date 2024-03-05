@@ -27,7 +27,7 @@ import { OnboardingLayout } from "../_layout"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
-    companyName: "",
+    name: "",
     description: "",
     startDate: "",
     endDate: "",
@@ -69,7 +69,7 @@ export default function Step4() {
     defaultValues: {
       experience: profile?.experience.length
         ? profile.experience.map((experience) => ({
-            companyName: experience.companyName,
+            name: experience.name,
             description: experience.description,
             startDate: experience.startDate,
             endDate: experience.endDate,
@@ -81,7 +81,7 @@ export default function Step4() {
     values: {
       experience: profile?.experience.length
         ? profile.experience.map((experience) => ({
-            companyName: experience.companyName,
+            name: experience.name,
             description: experience.description,
             startDate: experience.startDate,
             endDate: experience.endDate,
@@ -106,7 +106,7 @@ export default function Step4() {
   }
 
   useEffect(() => {
-    setFocus("experience.0.companyName")
+    setFocus("experience.0.name")
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -171,7 +171,7 @@ function ExperienceForm({
   remove: UseFieldArrayRemove
   register: UseFormRegister<InsertExperienceSchema>
 }) {
-  const nameSub = watch(`experience.${index}.companyName`)
+  const nameSub = watch(`experience.${index}.name`)
 
   let fieldTitle = ""
   if (hasMoreThanOneJob) {
@@ -184,34 +184,30 @@ function ExperienceForm({
 
   return (
     <div key={field.id} className="flex flex-col gap-2">
-      <div>
-        <div className="grid grid-cols-3 place-items-center">
-          <div></div>
+      <div className="flex justify-between">
+        <h2>{fieldTitle}</h2>
 
-          <h2>{fieldTitle}</h2>
-
-          {hasMoreThanOneJob ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-self-end text-destructive"
-              size="icon"
-              onClick={() => remove(index)}
-            >
-              <Cross1Icon />
-            </Button>
-          ) : null}
-        </div>
-
-        <TextInput
-          name={`experience.${index}.companyName`}
-          errors={errors}
-          label="Company Name"
-          placeholder="Ex: Google"
-          register={register}
-          required
-        />
+        {hasMoreThanOneJob ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="justify-self-end text-destructive"
+            size="icon"
+            onClick={() => remove(index)}
+          >
+            <Cross1Icon />
+          </Button>
+        ) : null}
       </div>
+
+      <TextInput
+        name={`experience.${index}.name`}
+        errors={errors}
+        label="Company Name"
+        placeholder="Ex: Google"
+        register={register}
+        required
+      />
 
       <TextInput
         name={`experience.${index}.title`}
