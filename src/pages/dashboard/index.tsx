@@ -12,6 +12,7 @@ import {
 } from "~/server/db/crud-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "~/components/ui/button"
+import { testPrompt } from "./_test-prompt"
 
 export default function Dashboard() {
   return (
@@ -51,9 +52,16 @@ function Main() {
   )
 }
 
+let initialInput = ``
+
+if (process.env.NODE_ENV === "development") {
+  initialInput = testPrompt
+}
+
 function PromptForm({ data }: { data: RouterOutputs["profile"]["read"] }) {
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat({
+      initialInput,
       api: "/api/resume/chat",
       body: data
         ? {
