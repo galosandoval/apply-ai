@@ -46,7 +46,6 @@ export default function Home() {
       }
     },
     onError: (error) => {
-      console.log(error.message)
       setError("email", {
         message: error.message
       })

@@ -1,11 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure
-} from "~/server/api/trpc"
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import { resume, school, work } from "~/server/db/schema"
 
 export const resumeRouter = createTRPCRouter({

@@ -20,8 +20,6 @@ export default function Step1() {
     { enabled: !!id }
   )
 
-  console.log(profile)
-
   if (status === "success") {
     return <NameAndContactForm profile={profile} />
   }
@@ -84,11 +82,11 @@ function NameAndContactForm({
             experience: [],
             email: profile.email,
             contact: {
-              linkedIn: input.linkedIn,
+              linkedIn: input?.linkedIn ?? null,
               location: input.location,
               id: "",
-              phone: input.phone,
-              portfolio: input.portfolio,
+              phone: input?.phone ?? null,
+              portfolio: input?.portfolio ?? null,
               profileId: ""
             }
           }
