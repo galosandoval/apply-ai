@@ -45,7 +45,7 @@ export const profileRelations = relations(profile, ({ many, one }) => ({
 
 export const contact = pgTable("contact", {
   id: text("id").primaryKey(),
-  phone: text("phone").notNull(),
+  phone: text("phone"),
   linkedIn: text("linked_in"),
   portfolio: text("portfolio"),
   location: text("location").notNull(),

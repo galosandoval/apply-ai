@@ -2,11 +2,7 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { eq, sql } from "drizzle-orm"
 import { z } from "zod"
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure
-} from "~/server/api/trpc"
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import { db } from "~/server/db"
 import {
   insertEducationSchema,
@@ -92,8 +88,6 @@ export const profileRouter = createTRPCRouter({
           code: "INTERNAL_SERVER_ERROR"
         })
       }
-
-      console.log(updatedProfile)
 
       const foundContact = await ctx.db
         .select({ id: contact.id })

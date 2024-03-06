@@ -6,6 +6,7 @@ import { useUser } from "~/utils/useUser"
 
 export default function ResumeView() {
   const router = useRouter()
+
   const { id: resumeId } = router.query
 
   const { data, status } = api.resume.readById.useQuery(
@@ -14,8 +15,6 @@ export default function ResumeView() {
   )
 
   const { id: userId, email } = useUser()
-
-  console.log("userId", userId)
 
   const { data: profile } = api.profile.read.useQuery(
     { userId },

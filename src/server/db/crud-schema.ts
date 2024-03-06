@@ -2,21 +2,27 @@ import { createInsertSchema } from "drizzle-zod"
 import { profile, resume, school, work } from "./schema"
 import { z } from "zod"
 
-export const insertNameAndContactSchema = z.object({
-  firstName: z
-    .string()
-    .min(1, "Must be at least 1 characters")
-    .max(50, "Must be less than 50 characters"),
-  lastName: z
-    .string()
-    .min(1, "Must be at least 1 characters")
-    .max(50, "Must be less than 50 characters"),
-  phone: z.string(),
-  linkedIn: z.string(),
-  portfolio: z.string(),
-  location: z.string().min(3, "Must be at least 3 characters"),
-  id: z.string().optional()
+const contactSchema = z.object({
+  phone: z.string().optional(),
+  linkedIn: z.string().optional(),
+  portfolio: z.string().optional(),
+  location: z.string().min(3, "Must be at least 3 characters")
 })
+
+export const insertNameAndContactSchema = z
+  .object({
+    firstName: z
+      .string()
+      .min(1, "Must be at least 1 characters")
+      .max(50, "Must be less than 50 characters"),
+    lastName: z
+      .string()
+      .min(1, "Must be at least 1 characters")
+      .max(50, "Must be less than 50 characters"),
+
+    id: z.string().optional()
+  })
+  .merge(contactSchema)
 
 export type InsertNameAndContactSchema = z.infer<
   typeof insertNameAndContactSchema
@@ -146,3 +152,13 @@ export const insertResumeSchema = createInsertSchema(resume, {
   .merge(z.object({ email: z.string().email() }))
 
 export type InsertResumeSchema = z.infer<typeof insertResumeSchema>
+
+export const downloadPdfSchema = z
+  .object({
+    resumeId: z.string(),
+    firstNameAndLastName: z.string(),
+    profession: z.string(),
+    email: z.string().email()
+  })
+  .merge(contactSchema)
+export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>
