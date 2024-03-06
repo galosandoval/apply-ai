@@ -47,6 +47,7 @@ export default function ResumeView() {
         <Resume
           data={{
             ...data,
+            firstAndLastName: `${profile?.firstName} ${profile?.lastName}`,
             email: email ?? "",
             location: contact?.location ?? "",
             phone: contact?.phone ?? "",

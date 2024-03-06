@@ -11,8 +11,13 @@ import {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data } = useSession()
+  const router = useRouter()
 
   let navbar: React.ReactNode = null
+
+  if (router.pathname === "/resume/[id]") {
+    return <>{children}</>
+  }
 
   if (data) {
     navbar = <ProtectedNavbar />

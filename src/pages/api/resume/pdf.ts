@@ -20,12 +20,16 @@ export default async function handler(
     await page.click("#login-btn")
     await page.waitForNavigation()
 
-    const cookies = await page.cookies()
-    console.log("plz work", cookies)
-
     await page.goto(env.NEXTAUTH_URL + `/resume/${req.body.resumeId}`, {
       waitUntil: "networkidle0"
     })
+
+    await page.$$eval(
+      "#fullName",
+      (links, value) => links.forEach((el) => (el.innerHTML = value)),
+      "myLocalValue"
+    )
+
     const pdf = await page.pdf({ format: "A4" })
 
     await browser.close()
