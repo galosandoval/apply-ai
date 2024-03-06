@@ -25,7 +25,7 @@ export default async function handler(
     })
 
     await page.$$eval(
-      "#fullName",
+      "#fullname",
       (links, value) => links.forEach((el) => (el.innerHTML = value)),
       "myLocalValue"
     )

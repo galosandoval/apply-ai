@@ -25,10 +25,14 @@ export const Resume = ({
       <div className="flex h-full overflow-hidden">
         <div className="my-auto max-h-full border-b border-[#737373]">
           <div className="flex max-h-[100px] flex-col items-center gap-4 pb-2">
-            <h1 className="text-4xl font-semibold uppercase tracking-[.75rem]">
-              {data.firstAndLastName}
-            </h1>
-            <h1 className="text-md mb-4 font-semibold uppercase tracking-[.25rem]">
+            <h1
+              id="fullname"
+              className="text-4xl font-semibold uppercase tracking-[.75rem]"
+            ></h1>
+            <h1
+              id="profession"
+              className="text-md mb-4 font-semibold uppercase tracking-[.25rem]"
+            >
               {data.profession}
             </h1>
           </div>
@@ -178,6 +182,7 @@ export const ResumeInChat = ({
   const experience = watch("experience")
   const education = watch("education")
   const interests = watch("interests")
+  const profession = watch("profession")
 
   return (
     <div
@@ -187,7 +192,7 @@ export const ResumeInChat = ({
       <div className="flex h-full overflow-hidden">
         <div className="my-auto max-h-full border-b border-[#737373]">
           <Header
-            parsed={parsed}
+            profession={profession}
             fullName={fullName}
             isEditing={isEditing}
             register={register}
@@ -294,14 +299,14 @@ export type EditableFields = {
 function Header({
   isEditing,
   fullName,
-  parsed,
+  profession,
   register,
   startEditing,
   finishEditing
 }: {
   isEditing: EditableFields
   fullName: string
-  parsed: FinishedParsed
+  profession: string
   register: UseFormRegister<InsertResumeSchema>
   startEditing: StartEditing
   finishEditing: () => void
@@ -332,7 +337,7 @@ function Header({
           className="text-md mb-4 cursor-pointer rounded border border-transparent font-semibold uppercase tracking-[.25rem] hover:border-blue-800 hover:bg-sky-200"
           onClick={() => startEditing("profession")}
         >
-          {parsed.profession}
+          {profession}
         </h1>
       )}
     </div>
