@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { boolean, pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
+import { pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
 
 export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
 
@@ -21,11 +21,10 @@ export const profile = pgTable("profile", {
   id: text("id").primaryKey(),
   firstName: text("first_name"),
   lastName: text("last_name"),
-  profession: text("profession"),
+  profession: text("profession").notNull(),
   skills: text("skills").array(),
   introduction: text("profile"),
   interests: text("interests"),
-  isOnboarded: boolean("is_onboarded").default(false),
   userId: text("user_id").references(() => user.id)
 })
 
