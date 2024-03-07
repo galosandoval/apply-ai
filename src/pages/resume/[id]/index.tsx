@@ -7,7 +7,15 @@ import { useUser } from "~/utils/useUser"
 export default function ResumeView() {
   const router = useRouter()
 
-  const { id: resumeId } = router.query
+  const {
+    id: resumeId,
+    hasIntro,
+    hasPhone,
+    hasLinkedIn,
+    hasPortfolio,
+    hasSkills,
+    hasInterests
+  } = router.query
 
   const { data, status } = api.resume.readById.useQuery(
     { resumeId: resumeId as string },
@@ -54,6 +62,12 @@ export default function ResumeView() {
             linkedIn: contact?.linkedIn ?? "",
             portfolio: contact?.portfolio ?? ""
           }}
+          hasIntro={hasIntro === "true"}
+          hasPhone={hasPhone === "true"}
+          hasLinkedIn={hasLinkedIn === "true"}
+          hasPortfolio={hasPortfolio === "true"}
+          hasSkills={hasSkills === "true"}
+          hasInterests={hasInterests === "true"}
         />
       </>
     )

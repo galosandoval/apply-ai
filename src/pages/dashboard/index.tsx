@@ -8,7 +8,8 @@ import { PromptInput } from "~/components/prompt-input"
 import { useForm } from "react-hook-form"
 import {
   type InsertResumeSchema,
-  insertResumeSchema
+  insertResumeSchema,
+  DownloadPdfSchema
 } from "~/server/db/crud-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "~/components/ui/button"
@@ -277,8 +278,32 @@ function AssistantMessage({
     })
   }
 
+  const email = watch("email")
+  const phone = watch("phone")
+  const linkedIn = watch("linkedIn")
+  const portfolio = watch("portfolio")
+  const location = watch("location")
+  const skills = watch("skills")
+  const introduction = watch("introduction")
+  const experience = watch("experience")
+  const education = watch("education")
+  const interests = watch("interests")
+  const profession = watch("profession")
+
   const handleDownloadPdf = async () => {
-    const requestBody: PdfRequestBody = { resumeId: savedResumeId }
+    const requestBody: DownloadPdfSchema = {
+      resumeId: savedResumeId,
+      email,
+      profession,
+      fullName: `${profile.firstName} ${profile.lastName}`,
+      location,
+      introduction,
+      phone,
+      linkedIn,
+      portfolio,
+      // skills: skills?.length ? skills.split(', ') : null,
+      interests
+    }
 
     try {
       const response = await fetch("/api/resume/pdf", {
@@ -323,10 +348,6 @@ function AssistantMessage({
       )}
     </form>
   )
-}
-
-interface PdfRequestBody {
-  resumeId: string
 }
 
 function parseContent(content: string) {
