@@ -22,8 +22,8 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
-import { OnboardingLayout } from "../_layout"
 import { MyAlert } from "~/components/alert"
+import OnboardingLayout from "../_layout"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {

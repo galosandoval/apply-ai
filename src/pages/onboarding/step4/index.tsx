@@ -23,7 +23,7 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
-import { OnboardingLayout } from "../_layout"
+import OnboardingLayout from "../_layout"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {

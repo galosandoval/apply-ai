@@ -9,11 +9,11 @@ import { useForm } from "react-hook-form"
 import {
   type InsertResumeSchema,
   insertResumeSchema,
-  DownloadPdfSchema
+  type DownloadPdfSchema
 } from "~/server/db/crud-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "~/components/ui/button"
-import { testPrompt } from "./_test-prompt"
+import { testPrompt } from "~/lib/test-prompt"
 
 export default function Dashboard() {
   return (
@@ -301,7 +301,7 @@ function AssistantMessage({
       phone,
       linkedIn,
       portfolio,
-      // skills: skills?.length ? skills.split(', ') : null,
+      skills,
       interests
     }
 

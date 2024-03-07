@@ -22,7 +22,7 @@ export const profile = pgTable("profile", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   profession: text("profession").notNull(),
-  skills: text("skills").array(),
+  skills: text("skills").array().notNull(),
   introduction: text("profile"),
   interests: text("interests"),
   userId: text("user_id").references(() => user.id)

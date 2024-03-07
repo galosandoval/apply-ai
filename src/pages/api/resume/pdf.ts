@@ -83,7 +83,7 @@ async function insertValuesOnPage(
   phone: string | null | undefined,
   linkedIn: string | null | undefined,
   portfolio: string | null | undefined,
-  skills: string | null | undefined,
+  skills: string,
   interests: string | null | undefined
 ) {
   const promises: Promise<void>[] = []
@@ -117,6 +117,14 @@ async function insertValuesOnPage(
       "#location",
       (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
       location
+    )
+  )
+
+  promises.push(
+    page.$$eval(
+      "#skills",
+      (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+      skills
     )
   )
 
@@ -156,16 +164,6 @@ async function insertValuesOnPage(
         "#portfolio",
         (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
         portfolio
-      )
-    )
-  }
-
-  if (skills) {
-    promises.push(
-      page.$$eval(
-        "#skills",
-        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
-        skills
       )
     )
   }
