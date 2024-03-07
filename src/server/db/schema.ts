@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { boolean, pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
+import { pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
 
 export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
 
@@ -21,11 +21,10 @@ export const profile = pgTable("profile", {
   id: text("id").primaryKey(),
   firstName: text("first_name"),
   lastName: text("last_name"),
-  profession: text("profession"),
-  skills: text("skills").array(),
+  profession: text("profession").default("").notNull(),
+  skills: text("skills").array().notNull(),
   introduction: text("profile"),
   interests: text("interests"),
-  isOnboarded: boolean("is_onboarded").default(false),
   userId: text("user_id").references(() => user.id)
 })
 
@@ -60,8 +59,7 @@ export const work = pgTable("work", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   profileId: text("profile_id").references(() => profile.id),
-  resumeId: text("resume_id").references(() => resume.id),
-  keyAchievements: text("key_achievements").array()
+  resumeId: text("resume_id").references(() => resume.id)
 })
 
 export const workRelations = relations(work, ({ one }) => ({
@@ -85,8 +83,7 @@ export const school = pgTable("school", {
   gpa: text("gpa"),
   description: text("description"),
   profileId: text("profile_id").references(() => profile.id),
-  resumeId: text("resume_id").references(() => resume.id),
-  keyAchievements: text("key_achievements").array()
+  resumeId: text("resume_id").references(() => resume.id)
 })
 
 export const schoolRelations = relations(school, ({ one }) => ({

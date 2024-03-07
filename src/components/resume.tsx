@@ -1,4 +1,4 @@
-import { type FormEvent, Fragment } from "react"
+import { Fragment } from "react"
 import { type FinishedParsed } from "~/pages/dashboard"
 import { type RouterOutputs } from "~/utils/api"
 import { Input } from "./ui/input"
@@ -9,7 +9,13 @@ import { type UseFormWatch, type UseFormRegister } from "react-hook-form"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
 
 export const Resume = ({
-  data
+  data,
+  hasIntro,
+  hasPhone,
+  hasLinkedIn,
+  hasPortfolio,
+  hasSkills,
+  hasInterests
 }: {
   data: RouterOutputs["resume"]["readById"] & {
     firstAndLastName: string
@@ -19,6 +25,12 @@ export const Resume = ({
     portfolio?: string
     location: string
   }
+  hasIntro: boolean
+  hasPhone: boolean
+  hasLinkedIn: boolean
+  hasPortfolio: boolean
+  hasSkills: boolean
+  hasInterests: boolean
 }) => {
   return (
     <div className="h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272]">
@@ -26,15 +38,13 @@ export const Resume = ({
         <div className="my-auto max-h-full border-b border-[#737373]">
           <div className="flex max-h-[100px] flex-col items-center gap-4 pb-2">
             <h1
-              id="fullname"
+              id="fullName"
               className="text-4xl font-semibold uppercase tracking-[.75rem]"
             ></h1>
             <h1
               id="profession"
               className="text-md mb-4 font-semibold uppercase tracking-[.25rem]"
-            >
-              {data.profession}
-            </h1>
+            ></h1>
           </div>
           <div className="w-full border-b border-[#737373]" />
           <section className="flex h-full">
@@ -49,11 +59,11 @@ export const Resume = ({
                 <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   Contact
                 </h2>
-                <p className="pb-3">{data.phone}</p>
-                <p className="pb-3">{data.email}</p>
-                <p className="pb-3">{data.linkedIn}</p>
-                <p className="pb-3">{data.portfolio}</p>
-                <address className="pb-4">{data.location}</address>
+                {hasPhone && <p id="phone" className="pb-3"></p>}
+                <p id="email" className="pb-3"></p>
+                {hasLinkedIn && <p id="linkedIn" className="pb-3"></p>}
+                {hasPortfolio && <p id="portfolio" className="pb-3"></p>}
+                <address id="location" className="pb-4"></address>
               </div>
 
               <div
@@ -92,26 +102,30 @@ export const Resume = ({
                 ))}
               </div>
 
-              <div id="interests" className="w-full px-3 pb-3">
-                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                  Interests
-                </h2>
-                <p className="">{data.interests}</p>
-              </div>
+              {hasInterests && (
+                <div className="w-full px-3 pb-3">
+                  <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
+                    Interests
+                  </h2>
+                  <p id="interests"></p>
+                </div>
+              )}
             </div>
             <div
               id="resume__right"
               className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight"
             >
-              <div
-                id="profile"
-                className="border-b border-dotted border-[#737373] pr-2"
-              >
-                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                  Profile
-                </h2>
-                <p className="pb-4">{data.introduction}</p>
-              </div>
+              {hasIntro && (
+                <div
+                  id="profile"
+                  className="border-b border-dotted border-[#737373] pr-2"
+                >
+                  <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
+                    Profile
+                  </h2>
+                  <p id="introduction" className="pb-4"></p>
+                </div>
+              )}
 
               <div id="work">
                 <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">

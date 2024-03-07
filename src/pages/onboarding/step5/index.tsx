@@ -18,10 +18,10 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
-import { OnboardingLayout } from "../_layout"
 import { Button } from "~/components/ui/button"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { TextInput } from "~/components/text-input"
+import OnboardingLayout from "../_layout"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {

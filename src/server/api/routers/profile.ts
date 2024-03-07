@@ -262,18 +262,5 @@ export const profileRouter = createTRPCRouter({
           skills: skills.map((s) => s.value)
         })
         .where(eq(profile.userId, userId))
-    }),
-
-  finishOnboarding: protectedProcedure
-    .input(z.object({ userId: z.string().cuid2() }))
-    .mutation(async ({ input, ctx }) => {
-      const { userId } = input
-
-      return await ctx.db
-        .update(profile)
-        .set({
-          isOnboarded: true
-        })
-        .where(eq(profile.userId, userId))
     })
 })

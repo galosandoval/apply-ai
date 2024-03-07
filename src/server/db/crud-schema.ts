@@ -40,7 +40,8 @@ export const updateProfileSchema = createInsertSchema(profile, {
   interests: (schema) =>
     schema.interests
       .min(3, "Must be at least 3 characters")
-      .max(255, "Must be less than 255 characters"),
+      .max(255, "Must be less than 255 characters")
+      .optional(),
   skills: (schema) => schema.skills.optional(),
   id: (schema) => schema.id.optional()
 })
@@ -67,8 +68,7 @@ export const insertEducationSchema = z.object({
     startDate: (schema) => schema.startDate.min(4).max(50),
     endDate: (schema) => schema.endDate.min(4).max(50),
     gpa: (schema) => schema.gpa.optional(),
-    profileId: (schema) => schema.profileId.cuid2().optional(),
-    keyAchievements: (schema) => schema.keyAchievements.optional()
+    profileId: (schema) => schema.profileId.cuid2().optional()
   })
     .array()
     .min(1)
@@ -127,7 +127,7 @@ export const insertResumeSchema = createInsertSchema(resume, {
     schema.profession
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters"),
-  skills: (schema) => schema.skills.optional(),
+  skills: (schema) => schema.skills,
   introduction: (schema) =>
     schema.introduction
       .min(3, "Must be at least 3 characters")
@@ -156,9 +156,17 @@ export type InsertResumeSchema = z.infer<typeof insertResumeSchema>
 export const downloadPdfSchema = z
   .object({
     resumeId: z.string(),
-    firstNameAndLastName: z.string(),
-    profession: z.string(),
-    email: z.string().email()
+    fullName: z.string(),
+    email: z.string().email(),
+    skills: z.string(),
+    profession: z.string()
   })
   .merge(contactSchema)
+  .merge(
+    updateProfileSchema.pick({
+      introduction: true,
+      interests: true
+    })
+  )
+
 export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>

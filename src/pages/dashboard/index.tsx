@@ -8,11 +8,12 @@ import { PromptInput } from "~/components/prompt-input"
 import { useForm } from "react-hook-form"
 import {
   type InsertResumeSchema,
-  insertResumeSchema
+  insertResumeSchema,
+  type DownloadPdfSchema
 } from "~/server/db/crud-schema"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "~/components/ui/button"
-import { testPrompt } from "./_test-prompt"
+import { testPrompt } from "~/lib/test-prompt"
 
 export default function Dashboard() {
   return (
@@ -277,8 +278,32 @@ function AssistantMessage({
     })
   }
 
+  const email = watch("email")
+  const phone = watch("phone")
+  const linkedIn = watch("linkedIn")
+  const portfolio = watch("portfolio")
+  const location = watch("location")
+  const skills = watch("skills")
+  const introduction = watch("introduction")
+  const experience = watch("experience")
+  const education = watch("education")
+  const interests = watch("interests")
+  const profession = watch("profession")
+
   const handleDownloadPdf = async () => {
-    const requestBody: PdfRequestBody = { resumeId: savedResumeId }
+    const requestBody: DownloadPdfSchema = {
+      resumeId: savedResumeId,
+      email,
+      profession,
+      fullName: `${profile.firstName} ${profile.lastName}`,
+      location,
+      introduction,
+      phone,
+      linkedIn,
+      portfolio,
+      skills,
+      interests
+    }
 
     try {
       const response = await fetch("/api/resume/pdf", {
@@ -325,10 +350,6 @@ function AssistantMessage({
   )
 }
 
-interface PdfRequestBody {
-  resumeId: string
-}
-
 function parseContent(content: string) {
   let parsed: null | FinishedParsed = null
 
@@ -349,7 +370,6 @@ type EducationParsed = {
   endDate: string
   degree: string
   gpa: string
-  // keyAchievements: string[]
 }
 
 type SkillParsed = string[]
@@ -360,7 +380,6 @@ type ExperienceParsed = {
   endDate: string
   description: string
   title: string
-  // keyAchievements: string[]
 }
 
 type InterestsParsed = string

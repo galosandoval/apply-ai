@@ -1,4 +1,4 @@
-export function OnboardingLayout({
+export default function OnboardingLayout({
   handleSubmit,
   title,
   children
