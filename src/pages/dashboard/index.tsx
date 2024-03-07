@@ -370,7 +370,6 @@ type EducationParsed = {
   endDate: string
   degree: string
   gpa: string
-  // keyAchievements: string[]
 }
 
 type SkillParsed = string[]
@@ -381,7 +380,6 @@ type ExperienceParsed = {
   endDate: string
   description: string
   title: string
-  // keyAchievements: string[]
 }
 
 type InterestsParsed = string

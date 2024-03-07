@@ -68,8 +68,7 @@ export const insertEducationSchema = z.object({
     startDate: (schema) => schema.startDate.min(4).max(50),
     endDate: (schema) => schema.endDate.min(4).max(50),
     gpa: (schema) => schema.gpa.optional(),
-    profileId: (schema) => schema.profileId.cuid2().optional(),
-    keyAchievements: (schema) => schema.keyAchievements.optional()
+    profileId: (schema) => schema.profileId.cuid2().optional()
   })
     .array()
     .min(1)
@@ -159,12 +158,12 @@ export const downloadPdfSchema = z
     resumeId: z.string(),
     fullName: z.string(),
     email: z.string().email(),
-    skills: z.string()
+    skills: z.string(),
+    profession: z.string()
   })
   .merge(contactSchema)
   .merge(
     updateProfileSchema.pick({
-      profession: true,
       introduction: true,
       interests: true
     })
