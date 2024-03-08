@@ -335,7 +335,6 @@ function AssistantMessage({
       <ResumeInChat
         fullName={`${profile.firstName} ${profile.lastName}`}
         watch={watch}
-        parsed={parsedContent}
         isEditing={isEditing}
         startEditing={startEditing}
         finishEditing={finishEditing}

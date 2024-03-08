@@ -16,32 +16,7 @@ export default async function handler(
     const browser = await puppeteer.launch({ headless: "new" })
     const page = await browser.newPage()
 
-    // await page.goto(env.NEXTAUTH_URL + `/login`, {
-    //   waitUntil: "networkidle2"
-    // })
-
-    // await page.type("#email", "galosan@gmail.com")
-    // await page.type("#password", "Admin@123")
-
-    // await page.click("#login-btn")
-    // await page.waitForNavigation()
-
-    const skillsCount = input.skills.split(", ").length
-    const educationCount = input.education.length
-    const experienceCount = input.experience.length
-    const expDescriptionCount: Record<string, number> = {}
-
-    input.experience.forEach((job, index) => {
-      expDescriptionCount[`desc${index}`] = job.description.split(". ").length
-    })
-
-    let endpoint = `/pdf?skillsCount=${skillsCount}&eduCount=${educationCount}&expCount=${experienceCount}&hasIntro=${!!input.introduction}&hasPhone=${!!input.phone}&hasLinkedIn=${!!input.linkedIn}&hasPortfolio=${!!input.portfolio}&hasInterests=${!!input.interests}`
-
-    for (const [key, value] of Object.entries(expDescriptionCount)) {
-      if (value > 1) {
-        endpoint += `&${key}=${value}`
-      }
-    }
+    const endpoint = createEndpoint(input)
 
     await page.goto(env.NEXTAUTH_URL + endpoint, {
       waitUntil: "networkidle0"
@@ -63,6 +38,27 @@ export default async function handler(
       "Something went wrong, could not create PDF, please try again."
     )
   }
+}
+
+function createEndpoint(input: DownloadPdfSchema) {
+  const skillsCount = input.skills.split(", ").length
+  const educationCount = input.education.length
+  const experienceCount = input.experience.length
+  const expDescriptionCount: Record<string, number> = {}
+
+  input.experience.forEach((job, index) => {
+    expDescriptionCount[`desc${index}`] = job.description.split(". ").length
+  })
+
+  let endpoint = `/pdf?skillsCount=${skillsCount}&eduCount=${educationCount}&expCount=${experienceCount}&hasIntro=${!!input.introduction}&hasPhone=${!!input.phone}&hasLinkedIn=${!!input.linkedIn}&hasPortfolio=${!!input.portfolio}&hasInterests=${!!input.interests}`
+
+  for (const [key, value] of Object.entries(expDescriptionCount)) {
+    if (value > 1) {
+      endpoint += `&${key}=${value}`
+    }
+  }
+
+  return endpoint
 }
 
 async function insertValuesOnPage(page: Page, values: DownloadPdfSchema) {

@@ -28,8 +28,6 @@ export const Resume = ({
   hasPortfolio: boolean
   hasInterests: boolean
 }) => {
-  console.log(skillsCount)
-
   const skills = Array(skillsCount).fill(0)
   const education = Array(educationCount).fill(0)
   const experience = Array(experienceCount).fill(0)
@@ -172,7 +170,6 @@ export const Resume = ({
 }
 
 export const ResumeInChat = ({
-  parsed,
   isEditing,
   fullName,
   watch,
@@ -180,7 +177,6 @@ export const ResumeInChat = ({
   startEditing,
   finishEditing
 }: {
-  parsed: FinishedParsed
   isEditing: EditableFields
   fullName: string
   watch: UseFormWatch<InsertResumeSchema>
