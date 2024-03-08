@@ -1,63 +1,53 @@
 import type { NextApiRequest, NextApiResponse } from "next"
 import puppeteer, { type Page } from "puppeteer"
 import { env } from "~/env.mjs"
-import { downloadPdfSchema } from "~/server/db/crud-schema"
+import {
+  type DownloadPdfSchema,
+  downloadPdfSchema
+} from "~/server/db/crud-schema"
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<Buffer>
 ) {
-  const {
-    fullName,
-    resumeId,
-    profession,
-    email,
-    location,
-    introduction,
-    phone,
-    linkedIn,
-    portfolio,
-    skills,
-    interests
-  } = downloadPdfSchema.parse(req.body)
+  const input = downloadPdfSchema.parse(req.body)
 
   try {
     const browser = await puppeteer.launch({ headless: "new" })
     const page = await browser.newPage()
 
-    await page.goto(env.NEXTAUTH_URL + `/login`, {
-      waitUntil: "networkidle2"
+    // await page.goto(env.NEXTAUTH_URL + `/login`, {
+    //   waitUntil: "networkidle2"
+    // })
+
+    // await page.type("#email", "galosan@gmail.com")
+    // await page.type("#password", "Admin@123")
+
+    // await page.click("#login-btn")
+    // await page.waitForNavigation()
+
+    const skillsCount = input.skills.split(", ").length
+    const educationCount = input.education.length
+    const experienceCount = input.experience.length
+    const expDescriptionCount: Record<string, number> = {}
+
+    input.experience.forEach((job, index) => {
+      expDescriptionCount[`desc${index}`] = job.description.split(". ").length
     })
 
-    await page.type("#email", "galosan@gmail.com")
-    await page.type("#password", "Admin@123")
+    let endpoint = `/pdf?skillsCount=${skillsCount}&eduCount=${educationCount}&expCount=${experienceCount}&hasIntro=${!!input.introduction}&hasPhone=${!!input.phone}&hasLinkedIn=${!!input.linkedIn}&hasPortfolio=${!!input.portfolio}&hasInterests=${!!input.interests}`
 
-    await page.click("#login-btn")
-    await page.waitForNavigation()
-
-    await page.goto(
-      env.NEXTAUTH_URL +
-        `/resume/${resumeId}?skillsCount=${
-          skills.split(", ").length
-        }&hasIntro=${!!introduction}&hasPhone=${!!phone}&hasLinkedIn=${!!linkedIn}&hasPortfolio=${!!portfolio}&hasSkills=${!!skills}&hasInterests=${!!interests}`,
-      {
-        waitUntil: "networkidle0"
+    for (const [key, value] of Object.entries(expDescriptionCount)) {
+      if (value > 1) {
+        endpoint += `&${key}=${value}`
       }
-    )
+    }
 
-    await insertValuesOnPage(
-      page,
-      fullName,
-      profession,
-      email,
-      location,
-      introduction,
-      phone,
-      linkedIn,
-      portfolio,
-      skills,
-      interests
-    )
+    await page.goto(env.NEXTAUTH_URL + endpoint, {
+      waitUntil: "networkidle0"
+    })
+
+    await insertValuesOnPage(page, input)
 
     const pdf = await page.pdf({ format: "A4" })
 
@@ -75,19 +65,22 @@ export default async function handler(
   }
 }
 
-async function insertValuesOnPage(
-  page: Page,
-  fullName: string,
-  profession: string,
-  email: string,
-  location: string,
-  introduction: string | null | undefined,
-  phone: string | null | undefined,
-  linkedIn: string | null | undefined,
-  portfolio: string | null | undefined,
-  skills: string,
-  interests: string | null | undefined
-) {
+async function insertValuesOnPage(page: Page, values: DownloadPdfSchema) {
+  const {
+    fullName,
+    profession,
+    email,
+    location,
+    skills,
+    introduction,
+    phone,
+    linkedIn,
+    portfolio,
+    interests,
+    education,
+    experience
+  } = values
+
   const promises: Promise<void>[] = []
 
   promises.push(
@@ -132,6 +125,79 @@ async function insertValuesOnPage(
     )
   })
 
+  education.forEach((school, index) => {
+    promises.push(
+      page.$$eval(
+        `#school-${index}-degree`,
+        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        school.degree
+      )
+    )
+
+    promises.push(
+      page.$$eval(
+        `#school-${index}-name`,
+        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        school.name
+      )
+    )
+
+    promises.push(
+      page.$$eval(
+        `#school-${index}-duration`,
+        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        `${school.startDate} - ${school.endDate}`
+      )
+    )
+
+    if (school.description) {
+      promises.push(
+        page.$$eval(
+          `#school-${index}-description`,
+          (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+          school.description
+        )
+      )
+    }
+  })
+
+  experience.forEach((job, index) => {
+    promises.push(
+      page.$$eval(
+        `#job-${index}-title`,
+        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        job.title
+      )
+    )
+
+    promises.push(
+      page.$$eval(
+        `#job-${index}-name`,
+        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        job.name
+      )
+    )
+
+    promises.push(
+      page.$$eval(
+        `#job-${index}-duration`,
+        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        `${job.startDate} - ${job.endDate}`
+      )
+    )
+
+    job.description.split(". ").forEach((sentence, i) => {
+      promises.push(
+        page.$$eval(
+          `#job-${index}-desc-${i}`,
+          (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+          sentence
+        )
+      )
+    })
+  })
+
+  // optional fields
   if (introduction) {
     promises.push(
       page.$$eval(

@@ -302,7 +302,9 @@ function AssistantMessage({
       linkedIn,
       portfolio,
       skills,
-      interests
+      interests,
+      education,
+      experience
     }
 
     try {

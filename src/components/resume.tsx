@@ -1,6 +1,5 @@
 import { Fragment } from "react"
 import { type FinishedParsed } from "~/pages/dashboard"
-import { type RouterOutputs } from "~/utils/api"
 import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
@@ -9,32 +8,31 @@ import { type UseFormWatch, type UseFormRegister } from "react-hook-form"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
 
 export const Resume = ({
-  data,
+  expDescCount,
+  educationCount,
+  experienceCount,
   hasIntro,
   hasPhone,
   hasLinkedIn,
   hasPortfolio,
-  hasSkills,
   skillsCount,
   hasInterests
 }: {
-  data: RouterOutputs["resume"]["readById"] & {
-    firstAndLastName: string
-    email: string
-    phone: string
-    linkedIn?: string
-    portfolio?: string
-    location: string
-  }
+  expDescCount: Record<string, number>
+  educationCount: number
+  experienceCount: number
   skillsCount: number
   hasIntro: boolean
   hasPhone: boolean
   hasLinkedIn: boolean
   hasPortfolio: boolean
-  hasSkills: boolean
   hasInterests: boolean
 }) => {
+  console.log(skillsCount)
+
   const skills = Array(skillsCount).fill(0)
+  const education = Array(educationCount).fill(0)
+  const experience = Array(experienceCount).fill(0)
 
   return (
     <div className="h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272]">
@@ -88,17 +86,19 @@ export const Resume = ({
                 <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   Education
                 </h2>
-                {data.education.map((school) => (
-                  <Fragment key={school.id}>
-                    <h4 className="pb-1 font-bold">{school.degree}</h4>
-                    <h3 className="pb-1 text-[1rem] font-semibold">
-                      {school.name}
-                    </h3>
-                    <p className="pb-1">
-                      {school.startDate} - {school.endDate}
-                    </p>
+                {education.map((_, index) => (
+                  <Fragment key={`school-${index}`}>
+                    <h4
+                      id={`school-${index}-degree`}
+                      className="pb-1 font-bold"
+                    ></h4>
+                    <h3
+                      id={`school-${index}-name`}
+                      className="pb-1 text-[1rem] font-semibold"
+                    ></h3>
+                    <p id={`school-${index}-duration`} className="pb-1"></p>
 
-                    <p>{school.description}</p>
+                    <p id={`school-${index}-description`}></p>
                   </Fragment>
                 ))}
               </div>
@@ -134,23 +134,30 @@ export const Resume = ({
                 </h2>
 
                 <div className="flex max-h-full flex-col justify-between">
-                  {data.experience.map((job) => (
-                    <div className="pb-3" key={job.id}>
-                      <h3 className="pb-2 text-[1rem] font-semibold">
-                        {job.title}
-                      </h3>
+                  {experience.map((_, index) => (
+                    <div className="pb-3" key={`job-${index}`}>
+                      <h3
+                        id={`job-${index}-title`}
+                        className="pb-2 text-[1rem] font-semibold"
+                      ></h3>
                       <div className="flex justify-between pb-2">
-                        <p>{job.name}</p>
-                        <p className="capitalize">
-                          {job.startDate} - {job.endDate}
-                        </p>
+                        <p id={`job-${index}-name`}></p>
+                        <p
+                          id={`job-${index}-duration`}
+                          className="capitalize"
+                        ></p>
                       </div>
 
                       {/* <p>{job.description}</p> */}
                       <ul className="ml-2 list-disc">
-                        {job.description.split(". ").map((ka) => (
-                          <li key={ka}>{ka}</li>
-                        ))}
+                        {Array(expDescCount[`desc${index}`])
+                          .fill(0)
+                          .map((_, descIndex) => (
+                            <li
+                              id={`job-${index}-desc-${descIndex}`}
+                              key={`desc-${descIndex}`}
+                            ></li>
+                          ))}
                       </ul>
                     </div>
                   ))}
