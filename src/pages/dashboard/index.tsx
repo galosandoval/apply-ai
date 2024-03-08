@@ -302,7 +302,9 @@ function AssistantMessage({
       linkedIn,
       portfolio,
       skills,
-      interests
+      interests,
+      education,
+      experience
     }
 
     try {
@@ -333,7 +335,6 @@ function AssistantMessage({
       <ResumeInChat
         fullName={`${profile.firstName} ${profile.lastName}`}
         watch={watch}
-        parsed={parsedContent}
         isEditing={isEditing}
         startEditing={startEditing}
         finishEditing={finishEditing}

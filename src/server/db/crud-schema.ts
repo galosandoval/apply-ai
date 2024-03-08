@@ -168,5 +168,7 @@ export const downloadPdfSchema = z
       interests: true
     })
   )
+  .merge(insertEducationSchema)
+  .merge(insertExperienceSchema)
 
 export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>
