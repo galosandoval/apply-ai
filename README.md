@@ -115,8 +115,8 @@ yarn dev
 ## Roadmap
 
 - [ ] Interactive chat-based resume input.
-- [ ] Real-time resume generation with Chat-GPT.
-- [ ] Export and download generated resumes.
+- [x] Real-time resume generation with Chat-GPT.
+- [x] Export and download generated resumes.
 
 ## Contributing
 
