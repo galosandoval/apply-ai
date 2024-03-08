@@ -57,6 +57,7 @@ export const work = pgTable("work", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   title: text("title").notNull(),
+  location: text("location"),
   description: text("description").notNull(),
   profileId: text("profile_id").references(() => profile.id),
   resumeId: text("resume_id").references(() => resume.id)
