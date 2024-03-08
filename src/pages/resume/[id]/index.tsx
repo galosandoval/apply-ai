@@ -14,8 +14,11 @@ export default function ResumeView() {
     hasLinkedIn,
     hasPortfolio,
     hasSkills,
-    hasInterests
+    hasInterests,
+    skillsCount
   } = router.query
+
+  console.log(skillsCount)
 
   const { data, status } = api.resume.readById.useQuery(
     { resumeId: resumeId as string },
@@ -62,6 +65,7 @@ export default function ResumeView() {
             linkedIn: contact?.linkedIn ?? "",
             portfolio: contact?.portfolio ?? ""
           }}
+          skillsCount={parseInt(skillsCount as string)}
           hasIntro={hasIntro === "true"}
           hasPhone={hasPhone === "true"}
           hasLinkedIn={hasLinkedIn === "true"}

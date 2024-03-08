@@ -37,7 +37,9 @@ export default async function handler(
 
     await page.goto(
       env.NEXTAUTH_URL +
-        `/resume/${resumeId}?hasIntro=${!!introduction}&hasPhone=${!!phone}&hasLinkedIn=${!!linkedIn}&hasPortfolio=${!!portfolio}&hasSkills=${!!skills}&hasInterests=${!!interests}`,
+        `/resume/${resumeId}?skillsCount=${
+          skills.split(", ").length
+        }&hasIntro=${!!introduction}&hasPhone=${!!phone}&hasLinkedIn=${!!linkedIn}&hasPortfolio=${!!portfolio}&hasSkills=${!!skills}&hasInterests=${!!interests}`,
       {
         waitUntil: "networkidle0"
       }
@@ -120,13 +122,15 @@ async function insertValuesOnPage(
     )
   )
 
-  promises.push(
-    page.$$eval(
-      "#skills",
-      (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
-      skills
+  skills.split(", ").forEach((skill, index) => {
+    promises.push(
+      page.$$eval(
+        `#skill-${index}`,
+        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        skill
+      )
     )
-  )
+  })
 
   if (introduction) {
     promises.push(

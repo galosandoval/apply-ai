@@ -15,6 +15,7 @@ export const Resume = ({
   hasLinkedIn,
   hasPortfolio,
   hasSkills,
+  skillsCount,
   hasInterests
 }: {
   data: RouterOutputs["resume"]["readById"] & {
@@ -25,6 +26,7 @@ export const Resume = ({
     portfolio?: string
     location: string
   }
+  skillsCount: number
   hasIntro: boolean
   hasPhone: boolean
   hasLinkedIn: boolean
@@ -32,6 +34,8 @@ export const Resume = ({
   hasSkills: boolean
   hasInterests: boolean
 }) => {
+  const skills = Array(skillsCount).fill(0)
+
   return (
     <div className="h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272]">
       <div className="flex h-full overflow-hidden">
@@ -66,17 +70,14 @@ export const Resume = ({
                 <address id="location" className="pb-4"></address>
               </div>
 
-              <div
-                id="skills"
-                className="w-full border-b border-dotted border-[#737373] px-2 leading-tight"
-              >
+              <div className="w-full border-b border-dotted border-[#737373] px-2 leading-tight">
                 <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
                   skills
                 </h2>
                 <ul className="grid list-disc pb-2 pl-2">
-                  {data.skills
-                    ?.split(",")
-                    .map((skill) => <li key={skill}>{skill}</li>)}
+                  {skills.map((_, index) => (
+                    <li id={`skill-${index}`} key={`skill-${index}`}></li>
+                  ))}
                 </ul>
               </div>
 
