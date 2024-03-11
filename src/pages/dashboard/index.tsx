@@ -292,7 +292,6 @@ function AssistantMessage({
 
   const handleDownloadPdf = async () => {
     const requestBody: DownloadPdfSchema = {
-      resumeId: savedResumeId,
       email,
       profession,
       fullName: `${profile.firstName} ${profile.lastName}`,
