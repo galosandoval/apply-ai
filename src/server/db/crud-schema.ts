@@ -1,6 +1,28 @@
 import { createInsertSchema } from "drizzle-zod"
-import { profile, resume, school, work } from "./schema"
+import { contact, profile, resume, school, work } from "./schema"
 import { z } from "zod"
+
+const createProfileSchema = createInsertSchema(profile, {
+  id: (schema) => schema.id.optional(),
+  profession: (schema) =>
+    schema.profession
+      .min(3, "Must be at least 3 characters")
+      .max(255, "Must be less than 255 characters"),
+  firstName: (schema) =>
+    schema.firstName
+      .min(1, "Must be at least 1 characters")
+      .max(50, "Must be less than 50 characters"),
+  lastName: (schema) =>
+    schema.lastName
+      .min(1, "Must be at least 1 characters")
+      .max(50, "Must be less than 50 characters"),
+  skills: (schema) => schema.skills
+}).merge(
+  createInsertSchema(contact, {
+    linkedIn: (schema) => schema.linkedIn.url().optional(),
+    portfolio: (schema) => schema.portfolio.url().optional()
+  })
+)
 
 const contactSchema = z.object({
   phone: z.string().optional(),
@@ -155,7 +177,6 @@ export type InsertResumeSchema = z.infer<typeof insertResumeSchema>
 
 export const downloadPdfSchema = z
   .object({
-    resumeId: z.string(),
     fullName: z.string(),
     email: z.string().email(),
     skills: z.string(),
