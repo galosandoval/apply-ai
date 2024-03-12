@@ -6,11 +6,13 @@ import { z } from "zod"
 import { api } from "~/utils/api"
 import { useRouter } from "next/router"
 import Link from "next/link"
-import { MyErrorMessage } from "~/components/my-error-message"
 import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Form } from "~/components/ui/form"
-import { DownloadPdfSchema, downloadPdfSchema } from "~/server/db/crud-schema"
+import Image from "next/image"
+import {
+  ClipboardCopyIcon,
+  DownloadIcon,
+  Pencil1Icon
+} from "@radix-ui/react-icons"
 
 const signUpSchema = z
   .object({
@@ -57,7 +59,7 @@ export default function Home() {
   })
 
   const onSubmit = (data: SignUpFormValues) => {
-    mutate(data)
+    console.log(data)
   }
 
   return (
@@ -122,14 +124,14 @@ export default function Home() {
 
 function Landing() {
   return (
-    <div className="w-full bg-gray-50">
+    <div className="w-full">
       <section className="w-full py-12 md:py-16 xl:py-24">
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
             <div className="flex flex-col justify-center space-y-4">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">
-                  Build a resume that stands out
+                  AI-Powered Resume Builder
                 </h1>
                 <p className="max-w-[500px] text-gray-500 dark:text-gray-400">
                   Create a professional resume in minutes with our easy-to-use
@@ -138,25 +140,86 @@ function Landing() {
                 </p>
               </div>
               <div className="flex flex-col gap-2">
-                <Button variant="outline">Get Started</Button>
+                <Button asChild variant="outline">
+                  <Link href="/onboarding/contact">Get started now</Link>
+                </Button>
                 <p className="text-xs text-gray-500">
                   No credit card required. 14-day free trial.
                 </p>
               </div>
             </div>
             <div className="flex justify-center">
-              <img
+              <Image
                 alt="Hero"
-                className="aspect-[4/3] overflow-hidden rounded-xl object-cover object-center"
+                className="aspect-[4/3] overflow-hidden rounded-xl object-cover object-top"
                 height="400"
-                src="/placeholder.svg"
+                src="/landing-resume.png"
                 width="600"
               />
             </div>
           </div>
         </div>
       </section>
-      <GenerateResumeForm />
+
+      <section className="w-full py-12 md:py-24 lg:py-32">
+        <div className="container grid items-center gap-4 px-4 text-center md:px-6 lg:gap-10">
+          <div className="space-y-3">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              How it works
+            </h2>
+            <p className="mx-auto max-w-[600px] text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+              Let our AI help you create the perfect resume. Stand out with
+              beautifully designed components that you can copy and paste into
+              your apps. Accessible. Customizable. Open Source.
+            </p>
+          </div>
+          <div className="mx-auto grid max-w-5xl items-start gap-6 sm:grid-cols-2 md:gap-12 lg:max-w-6xl lg:grid-cols-3">
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <Pencil1Icon className="h-24 w-24" />
+              <div className="space-y-2 text-center">
+                <h3 className="text-xl font-bold">Save your profile</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Fill in your contact info, work experience, education, and
+                  skills to get started. We will never use your data.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <ClipboardCopyIcon className="h-24 w-24" />
+              <div className="space-y-2 text-center">
+                <h3 className="text-xl font-bold">Copy/Paste</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Copy the job description of the position you are applying for.
+                  On the dashboard, paste the job description onto the input
+                  field and hit enter to generate your resume.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <DownloadIcon className="h-24 w-24" />
+              <div className="space-y-2 text-center">
+                <h3 className="text-xl font-bold">Download your resume</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Download your resume in PDF format. Share it with employers
+                  and get the job!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="container px-4 md:px-6">
+          <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="w-full max-w-sm space-y-2">
+              <Button asChild size="lg" className="w-full" type="submit">
+                <Link href="/onboarding/contact">Get started now</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="w-full py-12 md:py-16 xl:py-24">
         <div className="container px-4 md:px-6">
@@ -192,113 +255,5 @@ function Landing() {
         </div>
       </section>
     </div>
-  )
-}
-
-function GenerateResumeForm() {
-  const form = useForm<DownloadPdfSchema>({
-    resolver: zodResolver(downloadPdfSchema),
-    defaultValues: {}
-  })
-
-  return (
-    <Form {...form}>
-      <section className="w-full py-12 md:py-16 xl:py-24">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-12">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-                Enter your information
-              </h2>
-              <p className="max-w-prose text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Fill in your details below to get started. We&apos;ll use this
-                information to create your personalized resume.
-              </p>
-            </div>
-            <div className="grid gap-4">
-              <Input id="name" placeholder="Name" />
-              <Input id="email" placeholder="Email" type="email" />
-              <Input id="phone" placeholder="Phone" />
-              <Input id="linkedin" placeholder="LinkedIn" />
-              <Input id="github" placeholder="GitHub" />
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="w-full py-12 md:py-16 xl:py-24">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-12">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-                Work Experience
-              </h2>
-              <p className="max-w-prose text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Enter your work experience below, starting with your most recent
-                position.
-              </p>
-            </div>
-            <div className="grid gap-4">
-              <Input id="company1" placeholder="Company" />
-              <Input id="title1" placeholder="Title" />
-              <Input id="start1" placeholder="Start Date" type="date" />
-              <Input id="end1" placeholder="End Date" type="date" />
-              <Input id="description1" placeholder="Description" />
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="w-full py-12 md:py-16 xl:py-24">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-12">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-                Education
-              </h2>
-              <p className="max-w-prose text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Enter your education information below, starting with your most
-                recent degree.
-              </p>
-            </div>
-            <div className="grid gap-4">
-              <Input id="school1" placeholder="School" />
-              <Input id="degree1" placeholder="Degree" />
-              <Input id="start2" placeholder="Start Date" type="date" />
-              <Input id="end2" placeholder="End Date" type="date" />
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="w-full py-12 md:py-16 xl:py-24">
-        <div className="container px-4 md:px-6">
-          <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-12">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-                Skills
-              </h2>
-              <p className="max-w-prose text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Enter your skills below, separating each one with a comma.
-              </p>
-            </div>
-            <div className="grid gap-4">
-              <Input id="skills" placeholder="Skills" />
-            </div>
-          </div>
-        </div>
-      </section>
-      <section className="w-full py-12 md:py-16 xl:py-24">
-        <div className="container px-4 md:px-6">
-          <div className="flex flex-col items-center space-y-4 text-center">
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl/none">
-                Generate your resume
-              </h2>
-            </div>
-            <div className="w-full max-w-sm space-y-2">
-              <Button type="submit">Generate Resume</Button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </Form>
   )
 }
