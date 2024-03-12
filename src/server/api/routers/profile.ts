@@ -7,7 +7,7 @@ import { db } from "~/server/db"
 import {
   insertEducationSchema,
   insertExperienceSchema,
-  insertNameAndContactSchema,
+  insertUserSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
 import { contact, profile, school, user, work } from "~/server/db/schema"
@@ -64,7 +64,7 @@ export const profileRouter = createTRPCRouter({
     }),
 
   upsertNameAndContact: protectedProcedure
-    .input(insertNameAndContactSchema)
+    .input(insertUserSchema)
     .mutation(async ({ input, ctx }) => {
       const { firstName, lastName, linkedIn, location, phone, portfolio, id } =
         input

@@ -1,28 +1,6 @@
 import { createInsertSchema } from "drizzle-zod"
-import { contact, profile, resume, school, work } from "./schema"
+import { profile, resume, school, user, work } from "./schema"
 import { z } from "zod"
-
-const createProfileSchema = createInsertSchema(profile, {
-  id: (schema) => schema.id.optional(),
-  profession: (schema) =>
-    schema.profession
-      .min(3, "Must be at least 3 characters")
-      .max(255, "Must be less than 255 characters"),
-  firstName: (schema) =>
-    schema.firstName
-      .min(1, "Must be at least 1 characters")
-      .max(50, "Must be less than 50 characters"),
-  lastName: (schema) =>
-    schema.lastName
-      .min(1, "Must be at least 1 characters")
-      .max(50, "Must be less than 50 characters"),
-  skills: (schema) => schema.skills
-}).merge(
-  createInsertSchema(contact, {
-    linkedIn: (schema) => schema.linkedIn.url().optional(),
-    portfolio: (schema) => schema.portfolio.url().optional()
-  })
-)
 
 const contactSchema = z.object({
   phone: z.string().optional(),
@@ -31,7 +9,7 @@ const contactSchema = z.object({
   location: z.string().min(3, "Must be at least 3 characters")
 })
 
-export const insertNameAndContactSchema = z
+export const insertUserSchema = z
   .object({
     firstName: z
       .string()
@@ -42,13 +20,24 @@ export const insertNameAndContactSchema = z
       .min(1, "Must be at least 1 characters")
       .max(50, "Must be less than 50 characters"),
 
-    id: z.string().optional()
+    id: z.string().optional(),
+    confirm: z.string().min(8).max(50),
+    profession: z.string().min(3).max(255)
   })
   .merge(contactSchema)
+  .merge(
+    createInsertSchema(user, {
+      password: (schema) => schema.password.min(8).max(50),
+      email: (schema) => schema.email.email(),
+      id: (schema) => schema.id.optional()
+    })
+  )
+  .refine((data) => data.confirm === data.password, {
+    message: "Passwords don't match",
+    path: ["passwordConfirmation"]
+  })
 
-export type InsertNameAndContactSchema = z.infer<
-  typeof insertNameAndContactSchema
->
+export type InsertUserSchema = z.infer<typeof insertUserSchema>
 
 export const updateProfileSchema = createInsertSchema(profile, {
   profession: (schema) =>
