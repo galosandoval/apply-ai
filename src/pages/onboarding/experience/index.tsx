@@ -4,18 +4,17 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   type FieldArrayWithId,
-  type FieldErrors,
   type UseFieldArrayRemove,
-  type UseFormRegister,
   type UseFormWatch,
   useFieldArray,
-  useForm
+  useForm,
+  type Control
 } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyAlert } from "~/components/alert"
 import { MyErrorMessage } from "~/components/my-error-message"
-import { TextAreaInput } from "~/components/text-area"
-import { TextInput } from "~/components/text-input"
+import { MyTextarea } from "~/components/my-textarea"
+import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
 import {
   insertExperienceSchema,
@@ -24,6 +23,7 @@ import {
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 import OnboardingLayout from "../_layout"
+import { FormField } from "~/components/ui/form"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
@@ -50,32 +50,17 @@ export default function Step4() {
   const { mutate } = api.profile.addWork.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/step4")
+      router.push("/onboarding/experience")
     },
 
-    onMutate: () => router.push("/onboarding/step5")
+    onMutate: () => router.push("/onboarding/skills")
   })
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    watch,
-    control,
-    setFocus
-  } = useForm<InsertExperienceSchema>({
+  const form = useForm<InsertExperienceSchema>({
     resolver: zodResolver(insertExperienceSchema),
 
     defaultValues: {
-      experience: profile?.experience.length
-        ? profile.experience.map((experience) => ({
-            name: experience.name,
-            description: experience.description,
-            startDate: experience.startDate,
-            endDate: experience.endDate,
-            title: experience.title
-          }))
-        : initialExperience
+      experience: initialExperience
     },
 
     values: {
@@ -90,6 +75,14 @@ export default function Step4() {
         : initialExperience
     }
   })
+
+  const {
+    handleSubmit,
+    formState: { errors },
+    watch,
+    control,
+    setFocus
+  } = form
 
   const { fields, append, remove } = useFieldArray({
     name: "experience",
@@ -114,24 +107,26 @@ export default function Step4() {
   const hasMoreThanOneJob = fields.length > 1
 
   return (
-    <OnboardingLayout title="Experience" handleSubmit={handleSubmit(onSubmit)}>
-      {hasMoreThanOneJob && (
-        <MyAlert
-          title="Note"
-          description="Fill in your experience in reverse chronological order"
-        />
-      )}
+    <OnboardingLayout
+      form={form}
+      title="Experience"
+      handleSubmit={handleSubmit(onSubmit)}
+    >
+      <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
+        Start with your most recent job and work backwards, including the
+        company name and location, your title, and how long you worked there.
+        Finish by writing 3 to 5 accomplishments for each job.
+      </h2>
 
       {fields.map((field, index) => (
         <ExperienceForm
-          errors={errors}
           field={field}
           hasMoreThanOneJob={hasMoreThanOneJob}
           index={index}
-          register={register}
           remove={remove}
           watch={watch}
           key={field.id}
+          control={control}
         />
       ))}
 
@@ -148,7 +143,7 @@ export default function Step4() {
           </Button>
         )}
 
-        <Button type="submit">Next</Button>
+        <Button type="submit">Next: Skills</Button>
       </div>
     </OnboardingLayout>
   )
@@ -158,18 +153,16 @@ function ExperienceForm({
   field,
   watch,
   index,
-  errors,
   hasMoreThanOneJob,
   remove,
-  register
+  control
 }: {
   field: FieldArrayWithId<InsertExperienceSchema>
   watch: UseFormWatch<InsertExperienceSchema>
   index: number
-  errors: FieldErrors<InsertExperienceSchema>
   hasMoreThanOneJob: boolean
   remove: UseFieldArrayRemove
-  register: UseFormRegister<InsertExperienceSchema>
+  control: Control<InsertExperienceSchema>
 }) {
   const nameSub = watch(`experience.${index}.name`)
 
@@ -200,58 +193,81 @@ function ExperienceForm({
         ) : null}
       </div>
 
-      <TextInput
+      <FormField
+        control={control}
         name={`experience.${index}.name`}
-        errors={errors}
-        label="Company Name"
-        placeholder="Ex: Google"
-        register={register}
-        required
+        render={({ field }) => (
+          <MyInput
+            field={field}
+            label="Company Name"
+            placeholder="Ex: Google"
+            required
+          />
+        )}
       />
 
-      <TextInput
+      <FormField
+        control={control}
         name={`experience.${index}.title`}
-        errors={errors}
-        label="Title"
-        register={register}
-        placeholder="Ex: Software Engineer"
-        required
+        render={({ field }) => (
+          <MyInput
+            field={field}
+            label="Title"
+            placeholder="Ex: Software Engineer"
+            required
+          />
+        )}
       />
 
       <div className="flex gap-2">
-        <TextInput
+        <FormField
+          control={control}
           name={`experience.${index}.startDate`}
-          errors={errors}
-          label="Start"
-          register={register}
-          required
-          placeholder="Ex: Sept 2017"
+          render={({ field }) => (
+            <MyInput
+              field={field}
+              label="Start Date"
+              placeholder="Ex: Sept 2017"
+              required
+            />
+          )}
         />
-
-        <TextInput
+        <FormField
+          control={control}
           name={`experience.${index}.endDate`}
-          errors={errors}
-          label="End"
-          register={register}
-          placeholder="Ex: May 2021"
-          required
+          render={({ field }) => (
+            <MyInput
+              field={field}
+              label="End Date"
+              placeholder="Ex: May 2021"
+              required
+            />
+          )}
         />
       </div>
 
-      <div className="mx-auto max-w-sm">
-        <MyAlert
-          title="Accomplishments"
-          description={`Write a paragraph with 3 to 5 sentences, each sentence should be an accomplishment. Be concise and try to use numbers and percentages in your accomplishments. Each sentence will be a bullet point on your resume.`}
-        />
+      <div className="mx-auto max-w-md">
+        {index === 0 && (
+          <div className="mt-4">
+            <MyAlert
+              title="Accomplishments"
+              description={`Write a paragraph with 3 to 5 sentences, each sentence should be an accomplishment. Be concise and try to use numbers and percentages in your accomplishments. Each sentence will be a bullet point on your resume.`}
+            />
+          </div>
+        )}
       </div>
 
-      <TextAreaInput
+      <FormField
+        control={control}
         name={`experience.${index}.description`}
-        errors={errors}
-        label="Write 3 to 5 accomplishments"
-        placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
-        register={register}
-        required
+        render={({ field }) => (
+          <MyTextarea
+            field={field}
+            label="Write 3 to 5 accomplishments"
+            placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
+            required
+          />
+        )}
       />
     </div>
   )

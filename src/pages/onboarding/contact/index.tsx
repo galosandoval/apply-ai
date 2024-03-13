@@ -1,34 +1,34 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useRouter } from "next/navigation"
+import { useRouter } from "next/router"
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
-import { NewTextInput } from "~/components/text-input"
+import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
 import {
-  type InsertUserSchema,
-  insertUserSchema
+  type InsertContactSchema,
+  insertContactSchema
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import OnboardingLayout from "../_layout"
 import { FormField } from "~/components/ui/form"
 import toast from "react-hot-toast"
+import { useUser } from "~/utils/useUser"
 
 export default function Contact() {
-  // const { id } = useUser()
-
-  // const { data: profile, status } = api.profile.read.useQuery(
-  //   { userId: id },
-  //   { enabled: !!id }
-  // )
-
   return <NameAndContactForm />
 }
 
 function NameAndContactForm() {
   const router = useRouter()
+  const utils = api.useContext()
+  const { id } = useUser()
+  const { data: profile, status } = api.profile.read.useQuery(
+    { userId: id },
+    { enabled: !!id }
+  )
 
-  const form = useForm<InsertUserSchema>({
-    resolver: zodResolver(insertUserSchema),
+  const form = useForm<InsertContactSchema>({
+    resolver: zodResolver(insertContactSchema),
 
     defaultValues: {
       firstName: "",
@@ -37,60 +37,56 @@ function NameAndContactForm() {
       linkedIn: "",
       portfolio: "",
       location: "",
-      profession: "",
-      password: "",
-      confirm: ""
+      profession: ""
+    },
+
+    values: {
+      firstName: profile?.firstName ?? "",
+      lastName: profile?.lastName ?? "",
+      phone: profile?.contact?.phone ?? "",
+      linkedIn: profile?.contact?.linkedIn ?? "",
+      portfolio: profile?.contact?.portfolio ?? "",
+      location: profile?.contact?.location ?? "",
+      profession: profile?.profession ?? ""
     }
   })
 
-  const {
-    handleSubmit,
-    setFocus,
-    formState: { errors }
-  } = form
+  const { handleSubmit, setFocus } = form
 
-  console.log(errors)
-
-  const { mutate } = api.user.create.useMutation({
+  const { mutate } = api.profile.upsertNameAndContact.useMutation({
     onError: (error) => {
       toast.error(error.message)
-    }
+      router.push("/onboarding/contact")
+    },
+
+    onSuccess: (data, input) => {
+      if (data?.userId) {
+        utils.profile.read.setData(
+          { userId: data.userId },
+          {
+            ...data,
+            education: [],
+            experience: [],
+            email: profile?.email,
+            contact: {
+              linkedIn: input?.linkedIn ?? null,
+              location: input.location,
+              id: "",
+              phone: input?.phone ?? null,
+              portfolio: input?.portfolio ?? null,
+              profileId: ""
+            }
+          }
+        )
+      }
+    },
+
+    onMutate: () => router.push("/onboarding/education")
   })
 
-  // const { mutate } = api.profile.upsertNameAndContact.useMutation({
-  //   onError: (error) => {
-  //     toast.error(error.message)
-  //     router.push("/onboarding/step1")
-  //   },
-
-  //   onSuccess: (data, input) => {
-  //     if (data?.userId) {
-  //       utils.profile.read.setData(
-  //         { userId: data.userId },
-  //         {
-  //           ...data,
-  //           education: [],
-  //           experience: [],
-  //           email: profile.email,
-  //           contact: {
-  //             linkedIn: input?.linkedIn ?? null,
-  //             location: input.location,
-  //             id: "",
-  //             phone: input?.phone ?? null,
-  //             portfolio: input?.portfolio ?? null,
-  //             profileId: ""
-  //           }
-  //         }
-  //       )
-  //     }
-  //   },
-
-  //   onMutate: () => router.push("/onboarding/step2")
-  // })
-
-  const onSubmit = async (data: InsertUserSchema) => {
-    mutate(data)
-    console.log(data)
+  const onSubmit = (data: InsertContactSchema) => {
+    console.log(profile?.id)
+    mutate({ ...data, id: profile?.id })
   }
 
   useEffect(() => {
@@ -108,14 +104,14 @@ function NameAndContactForm() {
           control={form.control}
           name="firstName"
           render={({ field }) => (
-            <NewTextInput field={field} label="First Name" required />
+            <MyInput field={field} label="First Name" required />
           )}
         />
         <FormField
           control={form.control}
           name="lastName"
           render={({ field }) => (
-            <NewTextInput field={field} label="Last Name" required />
+            <MyInput field={field} label="Last Name" required />
           )}
         />
       </div>
@@ -124,7 +120,7 @@ function NameAndContactForm() {
         control={form.control}
         name="profession"
         render={({ field }) => (
-          <NewTextInput
+          <MyInput
             placeholder="Ex: Software Engineer"
             field={field}
             label="Profession"
@@ -136,7 +132,7 @@ function NameAndContactForm() {
         control={form.control}
         name="location"
         render={({ field }) => (
-          <NewTextInput
+          <MyInput
             placeholder="Ex: Los Angeles, CA"
             field={field}
             label="Location"
@@ -147,7 +143,7 @@ function NameAndContactForm() {
       <FormField
         control={form.control}
         name="phone"
-        render={({ field }) => <NewTextInput field={field} label="Phone" />}
+        render={({ field }) => <MyInput field={field} label="Phone" />}
       />
 
       <div className="flex gap-2">
@@ -155,7 +151,7 @@ function NameAndContactForm() {
           control={form.control}
           name="linkedIn"
           render={({ field }) => (
-            <NewTextInput
+            <MyInput
               placeholder="Ex: https://www.linkedin.com/in/..."
               field={field}
               label="LinkedIn URL"
@@ -166,7 +162,7 @@ function NameAndContactForm() {
           control={form.control}
           name="portfolio"
           render={({ field }) => (
-            <NewTextInput
+            <MyInput
               placeholder="Ex: https://github.com/galosandoval"
               field={field}
               label="Website URL"
@@ -175,42 +171,10 @@ function NameAndContactForm() {
         />
       </div>
 
-      <h2 className="pt-4 text-lg">Create your profile</h2>
-
-      <FormField
-        control={form.control}
-        name="email"
-        render={({ field }) => (
-          <NewTextInput field={field} label="Email" required />
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="password"
-        render={({ field }) => (
-          <NewTextInput
-            type="password"
-            field={field}
-            label="Password"
-            required
-          />
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="confirm"
-        render={({ field }) => (
-          <NewTextInput
-            type="password"
-            field={field}
-            label="Confirm Password"
-            required
-          />
-        )}
-      />
-
       <div className="flex w-full justify-end">
-        <Button type="submit">Next</Button>
+        <Button loading={status === "loading"} type="submit">
+          {status === "loading" ? "Loading..." : "Next: Education"}
+        </Button>
       </div>
     </OnboardingLayout>
   )

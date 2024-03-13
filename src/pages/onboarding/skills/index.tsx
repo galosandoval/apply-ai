@@ -3,11 +3,10 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   type FieldArrayWithId,
-  type FieldErrors,
   type UseFieldArrayRemove,
-  type UseFormRegister,
   useFieldArray,
-  useForm
+  useForm,
+  type Control
 } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
@@ -20,8 +19,9 @@ import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 import { Button } from "~/components/ui/button"
 import { Cross1Icon } from "@radix-ui/react-icons"
-import { TextInput } from "~/components/text-input"
+import { MyInput } from "~/components/my-input"
 import OnboardingLayout from "../_layout"
+import { FormField } from "~/components/ui/form"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {
@@ -29,7 +29,7 @@ const initialSkills: InsertSkillsSchema["skills"] = [
   }
 ]
 
-export default function Step5() {
+export default function Skills() {
   const router = useRouter()
   const { id: userId } = useUser()
 
@@ -41,24 +41,16 @@ export default function Step5() {
   const { mutate } = api.profile.addSkills.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/step4")
+      router.push("/onboarding/skills")
     },
 
     onMutate: () => router.push("/dashboard")
   })
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    control,
-    setFocus
-  } = useForm<InsertSkillsSchema>({
+  const form = useForm<InsertSkillsSchema>({
     resolver: zodResolver(insertSkillsSchema),
     defaultValues: {
-      skills: profile?.skills?.length
-        ? profile.skills.map((s) => ({ value: s }))
-        : initialSkills
+      skills: initialSkills
     },
 
     values: {
@@ -67,6 +59,13 @@ export default function Step5() {
         : initialSkills
     }
   })
+
+  const {
+    handleSubmit,
+    formState: { errors },
+    control,
+    setFocus
+  } = form
 
   const { fields, append, remove } = useFieldArray({
     name: "skills",
@@ -86,15 +85,22 @@ export default function Step5() {
   const hasMoreThanOneSkill = fields.length > 1
 
   return (
-    <OnboardingLayout handleSubmit={handleSubmit(onSubmit)} title="Skills">
+    <OnboardingLayout
+      form={form}
+      handleSubmit={handleSubmit(onSubmit)}
+      title="Skills"
+    >
+      <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
+        Add a few skills to show employers you&apos;re good in your field.
+      </h2>
+
       {fields.map((field, index) => (
         <SkillForm
           hasMoreThanOneSkill={hasMoreThanOneSkill}
-          errors={errors}
           field={field}
           index={index}
-          register={register}
           remove={remove}
+          control={control}
           key={field.id}
         />
       ))}
@@ -112,7 +118,7 @@ export default function Step5() {
           </Button>
         )}
 
-        <Button type="submit">Finish</Button>
+        <Button type="submit">Done: Start generating resumes</Button>
       </div>
     </OnboardingLayout>
   )
@@ -121,27 +127,29 @@ export default function Step5() {
 function SkillForm({
   field,
   index,
-  errors,
   hasMoreThanOneSkill,
   remove,
-  register
+  control
 }: {
   field: FieldArrayWithId<InsertSkillsSchema>
   index: number
-  errors: FieldErrors<InsertSkillsSchema>
   hasMoreThanOneSkill: boolean
   remove: UseFieldArrayRemove
-  register: UseFormRegister<InsertSkillsSchema>
+  control: Control<InsertSkillsSchema>
 }) {
   return (
     <div key={field.id}>
       <div className="flex gap-2">
-        <TextInput
+        <FormField
+          control={control}
           name={`skills.${index}.value`}
-          errors={errors}
-          label={`Skill ${index + 1}`}
-          placeholder="Ex: Customer service"
-          register={register}
+          render={({ field }) => (
+            <MyInput
+              field={field}
+              label={`Skill ${index + 1}`}
+              placeholder="Ex: Customer service"
+            />
+          )}
         />
 
         {hasMoreThanOneSkill && (

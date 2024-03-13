@@ -4,17 +4,16 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   type FieldArrayWithId,
-  type FieldErrors,
   type UseFieldArrayRemove,
-  type UseFormRegister,
   type UseFormWatch,
   useFieldArray,
-  useForm
+  useForm,
+  type Control
 } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
-import { TextAreaInput } from "~/components/text-area"
-import { TextInput } from "~/components/text-input"
+import { MyTextarea } from "~/components/my-textarea"
+import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
 import {
   insertEducationSchema,
@@ -22,8 +21,8 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
-import { MyAlert } from "~/components/alert"
 import OnboardingLayout from "../_layout"
+import { FormField } from "~/components/ui/form"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -39,7 +38,7 @@ const initialSchool: InsertEducationSchema["education"] = [
 
 const maxSchools = 4
 
-export default function Step3() {
+export default function Education() {
   const router = useRouter()
   const { id } = useUser()
 
@@ -51,20 +50,13 @@ export default function Step3() {
   const { mutate } = api.profile.addEducation.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/step3")
+      router.push("/onboarding/education")
     },
 
-    onMutate: () => router.push("/onboarding/step4")
+    onMutate: () => router.push("/onboarding/experience")
   })
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    control,
-    setFocus,
-    watch
-  } = useForm<InsertEducationSchema>({
+  const form = useForm<InsertEducationSchema>({
     resolver: zodResolver(insertEducationSchema),
 
     defaultValues: {
@@ -96,6 +88,14 @@ export default function Step3() {
     }
   })
 
+  const {
+    handleSubmit,
+    formState: { errors },
+    control,
+    setFocus,
+    watch
+  } = form
+
   const { fields, append, remove } = useFieldArray({
     name: "education",
     control
@@ -118,23 +118,25 @@ export default function Step3() {
   }, [])
 
   return (
-    <OnboardingLayout handleSubmit={handleSubmit(onSubmit)} title="Education">
-      {hasMoreThanOneSchool && (
-        <MyAlert
-          title="Note"
-          description="Fill in your education in reverse chronological order"
-        />
-      )}
+    <OnboardingLayout
+      form={form}
+      handleSubmit={handleSubmit(onSubmit)}
+      title="Education"
+    >
+      <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
+        Start with your most recent education and work backwards, including the
+        degree/certification, institution&apos;s name and location, and year of
+        completion.
+      </h2>
 
       {fields.map((field, index) => (
         <EducationForm
+          control={control}
           field={field}
           watch={watch}
           index={index}
-          errors={errors}
           hasMoreThanOneSchool={hasMoreThanOneSchool}
           remove={remove}
-          register={register}
           key={field.id}
         />
       ))}
@@ -152,7 +154,7 @@ export default function Step3() {
           </Button>
         )}
 
-        <Button type="submit">Next</Button>
+        <Button type="submit">Next: Work Experience</Button>
       </div>
     </OnboardingLayout>
   )
@@ -162,18 +164,16 @@ function EducationForm({
   field,
   watch,
   index,
-  errors,
   hasMoreThanOneSchool,
   remove,
-  register
+  control
 }: {
   field: FieldArrayWithId<InsertEducationSchema>
   watch: UseFormWatch<InsertEducationSchema>
   index: number
-  errors: FieldErrors<InsertEducationSchema>
   hasMoreThanOneSchool: boolean
   remove: UseFieldArrayRemove
-  register: UseFormRegister<InsertEducationSchema>
+  control: Control<InsertEducationSchema>
 }) {
   const nameSub = watch(`education.${index}.name`)
 
@@ -204,66 +204,93 @@ function EducationForm({
         ) : null}
       </div>
 
-      <TextInput
+      <FormField
+        control={control}
         name={`education.${index}.name`}
-        errors={errors}
-        label="Institution Name"
-        placeholder="Ex: University of California, Berkeley"
-        register={register}
-        required
+        render={({ field }) => (
+          <MyInput
+            field={field}
+            label="Institution Name"
+            placeholder="Ex: University of California, Berkeley"
+            required
+          />
+        )}
       />
 
       <div className="flex justify-around gap-2">
-        <TextInput
+        <FormField
+          control={control}
           name={`education.${index}.startDate`}
-          errors={errors}
-          label="Start"
-          placeholder="Ex: Sept 2017"
-          register={register}
-          required
+          render={({ field }) => (
+            <MyInput
+              field={field}
+              label="Start"
+              placeholder="Ex: Sept 2017"
+              required
+            />
+          )}
         />
-
-        <TextInput
+        <FormField
+          control={control}
           name={`education.${index}.endDate`}
-          errors={errors}
-          label="End"
-          placeholder="Ex: May 2021"
-          register={register}
-          required
+          render={({ field }) => (
+            <MyInput
+              field={field}
+              label="End"
+              placeholder="Ex: May 2021"
+              required
+            />
+          )}
         />
       </div>
 
-      <TextInput
+      <FormField
+        control={control}
         name={`education.${index}.degree`}
-        errors={errors}
-        label="Degree/Certificate"
-        placeholder="Ex: Computer Science"
-        register={register}
-        required
+        render={({ field }) => (
+          <MyInput
+            field={field}
+            label="Degree/Certificate"
+            placeholder="Ex: Computer Science"
+            required
+          />
+        )}
       />
 
-      <TextInput
+      <FormField
+        control={control}
         name={`education.${index}.location`}
-        errors={errors}
-        label="Location"
-        placeholder="Ex: Berkely, CA"
-        register={register}
+        render={({ field }) => (
+          <MyInput
+            field={field}
+            label="Location"
+            placeholder="Ex: Berkely, CA"
+          />
+        )}
       />
 
-      <TextInput
+      <FormField
+        control={control}
         name={`education.${index}.gpa`}
-        errors={errors}
-        label="GPA"
-        placeholder="Only if your GPA was 3.5+"
-        register={register}
+        render={({ field }) => (
+          <MyInput
+            field={field}
+            label="GPA"
+            placeholder="Only if your GPA was 3.5+"
+          />
+        )}
       />
 
-      <TextAreaInput
+      <FormField
+        control={control}
         name={`education.${index}.description`}
-        errors={errors}
-        label="Anything extra you want a hiring manager to know"
-        placeholder="Ex: I was the president of the computer science club."
-        register={register}
+        render={({ field }) => (
+          <MyTextarea
+            field={field}
+            label="Anything extra you want a hiring manager to know"
+            placeholder="Ex: I was the president of the computer science club."
+          />
+        )}
       />
     </div>
   )
