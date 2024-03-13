@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { api } from "~/utils/api"
 import { signIn } from "next-auth/react"
 import { Form, FormField } from "./ui/form"
-import { NewTextInput } from "./text-input"
+import { MyInput } from "./my-input"
 import { z } from "zod"
 
 const signUpSchema = z
@@ -112,24 +112,20 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
           <FormField
             control={form.control}
             name="email"
-            render={({ field }) => <NewTextInput field={field} label="Email" />}
+            render={({ field }) => <MyInput field={field} label="Email" />}
           />
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => (
-              <NewTextInput field={field} type="password" label="Password" />
+              <MyInput field={field} type="password" label="Password" />
             )}
           />
           <FormField
             control={form.control}
             name="confirm"
             render={({ field }) => (
-              <NewTextInput
-                field={field}
-                type="password"
-                label="Confirm Password"
-              />
+              <MyInput field={field} type="password" label="Confirm Password" />
             )}
           />
           <DialogFooter className="pt-4">
@@ -211,13 +207,13 @@ function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
           <FormField
             control={form.control}
             name="email"
-            render={({ field }) => <NewTextInput field={field} label="Email" />}
+            render={({ field }) => <MyInput field={field} label="Email" />}
           />
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => (
-              <NewTextInput field={field} type="password" label="Password" />
+              <MyInput field={field} type="password" label="Password" />
             )}
           />
           <DialogFooter className="pt-4">

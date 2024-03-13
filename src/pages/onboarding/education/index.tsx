@@ -12,8 +12,8 @@ import {
 } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
-import { NewTextareaInput } from "~/components/text-area"
-import { NewTextInput } from "~/components/text-input"
+import { MyTextarea } from "~/components/my-textarea"
+import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
 import {
   insertEducationSchema,
@@ -21,7 +21,6 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
-import { MyAlert } from "~/components/alert"
 import OnboardingLayout from "../_layout"
 import { FormField } from "~/components/ui/form"
 
@@ -39,7 +38,7 @@ const initialSchool: InsertEducationSchema["education"] = [
 
 const maxSchools = 4
 
-export default function Step3() {
+export default function Education() {
   const router = useRouter()
   const { id } = useUser()
 
@@ -51,10 +50,10 @@ export default function Step3() {
   const { mutate } = api.profile.addEducation.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/step3")
+      router.push("/onboarding/education")
     },
 
-    onMutate: () => router.push("/onboarding/step4")
+    onMutate: () => router.push("/onboarding/experience")
   })
 
   const form = useForm<InsertEducationSchema>({
@@ -124,12 +123,11 @@ export default function Step3() {
       handleSubmit={handleSubmit(onSubmit)}
       title="Education"
     >
-      {hasMoreThanOneSchool && (
-        <MyAlert
-          title="Note"
-          description="Fill in your education in reverse chronological order"
-        />
-      )}
+      <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
+        Start with your most recent education and work backwards, including the
+        degree/certification, institution&apos;s name and location, and year of
+        completion.
+      </h2>
 
       {fields.map((field, index) => (
         <EducationForm
@@ -156,7 +154,7 @@ export default function Step3() {
           </Button>
         )}
 
-        <Button type="submit">Next</Button>
+        <Button type="submit">Next: Work Experience</Button>
       </div>
     </OnboardingLayout>
   )
@@ -210,7 +208,7 @@ function EducationForm({
         control={control}
         name={`education.${index}.name`}
         render={({ field }) => (
-          <NewTextInput
+          <MyInput
             field={field}
             label="Institution Name"
             placeholder="Ex: University of California, Berkeley"
@@ -224,7 +222,7 @@ function EducationForm({
           control={control}
           name={`education.${index}.startDate`}
           render={({ field }) => (
-            <NewTextInput
+            <MyInput
               field={field}
               label="Start"
               placeholder="Ex: Sept 2017"
@@ -236,7 +234,7 @@ function EducationForm({
           control={control}
           name={`education.${index}.endDate`}
           render={({ field }) => (
-            <NewTextInput
+            <MyInput
               field={field}
               label="End"
               placeholder="Ex: May 2021"
@@ -250,7 +248,7 @@ function EducationForm({
         control={control}
         name={`education.${index}.degree`}
         render={({ field }) => (
-          <NewTextInput
+          <MyInput
             field={field}
             label="Degree/Certificate"
             placeholder="Ex: Computer Science"
@@ -263,7 +261,7 @@ function EducationForm({
         control={control}
         name={`education.${index}.location`}
         render={({ field }) => (
-          <NewTextInput
+          <MyInput
             field={field}
             label="Location"
             placeholder="Ex: Berkely, CA"
@@ -275,7 +273,7 @@ function EducationForm({
         control={control}
         name={`education.${index}.gpa`}
         render={({ field }) => (
-          <NewTextInput
+          <MyInput
             field={field}
             label="GPA"
             placeholder="Only if your GPA was 3.5+"
@@ -287,7 +285,7 @@ function EducationForm({
         control={control}
         name={`education.${index}.description`}
         render={({ field }) => (
-          <NewTextareaInput
+          <MyTextarea
             field={field}
             label="Anything extra you want a hiring manager to know"
             placeholder="Ex: I was the president of the computer science club."

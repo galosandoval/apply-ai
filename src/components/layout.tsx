@@ -8,16 +8,12 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle
 } from "./ui/navigation-menu"
+import { appPath } from "~/lib/path"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data } = useSession()
-  const router = useRouter()
 
   let navbar: React.ReactNode = null
-
-  if (router.pathname === "/resume/[id]") {
-    return <>{children}</>
-  }
 
   if (data) {
     navbar = <ProtectedNavbar />
@@ -44,9 +40,9 @@ function ProtectedNavbar() {
   return (
     <NavigationMenu>
       <NavigationMenuList>
-        <MyLink href="/dashboard">dashboard</MyLink>
-        <MyLink href="/onboarding/step1">onboarding</MyLink>
-        <MyLink href="/resume">resume</MyLink>
+        <MyLink href={appPath.dashboard}>dashboard</MyLink>
+        <MyLink href={appPath.contact}>onboarding</MyLink>
+        <MyLink href={appPath.resume}>resume</MyLink>
         <NavigationMenuItem asChild>
           <button
             className={navigationMenuTriggerStyle()}
