@@ -9,7 +9,7 @@ const contactSchema = z.object({
   location: z.string().min(3, "Must be at least 3 characters")
 })
 
-export const insertUserSchema = z
+export const insertContactSchema = z
   .object({
     firstName: z
       .string()
@@ -21,23 +21,11 @@ export const insertUserSchema = z
       .max(50, "Must be less than 50 characters"),
 
     id: z.string().optional(),
-    confirm: z.string().min(8).max(50),
     profession: z.string().min(3).max(255)
   })
   .merge(contactSchema)
-  .merge(
-    createInsertSchema(user, {
-      password: (schema) => schema.password.min(8).max(50),
-      email: (schema) => schema.email.email(),
-      id: (schema) => schema.id.optional()
-    })
-  )
-  .refine((data) => data.confirm === data.password, {
-    message: "Passwords don't match",
-    path: ["passwordConfirmation"]
-  })
 
-export type InsertUserSchema = z.infer<typeof insertUserSchema>
+export type InsertContactSchema = z.infer<typeof insertContactSchema>
 
 export const updateProfileSchema = createInsertSchema(profile, {
   profession: (schema) =>
