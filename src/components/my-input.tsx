@@ -1,13 +1,9 @@
 import {
-  type UseFormRegister,
   type FieldValues,
-  type Path,
   type ControllerRenderProps,
   type FieldPath
 } from "react-hook-form"
-import { MyErrorMessage } from "./my-error-message"
-import { Input, InputProps } from "./ui/input"
-import { Label } from "./ui/label"
+import { Input, type InputProps } from "./ui/input"
 import {
   FormControl,
   FormDescription,
@@ -15,37 +11,6 @@ import {
   FormLabel,
   FormMessage
 } from "./ui/form"
-
-type NameInputProps<T extends FieldValues> = {
-  label: string
-  name: Path<T>
-  register: UseFormRegister<T>
-  errors: any
-  required?: boolean
-  placeholder?: string
-}
-
-export function TextInput<T extends FieldValues>({
-  placeholder,
-  label,
-  name,
-  register,
-  errors,
-  required
-}: NameInputProps<T>) {
-  return (
-    <div className="w-full">
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-destructive">*</span>}
-      </Label>
-
-      <Input placeholder={placeholder} id={name} {...register(name)} />
-
-      <MyErrorMessage errors={errors} name={name} />
-    </div>
-  )
-}
 
 interface TextInputProps<
   TFieldValues extends FieldValues,
@@ -57,7 +22,7 @@ interface TextInputProps<
   field: ControllerRenderProps<TFieldValues, TName>
 }
 
-export function NewTextInput<
+export function MyInput<
   TFieldValues extends FieldValues,
   TName extends FieldPath<TFieldValues>
 >({
