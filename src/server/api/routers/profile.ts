@@ -7,7 +7,7 @@ import { db } from "~/server/db"
 import {
   insertEducationSchema,
   insertExperienceSchema,
-  insertUserSchema,
+  insertContactSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
 import { contact, profile, school, user, work } from "~/server/db/schema"
@@ -64,10 +64,18 @@ export const profileRouter = createTRPCRouter({
     }),
 
   upsertNameAndContact: protectedProcedure
-    .input(insertUserSchema)
+    .input(insertContactSchema)
     .mutation(async ({ input, ctx }) => {
-      const { firstName, lastName, linkedIn, location, phone, portfolio, id } =
-        input
+      const {
+        firstName,
+        lastName,
+        linkedIn,
+        location,
+        phone,
+        portfolio,
+        id,
+        profession
+      } = input
 
       if (!id) {
         throw new TRPCError({
@@ -78,13 +86,13 @@ export const profileRouter = createTRPCRouter({
 
       const updatedProfile = await ctx.db
         .update(profile)
-        .set({ firstName, lastName })
+        .set({ firstName, lastName, profession })
         .where(eq(profile.id, id))
         .returning()
 
       if (!updatedProfile?.length) {
         throw new TRPCError({
-          message: "Profile not created",
+          message: "Profile not updated",
           code: "INTERNAL_SERVER_ERROR"
         })
       }
