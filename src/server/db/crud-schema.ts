@@ -21,7 +21,8 @@ export const insertContactSchema = z
       .max(50, "Must be less than 50 characters"),
 
     id: z.string().optional(),
-    profession: z.string().min(3).max(255)
+    profession: z.string().min(3).max(255),
+    interests: z.string().min(3).max(255).optional()
   })
   .merge(contactSchema)
 

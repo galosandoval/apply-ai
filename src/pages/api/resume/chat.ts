@@ -20,7 +20,7 @@ export const chatParams = z.object({
   experience: z.string(),
   education: z.string(),
   profession: z.string(),
-  interests: z.string().optional(),
+  interests: z.string().optional().nullable(),
   messages: z.array(
     z.object({
       role: z.enum(["user", "assistant", "system"]),

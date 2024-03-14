@@ -10,6 +10,11 @@ import {
 } from "./ui/navigation-menu"
 import { appPath } from "~/lib/path"
 
+let showOnboarding = false
+if (process.env.NODE_ENV === "development") {
+  showOnboarding = true
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data } = useSession()
 
@@ -38,21 +43,30 @@ function ProtectedNavbar() {
   }
 
   return (
-    <NavigationMenu>
-      <NavigationMenuList>
-        <MyLink href={appPath.dashboard}>dashboard</MyLink>
-        <MyLink href={appPath.contact}>onboarding</MyLink>
-        <MyLink href={appPath.resume}>resume</MyLink>
-        <NavigationMenuItem asChild>
-          <button
-            className={navigationMenuTriggerStyle()}
-            onClick={handleSignOut}
-          >
-            signOut
-          </button>
-        </NavigationMenuItem>
-      </NavigationMenuList>
-    </NavigationMenu>
+    <div className="flex w-full items-center justify-between">
+      <h1 className="text-2xl font-bold">
+        Apply
+        <span className="inline-block bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text text-transparent">
+          AI
+        </span>
+      </h1>
+
+      <NavigationMenu className="w-full justify-between">
+        <NavigationMenuList>
+          <MyLink href={appPath.dashboard}>Dashboard</MyLink>
+          {showOnboarding && <MyLink href={appPath.contact}>Onboarding</MyLink>}
+          <MyLink href={appPath.resume}>Resumes</MyLink>
+          <NavigationMenuItem asChild>
+            <button
+              className={navigationMenuTriggerStyle()}
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </button>
+          </NavigationMenuItem>
+        </NavigationMenuList>
+      </NavigationMenu>
+    </div>
   )
 }
 
@@ -66,7 +80,9 @@ function MyLink({
   return (
     <NavigationMenuItem>
       <Link href={href} legacyBehavior passHref>
-        <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+        <NavigationMenuLink
+          className={navigationMenuTriggerStyle({ className: "" })}
+        >
           {children}
         </NavigationMenuLink>
       </Link>
