@@ -168,6 +168,71 @@ export const Resume = ({
   )
 }
 
+export function Resume2InChat({
+  isEditing,
+  fullName,
+  watch,
+  register,
+  startEditing,
+  finishEditing
+}: {
+  isEditing: EditableFields
+  fullName: string
+  watch: UseFormWatch<InsertResumeSchema>
+  register: UseFormRegister<InsertResumeSchema>
+  startEditing: StartEditing
+  finishEditing: () => void
+}) {
+  const handleFinishEditingOnEscape = (
+    e: React.KeyboardEvent<HTMLDivElement>
+  ) => {
+    if (e.key === "Escape" || e.key === "Enter") finishEditing()
+  }
+
+  const email = watch("email")
+  const phone = watch("phone")
+  const linkedIn = watch("linkedIn")
+  const portfolio = watch("portfolio")
+  const location = watch("location")
+  const skills = watch("skills")
+  const introduction = watch("introduction")
+  const experience = watch("experience")
+  const education = watch("education")
+  const interests = watch("interests")
+  const profession = watch("profession")
+
+  return (
+    <div
+      onKeyDown={handleFinishEditingOnEscape}
+      className="text-10pt h-[29.7cm] w-[21cm] rounded-md bg-white px-10"
+    >
+      <div className="flex h-full overflow-hidden">
+        <div className="my-auto">
+          <Header2
+            profession={profession}
+            fullName={fullName}
+            isEditing={isEditing}
+            email={email}
+            phone={phone}
+            linkedIn={linkedIn}
+            portfolio={portfolio}
+            location={location}
+            register={register}
+            startEditing={startEditing}
+            finishEditing={finishEditing}
+          />
+
+          <Skills2 />
+
+          <Experience2 experience={experience} />
+
+          <Education2 education={education} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const ResumeInChat = ({
   isEditing,
   fullName,
@@ -361,6 +426,236 @@ function Header({
   )
 }
 
+function Header2({
+  isEditing,
+  fullName,
+  profession,
+  email,
+  linkedIn,
+  location,
+  phone,
+  portfolio,
+  register,
+  startEditing,
+  finishEditing
+}: {
+  isEditing: EditableFields
+  fullName: string
+  profession: string
+  email: string
+  phone: string
+  linkedIn: string
+  portfolio: string
+  location: string
+  register: UseFormRegister<InsertResumeSchema>
+  startEditing: StartEditing
+  finishEditing: () => void
+}) {
+  const contactInfo = [location, email, linkedIn, portfolio, "", phone].filter(
+    Boolean
+  )
+
+  return (
+    <div className="flex flex-col items-center pb-2">
+      <div className="justify-self-center">
+        <h1 className="text-24pt font-bold">{fullName}</h1>
+      </div>
+
+      {isEditing.profession ? (
+        <div className="flex justify-start gap-1">
+          <Input
+            autoFocus
+            className="text-md mb-4 w-fit border border-transparent font-semibold uppercase tracking-[.25rem]"
+            {...register("profession")}
+          />
+
+          <Button onClick={finishEditing} variant="outline" size="icon">
+            <Cross1Icon />
+          </Button>
+        </div>
+      ) : (
+        <h1
+          id="profession"
+          className="text-14pt cursor-pointer rounded border border-transparent font-bold tracking-wide hover:border-blue-800 hover:bg-sky-200"
+          onClick={() => startEditing("profession")}
+        >
+          {profession}
+        </h1>
+      )}
+
+      <div className="mx-auto flex gap-1 text-center">
+        {contactInfo.map((contact, i) => (
+          <Fragment key={contact}>
+            <ContactLine contact={contact} />
+            {i !== contactInfo.length - 1 && <span>&bull;</span>}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <>
+      <h2 className="text-11pt font-semibold uppercase">{title}</h2>
+      <div className="pb-2 pt-1">
+        <hr className="h-[2px] rounded border-0 bg-black" />
+      </div>
+    </>
+  )
+}
+
+function Skills2() {
+  return (
+    <div className="pb-4">
+      <SectionTitle title="Skills" />
+
+      <div>
+        <div className="flex gap-1">
+          <h3 className="font-semibold">Frontend:</h3>
+          <p>
+            React.js, TailwindCSS, Redux, React Query, Jest, Typescript,
+            JavaScript, HTML, CSS, Zod/Yup, Vite, Vitest, Next.js
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <h3 className="font-semibold">Backend:</h3>
+          <p>Node.js, Express, tRPC, SQL, PostgreSQL</p>
+        </div>
+        <div className="flex gap-1">
+          <h3 className="font-semibold">Additional:</h3>
+          <p>
+            Agile Project Management, Algorithms, Architecture, Debugging,
+            Deployment, Software Development Life Cycle
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Experience2({
+  experience
+}: {
+  experience: InsertResumeSchema["experience"]
+}) {
+  return (
+    <div className="pb-4">
+      <SectionTitle title="Experience" />
+
+      <div className="space-y-4">
+        {experience.map((job) => (
+          <div key={job.name}>
+            <div className="flex justify-between">
+              <div className="font-semibold">
+                {job.name},{" "}
+                <span className="font-normal italic">{job.title}</span>
+              </div>
+
+              <p>
+                {job.startDate} - {job.endDate}
+              </p>
+            </div>
+            <ul className="list-disc pl-10">
+              {job.description.split(". ").map((ka) => (
+                <li key={ka}>{ka}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Education2({
+  education
+}: {
+  education: InsertResumeSchema["education"]
+}) {
+  return (
+    <div>
+      <SectionTitle title="Education" />
+
+      <div className="space-y-2">
+        {education.map((school) => (
+          <div key={school.name}>
+            <div className="flex justify-between">
+              <div className="font-semibold">
+                {school.name},{" "}
+                <span className="font-normal italic">{school.degree}</span>
+              </div>
+
+              <p>
+                {school.startDate} - {school.endDate}
+              </p>
+            </div>
+            <p>{school.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ContactLine({ contact }: { contact: string }) {
+  if (contact.includes("linkedin.com")) {
+    return (
+      <a
+        className="text-blue-600 underline"
+        href={contact}
+        target="_blank"
+        rel="noreferrer"
+      >
+        LinkedIn
+      </a>
+    )
+  }
+  if (contact.includes("github.com")) {
+    return (
+      <a
+        className="text-blue-600 underline"
+        href={contact}
+        target="_blank"
+        rel="noreferrer"
+      >
+        GitHub
+      </a>
+    )
+  }
+  if (contact.includes("www.")) {
+    return (
+      <a
+        className="text-blue-600 underline"
+        href={contact}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Portfolio
+      </a>
+    )
+  }
+  if (contact.includes("@")) {
+    return (
+      <a
+        className="text-blue-600 underline"
+        href={`mailto:${contact}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {contact}
+      </a>
+    )
+  }
+
+  return (
+    <Fragment>
+      <span>{contact}</span>
+    </Fragment>
+  )
+}
+
 function Contact({
   isEditing,
   phone,
@@ -391,7 +686,7 @@ function Contact({
         Contact
       </h2>
       {isEditing.phone ? (
-        <div className="">
+        <div>
           <Input autoFocus className="text-xs" {...register("phone")} />
 
           <Button
