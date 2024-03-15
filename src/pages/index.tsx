@@ -75,7 +75,7 @@ function Hero() {
             </div>
             <div className="flex flex-col gap-2">
               <Button asChild variant="outline">
-                <AuthModal />
+                <AuthModal label="Get Started" initialModal="sign-up" />
               </Button>
               <p className="text-xs text-gray-500">
                 No credit card required. 14-day free trial.
@@ -154,16 +154,19 @@ function Footer() {
     <section className="w-full py-6 md:py-12">
       <div className="container flex flex-col items-center space-y-4 px-4 md:flex-row md:justify-between md:space-y-0 md:px-6">
         <div className="text-center text-sm text-gray-500 dark:text-gray-400 md:text-base">
-          © 2023 ACME Inc. All rights reserved.
+          © 2024 ApplyAI All rights reserved.
         </div>
         <nav className="flex items-center space-x-4 text-sm md:space-x-6">
-          <Link className="text-gray-500 underline" href="#">
+          <Link className="text-gray-500 underline" href="/privacy-policy">
             Privacy
           </Link>
-          <Link className="text-gray-500 underline" href="#">
-            Terms
+          <Link className="text-gray-500 underline" href="/terms-of-service">
+            Terms of service
           </Link>
-          <Link className="text-gray-500 underline" href="#">
+          <Link
+            className="text-gray-500 underline"
+            href="mailto:galo.sandoval.dev@gmail.com"
+          >
             Contact
           </Link>
         </nav>

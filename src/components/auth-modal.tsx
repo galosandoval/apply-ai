@@ -31,14 +31,20 @@ const signUpSchema = z
 
 type SignUpFormValues = z.infer<typeof signUpSchema>
 
-export function AuthModal() {
+export function AuthModal({
+  initialModal,
+  label
+}: {
+  initialModal: Modal
+  label: string
+}) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="submit">Get started</Button>
+        <Button type="submit">{label}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <AuthSwitch />
+        <AuthSwitch initialModal={initialModal} />
       </DialogContent>
     </Dialog>
   )
@@ -46,8 +52,8 @@ export function AuthModal() {
 
 type Modal = "sign-up" | "login"
 
-function AuthSwitch() {
-  const [modal, setModal] = useState<Modal>("sign-up")
+function AuthSwitch({ initialModal }: { initialModal: Modal }) {
+  const [modal, setModal] = useState<Modal>(initialModal)
 
   const handleSwitchAuth = () => {
     setModal((prev) => (prev === "sign-up" ? "login" : "sign-up"))
