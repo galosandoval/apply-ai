@@ -18,6 +18,12 @@ const config = {
       }
     },
     extend: {
+      fontSize: {
+        "10pt": ["13.333px", "18px"],
+        "11pt": ["14.667px", "20px"],
+        "14pt": ["18.667px", "28px"],
+        "24pt": ["32px", "40px"]
+      },
       fontFamily: {
         sans: ["var(--font-geist-sans)"]
       },
