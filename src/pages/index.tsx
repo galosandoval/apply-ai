@@ -24,12 +24,6 @@ export default function Home() {
   )
 }
 
-/**
- * v0 by Vercel.
- * @see https://v0.dev/t/IZXWYtd8zBO
- * Documentation: https://v0.dev/docs#integrating-generated-code-into-your-nextjs-app
- */
-
 function Landing() {
   return (
     <div className="w-full">
@@ -161,7 +155,7 @@ function Footer() {
             Privacy
           </Link>
           <Link className="text-gray-500 underline" href="/terms-of-service">
-            Terms of service
+            Terms of Service
           </Link>
           <Link
             className="text-gray-500 underline"
