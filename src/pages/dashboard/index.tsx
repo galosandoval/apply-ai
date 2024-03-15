@@ -3,7 +3,7 @@ import { type RouterOutputs, api } from "~/utils/api"
 import { type Message, useChat } from "ai/react"
 import { useUser } from "~/utils/useUser"
 import { type ChangeEvent, useState, type FormEvent } from "react"
-import { type EditableFields, ResumeInChat } from "~/components/resume"
+import { type EditableFields, Resume2InChat } from "~/components/resume"
 import { PromptInput } from "~/components/prompt-input"
 import { useForm } from "react-hook-form"
 import {
@@ -332,7 +332,7 @@ function AssistantMessage({
       onSubmit={handleSubmit(onSubmitSaveResume)}
       className="flex flex-col items-center gap-4 overflow-y-auto pt-16"
     >
-      <ResumeInChat
+      <Resume2InChat
         fullName={`${profile.firstName} ${profile.lastName}`}
         watch={watch}
         isEditing={isEditing}
