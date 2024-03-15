@@ -40,14 +40,14 @@ function Main() {
 
   if (status === "success") {
     return (
-      <main className="my-auto h-full overflow-y-auto pb-16 pt-4 md:grid md:place-items-center">
+      <main className="top-0 my-auto h-full overflow-y-auto md:grid md:place-items-center">
         <PromptForm data={data} />
       </main>
     )
   }
 
   return (
-    <main className="my-auto h-full overflow-y-auto pb-16 pt-4 md:grid md:place-items-center">
+    <main className="my-auto h-full overflow-y-auto md:grid md:place-items-center">
       loading...
     </main>
   )
@@ -128,7 +128,7 @@ function Chat({
         ))}
       </div>
       <form
-        className="mx-auto flex w-full max-w-md flex-col gap-2"
+        className="mx-auto flex w-full max-w-md flex-col gap-2 pb-12"
         onSubmit={onSubmit}
       >
         <PromptInput handleInputChange={handleInputChange} input={input} />
@@ -301,10 +301,11 @@ function AssistantMessage({
       linkedIn,
       portfolio,
       skills,
-      interests,
+      interests: interests ? interests : null,
       education,
       experience
     }
+    console.log(requestBody)
 
     try {
       const response = await fetch("/api/resume/pdf", {
@@ -329,7 +330,7 @@ function AssistantMessage({
   return (
     <form
       onSubmit={handleSubmit(onSubmitSaveResume)}
-      className="flex max-h-[80svh] flex-col items-center gap-4 overflow-y-auto"
+      className="flex flex-col items-center gap-4 overflow-y-auto pt-16"
     >
       <ResumeInChat
         fullName={`${profile.firstName} ${profile.lastName}`}
@@ -339,13 +340,9 @@ function AssistantMessage({
         finishEditing={finishEditing}
         register={register}
       />
-      {savedResumeId ? (
-        <Button onClick={handleDownloadPdf} type="button">
-          Download
-        </Button>
-      ) : (
-        <Button type="submit">Save</Button>
-      )}
+      <Button onClick={handleDownloadPdf} type="button">
+        Download
+      </Button>
     </form>
   )
 }
@@ -384,7 +381,7 @@ type ExperienceParsed = {
 
 type InterestsParsed = string
 
-export type FinishedParsed = {
+type FinishedParsed = {
   education: EducationParsed[]
   skills: SkillParsed
   experience: ExperienceParsed[]

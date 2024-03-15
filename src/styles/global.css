@@ -8,9 +8,6 @@
      Author: Ilias Ism
      URL: https://gradient.page */
 
-    .bg-gradient {
-      background: var(--gradient);
-    }
     --gradient: linear-gradient(to top left, #091e3a, #2f80ed, #2d9ee0);
     --background: 228 98.65% 98.26%;
     --foreground: 228 7.3% 0.52%;
@@ -79,12 +76,16 @@
   * {
     @apply border-border;
   }
-  html,
-  body,
+
   #__next {
-    @apply h-full;
+    height: 100svh;
+    overflow: hidden;
   }
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.bg-gradient {
+  background: var(--gradient);
 }

@@ -1,5 +1,4 @@
 import { Fragment } from "react"
-import { type FinishedParsed } from "~/pages/dashboard"
 import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
@@ -205,7 +204,7 @@ export const ResumeInChat = ({
   return (
     <div
       onKeyDown={handleFinishEditingOnEscape}
-      className="h-[29.7cm] w-[21cm] px-20 py-16"
+      className="h-[29.7cm] w-[21cm] rounded-md bg-white px-20 py-16"
     >
       <div className="flex h-full overflow-hidden">
         <div className="my-auto max-h-full border-b border-[#737373]">
