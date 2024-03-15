@@ -1,15 +1,6 @@
 export default function PrivacyPolicy() {
-  return <Component />
-}
-
-/**
- * v0 by Vercel.
- * @see https://v0.dev/t/mJiS04HFVxO
- * Documentation: https://v0.dev/docs#integrating-generated-code-into-your-nextjs-app
- */
-function Component() {
   return (
-    <section className="w-full overflow-y-auto pb-12 pt-20">
+    <div className="w-full overflow-y-auto pb-12 pt-20">
       <div className="container px-4 lg:px-8">
         <header className="pb-12 text-center">
           <div className="space-y-2">
@@ -21,7 +12,7 @@ function Component() {
             </p>
           </div>
         </header>
-        <div className="prose prose-gray lg:prose-lg dark:prose-invert mx-auto">
+        <div className="mx-auto">
           <h2 className="py-5 font-bold">Introduction</h2>
           <p className="pb-5">
             This Privacy Policy describes how ApplyAI (&quot;we,&quot;
@@ -129,6 +120,6 @@ function Component() {
           </p>
         </div>
       </div>
-    </section>
+    </div>
   )
 }
