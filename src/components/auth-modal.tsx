@@ -35,9 +35,7 @@ export function AuthModal() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button type="submit" variant="outline">
-          Get started
-        </Button>
+        <Button type="submit">Get started</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <AuthSwitch />

@@ -21,7 +21,8 @@ export const insertContactSchema = z
       .max(50, "Must be less than 50 characters"),
 
     id: z.string().optional(),
-    profession: z.string().min(3).max(255)
+    profession: z.string().min(3).max(255),
+    interests: z.string().min(3).max(255).optional()
   })
   .merge(contactSchema)
 
@@ -40,7 +41,8 @@ export const updateProfileSchema = createInsertSchema(profile, {
     schema.interests
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters")
-      .optional(),
+      .optional()
+      .nullable(),
   skills: (schema) => schema.skills.optional(),
   id: (schema) => schema.id.optional()
 })
