@@ -26,7 +26,7 @@ if (process.env.NODE_ENV === "development") {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { data } = useSession()
 
-  let navbar: React.ReactNode = null
+  let navbar: React.ReactNode = <PublicNavbar />
 
   if (data) {
     navbar = <ProtectedNavbar />
@@ -37,6 +37,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {navbar}
 
       {children}
+    </div>
+  )
+}
+
+function PublicNavbar() {
+  return (
+    <div className="fixed flex w-full items-center justify-between bg-background px-4 py-2 shadow-md">
+      <h1 className="text-2xl font-bold">
+        Apply
+        <span className="inline-block bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text text-transparent">
+          AI
+        </span>
+      </h1>
     </div>
   )
 }
