@@ -66,14 +66,14 @@ export default function TermsOfService() {
             </li>
           </ul>
           <h2 className="py-5 font-bold">Intellectual Property</h2>
-          <p className="pb-5">
+          <p>
             The Service and its original content, features, and functionality
             are owned by ApplyAI and are protected by copyright, trademark,
             patent, trade secret, and other intellectual property or proprietary
             rights laws.
           </p>
           <h2 className="py-5 font-bold">Disclaimer of Warranties</h2>
-          <p className="pb-5">
+          <p>
             THE SERVICE IS PROVIDED ON AN &apos;AS-IS&apos; AND
             &apos;AS-AVAILABLE&apos; BASIS, WITHOUT ANY WARRANTIES OF ANY KIND,
             EXPRESS OR IMPLIED. WE DISCLAIM ALL WARRANTIES, INCLUDING, BUT NOT
@@ -81,14 +81,14 @@ export default function TermsOfService() {
             PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
           </p>
           <h2 className="py-5 font-bold">Limitation of Liability</h2>
-          <p className="pb-5">
+          <p>
             IN NO EVENT SHALL WE BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
             SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, ARISING OUT OF OR IN
             CONNECTION WITH YOUR USE OF THE SERVICE, INCLUDING, BUT NOT LIMITED
             TO, LOSS OF PROFITS, LOSS OF DATA, OR INTERRUPTION OF BUSINESS.
           </p>
           <h2 className="py-5 font-bold">Indemnification</h2>
-          <p className="pb-5">
+          <p>
             You agree to indemnify, defend, and hold harmless ApplyAI and its
             affiliates, officers, directors, employees, agents, and licensors
             from and against any and all claims, liabilities, expenses, damages,
@@ -97,14 +97,14 @@ export default function TermsOfService() {
             these Terms.
           </p>
           <h2 className="py-5 font-bold">Changes to the Terms</h2>
-          <p className="pb-5">
+          <p>
             We reserve the right to modify or replace these Terms at any time.
             Any changes will be effective immediately upon posting the revised
             Terms on this page. Your continued use of the Service after the
             posting of any changes constitutes acceptance of those changes.
           </p>
           <h2 className="py-5 font-bold">Governing Law</h2>
-          <p className="pb-5">
+          <p>
             These Terms shall be governed by and construed in accordance with
             the laws of California, United States, without regard to its
             conflict of law provisions.
