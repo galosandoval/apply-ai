@@ -75,7 +75,7 @@ function Hero() {
             </div>
             <div className="flex flex-col gap-2">
               <Button asChild variant="outline">
-                <AuthModal />
+                <AuthModal label="Get Started" initialModal="sign-up" />
               </Button>
               <p className="text-xs text-gray-500">
                 No credit card required. 14-day free trial.
@@ -157,7 +157,7 @@ function Footer() {
           © 2023 ACME Inc. All rights reserved.
         </div>
         <nav className="flex items-center space-x-4 text-sm md:space-x-6">
-          <Link className="text-gray-500 underline" href="#">
+          <Link className="text-gray-500 underline" href="/privacy-policy">
             Privacy
           </Link>
           <Link className="text-gray-500 underline" href="#">
