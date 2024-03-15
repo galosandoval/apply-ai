@@ -42,16 +42,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
+function Logo() {
+  return (
+    <Link href="/" className="text-2xl font-bold">
+      Apply
+      <span className="inline-block bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text text-transparent">
+        AI
+      </span>
+    </Link>
+  )
+}
+
 function PublicNavbar() {
   return (
     <div className="fixed w-full bg-background px-4 py-2 shadow-md">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
-        <h1 className="text-2xl font-bold">
-          Apply
-          <span className="inline-block bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text text-transparent">
-            AI
-          </span>
-        </h1>
+        <Logo />
         <NavigationMenu className="w-full justify-between">
           <NavigationMenuList>
             <NavigationMenuItem asChild>
@@ -77,12 +83,7 @@ function ProtectedNavbar() {
 
   return (
     <div className="fixed flex w-full items-center justify-between bg-background px-4 py-2 shadow-md">
-      <h1 className="text-2xl font-bold">
-        Apply
-        <span className="inline-block bg-gradient-to-r from-blue-600 via-green-500 to-indigo-400 bg-clip-text text-transparent">
-          AI
-        </span>
-      </h1>
+      <Logo />
       {isOnboarding ? (
         <Breadcrumbs />
       ) : (
