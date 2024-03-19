@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm"
-import { pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
+import { integer, pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
 
 export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
 
@@ -22,7 +22,6 @@ export const profile = pgTable("profile", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   profession: text("profession").default("").notNull(),
-  skills: text("skills").array().notNull(),
   introduction: text("profile"),
   interests: text("interests"),
   userId: text("user_id").references(() => user.id)
@@ -39,8 +38,17 @@ export const profileRelations = relations(profile, ({ many, one }) => ({
     fields: [profile.userId],
     references: [user.id]
   }),
-  resumes: many(resume)
+  resumes: many(resume),
+  skills: many(skill)
 }))
+
+export const skill = pgTable("skill", {
+  id: text("id").primaryKey(),
+  category: text("category").notNull(),
+  all: text("all").array().notNull(),
+  position: integer("position").notNull(),
+  profileId: text("profile_id").references(() => profile.id)
+})
 
 export const contact = pgTable("contact", {
   id: text("id").primaryKey(),
@@ -101,8 +109,7 @@ export const schoolRelations = relations(school, ({ one }) => ({
 export const resume = pgTable("resume", {
   id: text("id").primaryKey(),
   profession: text("profession").notNull(),
-  skills: text("skills").notNull(),
-  introduction: text("introduction").notNull(),
+  introduction: text("introduction"),
   interests: text("interests"),
   profileId: text("profile_id").references(() => profile.id),
   createdAt: timestamp("created_at").defaultNow().notNull()

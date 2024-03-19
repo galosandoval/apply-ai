@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
-import { eq, sql } from "drizzle-orm"
+import { asc, eq, sql } from "drizzle-orm"
 import { z } from "zod"
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import { db } from "~/server/db"
@@ -10,7 +10,7 @@ import {
   insertContactSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
-import { contact, profile, school, user, work } from "~/server/db/schema"
+import { contact, profile, school, skill, user, work } from "~/server/db/schema"
 
 export const profileRouter = createTRPCRouter({
   read: protectedProcedure
@@ -54,12 +54,24 @@ export const profileRouter = createTRPCRouter({
         .from(work)
         .where(eq(work.profileId, result.id))
 
+      const skills = await ctx.db
+        .select({
+          category: skill.category,
+          all: skill.all,
+          position: skill.position,
+          id: skill.id
+        })
+        .from(skill)
+        .where(eq(skill.profileId, result.id))
+        .orderBy(asc(skill.position))
+
       return {
         ...result,
         education,
         experience,
         contact: contactInfo[0],
-        email: foundUser[0]?.email
+        email: foundUser[0]?.email,
+        skills
       }
     }),
 
@@ -254,21 +266,79 @@ export const profileRouter = createTRPCRouter({
         })
     }),
 
-  addSkills: protectedProcedure
+  upsertSkills: protectedProcedure
     .input(
       z.object({
-        skills: z.object({ value: z.string().min(3) }).array(),
-        userId: z.string().cuid2()
+        skills: z
+          .object({
+            category: z.string().min(3),
+            all: z.string().array(),
+            position: z.number()
+          })
+          .array(),
+        profileId: z.string().cuid2()
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const { skills, userId } = input
+      const { skills, profileId } = input
 
-      return await ctx.db
-        .update(profile)
-        .set({
-          skills: skills.map((s) => s.value)
-        })
-        .where(eq(profile.userId, userId))
+      const foundSkills = await ctx.db
+        .select()
+        .from(skill)
+        .where(eq(skill.profileId, profileId))
+
+      if (foundSkills.length > skills.length) {
+        const skillsToDelete = foundSkills.slice(skills.length).map((s) => s.id)
+
+        skillsToDelete.forEach(
+          async (id) => await db.delete(skill).where(eq(skill.id, id))
+        )
+
+        for (let i = 0; i < skills.length; i++) {
+          await ctx.db
+            .update(skill)
+            .set({
+              category: skills[i]?.category,
+              all: skills[i]?.all,
+              position: skills[i]?.position
+            })
+            .where(eq(skill.id, foundSkills[i]?.id!))
+        }
+      } else if (foundSkills.length < skills.length) {
+        const skillsToInsert = skills.slice(foundSkills.length)
+        await ctx.db
+          .insert(skill)
+          .values(
+            skillsToInsert.map((s) => ({ ...s, profileId, id: createId() }))
+          )
+
+        if (foundSkills.length) {
+          const idxToUpdate = skills.length - foundSkills.length
+
+          for (let i = 0; i < idxToUpdate; i++) {
+            await ctx.db
+              .update(skill)
+              .set({
+                category: skills[i]?.category,
+                all: skills[i]?.all,
+                position: skills[i]?.position
+              })
+              .where(eq(skill.id, foundSkills[i]?.id!))
+          }
+        }
+      } else {
+        for (let i = 0; i < skills.length; i++) {
+          await ctx.db
+            .update(skill)
+            .set({
+              category: skills[i]?.category,
+              all: skills[i]?.all,
+              position: skills[i]?.position
+            })
+            .where(eq(skill.id, foundSkills[i]?.id!))
+        }
+      }
+
+      return { success: true }
     })
 })

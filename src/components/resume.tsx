@@ -195,10 +195,8 @@ export function Resume2InChat({
   const portfolio = watch("portfolio")
   const location = watch("location")
   const skills = watch("skills")
-  const introduction = watch("introduction")
   const experience = watch("experience")
   const education = watch("education")
-  const interests = watch("interests")
   const profession = watch("profession")
 
   return (
@@ -222,7 +220,7 @@ export function Resume2InChat({
             finishEditing={finishEditing}
           />
 
-          <Skills2 />
+          <Skills2 skills={skills} />
 
           <Experience2 experience={experience} />
 
@@ -233,122 +231,122 @@ export function Resume2InChat({
   )
 }
 
-export const ResumeInChat = ({
-  isEditing,
-  fullName,
-  watch,
-  register,
-  startEditing,
-  finishEditing
-}: {
-  isEditing: EditableFields
-  fullName: string
-  watch: UseFormWatch<InsertResumeSchema>
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) => {
-  const handleFinishEditingOnEscape = (
-    e: React.KeyboardEvent<HTMLDivElement>
-  ) => {
-    if (e.key === "Escape" || e.key === "Enter") finishEditing()
-  }
+// export const ResumeInChat = ({
+//   isEditing,
+//   fullName,
+//   watch,
+//   register,
+//   startEditing,
+//   finishEditing
+// }: {
+//   isEditing: EditableFields
+//   fullName: string
+//   watch: UseFormWatch<InsertResumeSchema>
+//   register: UseFormRegister<InsertResumeSchema>
+//   startEditing: StartEditing
+//   finishEditing: () => void
+// }) => {
+//   const handleFinishEditingOnEscape = (
+//     e: React.KeyboardEvent<HTMLDivElement>
+//   ) => {
+//     if (e.key === "Escape" || e.key === "Enter") finishEditing()
+//   }
 
-  const email = watch("email")
-  const phone = watch("phone")
-  const linkedIn = watch("linkedIn")
-  const portfolio = watch("portfolio")
-  const location = watch("location")
-  const skills = watch("skills")
-  const introduction = watch("introduction")
-  const experience = watch("experience")
-  const education = watch("education")
-  const interests = watch("interests")
-  const profession = watch("profession")
+//   const email = watch("email")
+//   const phone = watch("phone")
+//   const linkedIn = watch("linkedIn")
+//   const portfolio = watch("portfolio")
+//   const location = watch("location")
+//   const skills = watch("skills")
+//   const introduction = watch("introduction")
+//   const experience = watch("experience")
+//   const education = watch("education")
+//   const interests = watch("interests")
+//   const profession = watch("profession")
 
-  return (
-    <div
-      onKeyDown={handleFinishEditingOnEscape}
-      className="h-[29.7cm] w-[21cm] rounded-md bg-white px-20 py-16"
-    >
-      <div className="flex h-full overflow-hidden">
-        <div className="my-auto max-h-full border-b border-[#737373]">
-          <Header
-            profession={profession}
-            fullName={fullName}
-            isEditing={isEditing}
-            register={register}
-            startEditing={startEditing}
-            finishEditing={finishEditing}
-          />
+//   return (
+//     <div
+//       onKeyDown={handleFinishEditingOnEscape}
+//       className="h-[29.7cm] w-[21cm] rounded-md bg-white px-20 py-16"
+//     >
+//       <div className="flex h-full overflow-hidden">
+//         <div className="my-auto max-h-full border-b border-[#737373]">
+//           <Header
+//             profession={profession}
+//             fullName={fullName}
+//             isEditing={isEditing}
+//             register={register}
+//             startEditing={startEditing}
+//             finishEditing={finishEditing}
+//           />
 
-          <div className="w-full border-b border-[#737373]" />
+//           <div className="w-full border-b border-[#737373]" />
 
-          <div className="flex h-full">
-            {/* left */}
-            <div className="flex w-[38.2%] flex-col bg-[#f8f8f8] text-[.65rem]">
-              <Contact
-                isEditing={isEditing}
-                phone={phone}
-                email={email}
-                linkedIn={linkedIn}
-                portfolio={portfolio}
-                location={location}
-                register={register}
-                startEditing={startEditing}
-                finishEditing={finishEditing}
-              />
+//           <div className="flex h-full">
+//             {/* left */}
+//             <div className="flex w-[38.2%] flex-col bg-[#f8f8f8] text-[.65rem]">
+//               <Contact
+//                 isEditing={isEditing}
+//                 phone={phone}
+//                 email={email}
+//                 linkedIn={linkedIn}
+//                 portfolio={portfolio}
+//                 location={location}
+//                 register={register}
+//                 startEditing={startEditing}
+//                 finishEditing={finishEditing}
+//               />
 
-              <Skills
-                isEditing={isEditing}
-                skills={skills}
-                register={register}
-                startEditing={startEditing}
-                finishEditing={finishEditing}
-              />
+//               <Skills
+//                 isEditing={isEditing}
+//                 skills={skills}
+//                 register={register}
+//                 startEditing={startEditing}
+//                 finishEditing={finishEditing}
+//               />
 
-              <Education
-                isEditing={isEditing}
-                register={register}
-                education={education}
-                startEditing={startEditing}
-                finishEditing={finishEditing}
-              />
+//               <Education
+//                 isEditing={isEditing}
+//                 register={register}
+//                 education={education}
+//                 startEditing={startEditing}
+//                 finishEditing={finishEditing}
+//               />
 
-              <Interests
-                isEditing={isEditing}
-                register={register}
-                interests={interests}
-                startEditing={startEditing}
-                finishEditing={finishEditing}
-              />
-            </div>
+//               <Interests
+//                 isEditing={isEditing}
+//                 register={register}
+//                 interests={interests}
+//                 startEditing={startEditing}
+//                 finishEditing={finishEditing}
+//               />
+//             </div>
 
-            {/* right */}
+//             {/* right */}
 
-            <div className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight">
-              <Profile
-                isEditing={isEditing}
-                introduction={introduction}
-                register={register}
-                startEditing={startEditing}
-                finishEditing={finishEditing}
-              />
+//             <div className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight">
+//               <Profile
+//                 isEditing={isEditing}
+//                 introduction={introduction}
+//                 register={register}
+//                 startEditing={startEditing}
+//                 finishEditing={finishEditing}
+//               />
 
-              <Experience
-                isEditing={isEditing}
-                experience={experience}
-                register={register}
-                startEditing={startEditing}
-                finishEditing={finishEditing}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+//               <Experience
+//                 isEditing={isEditing}
+//                 experience={experience}
+//                 register={register}
+//                 startEditing={startEditing}
+//                 finishEditing={finishEditing}
+//               />
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   )
+// }
 
 export type EditableFields = {
   skills: boolean
@@ -506,13 +504,21 @@ function SectionTitle({ title }: { title: string }) {
   )
 }
 
-function Skills2() {
+function Skills2({ skills }: { skills: InsertResumeSchema["skills"] }) {
   return (
     <div className="pb-4">
       <SectionTitle title="Skills" />
 
       <div>
-        <div className="flex gap-1">
+        {skills.map((skill) => (
+          <div className="flex gap-1" key={skill.category}>
+            <h3 className="whitespace-nowrap font-semibold">
+              {skill.category}
+            </h3>
+            <p>{skill.all}</p>
+          </div>
+        ))}
+        {/* <div className="flex gap-1">
           <h3 className="font-semibold">Frontend:</h3>
           <p>
             React.js, TailwindCSS, Redux, React Query, Jest, Typescript,
@@ -529,7 +535,7 @@ function Skills2() {
             Agile Project Management, Algorithms, Architecture, Debugging,
             Deployment, Software Development Life Cycle
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   )

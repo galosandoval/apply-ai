@@ -15,7 +15,10 @@ export default function OnboardingLayout<T extends FieldValues>({
   return (
     <main className="h-full overflow-y-auto md:grid md:place-items-center">
       <Form {...form}>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2 py-16">
+        <form
+          onSubmit={handleSubmit}
+          className="flex max-w-3xl flex-col gap-2 py-16"
+        >
           <h1 className="text-3xl">{title}</h1>
 
           {children}
