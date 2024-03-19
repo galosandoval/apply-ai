@@ -14,6 +14,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "~/components/ui/button"
 import { testPrompt } from "~/lib/test-prompt"
+import { ChatParams, chatParams } from "../api/resume/chat"
+import toast from "react-hot-toast"
 
 export default function Dashboard() {
   return (
@@ -59,26 +61,55 @@ if (process.env.NODE_ENV === "development") {
   initialInput = testPrompt
 }
 
+function parseChatBody(data: Omit<ChatParams, "messages">) {
+  try {
+    const body = chatParams.omit({ messages: true }).parse(data)
+
+    return {
+      experience: JSON.stringify(body.experience),
+      education: JSON.stringify(body.education),
+      profession: body.profession
+    }
+  } catch (error) {
+    console.error(error)
+    toast.error("Error parsing chat params")
+  }
+}
+
 function PromptForm({ data }: { data: RouterOutputs["profile"]["read"] }) {
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat({
       initialInput,
-      api: "/api/resume/chat",
-      body: data
-        ? {
-            s: data?.skills?.join(", "),
-            experience: JSON.stringify(data.experience),
-            education: JSON.stringify(data.education),
-            interests: data.interests,
-            profession: data.profession
-          }
-        : {}
+      api: "/api/resume/chat"
     })
 
   const hasMessages = messages.length > 0
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
-    handleSubmit(e)
+    const body = parseChatBody({
+      experience: JSON.stringify(
+        data.experience.map((e) => ({
+          name: e.name,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          title: e.title,
+          description: e.description
+        }))
+      ),
+      education: JSON.stringify(
+        data.education.map((e) => ({
+          name: e.name,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          degree: e.degree,
+          description: e.description,
+          gpa: e.gpa
+        }))
+      ),
+      profession: data.profession
+    })
+
+    handleSubmit(e, { options: { body } })
   }
 
   if (isLoading) {
@@ -225,9 +256,11 @@ function AssistantMessage({
       education:
         parsedContent?.education.map((e) => ({ ...e, name: e.name })) ?? [],
       experience: parsedContent?.experience ?? [],
-      skills: parsedContent?.skills?.join(", ") ?? "",
-      interests: parsedContent?.interests ?? "",
-      introduction: parsedContent?.summary ?? "",
+      skills:
+        profile?.skills?.map((s) => ({
+          ...s,
+          all: s.all.join(", ")
+        })) ?? [],
       profession: parsedContent?.profession ?? "",
       email: profile.email ?? "",
       phone: profile.contact?.phone ?? "",
@@ -271,8 +304,7 @@ function AssistantMessage({
     mutate({
       ...data,
       education: data.education.map((e) => ({ ...e })),
-      skills: data?.skills?.length ? data.skills.split(",") : [],
-      introduction: data.introduction,
+      skills: data.skills,
       interests: data.interests ?? "",
       profileId: profile.id
     })
@@ -284,10 +316,8 @@ function AssistantMessage({
   const portfolio = watch("portfolio")
   const location = watch("location")
   const skills = watch("skills")
-  const introduction = watch("introduction")
   const experience = watch("experience")
   const education = watch("education")
-  const interests = watch("interests")
   const profession = watch("profession")
 
   const handleDownloadPdf = async () => {
@@ -296,12 +326,10 @@ function AssistantMessage({
       profession,
       fullName: `${profile.firstName} ${profile.lastName}`,
       location,
-      introduction,
       phone,
       linkedIn,
       portfolio,
       skills,
-      interests: interests ? interests : null,
       education,
       experience
     }
@@ -357,6 +385,8 @@ function parseContent(content: string) {
     console.warn(error)
   }
 
+  console.log(parsed)
+
   return parsed
 }
 
@@ -369,7 +399,10 @@ type EducationParsed = {
   gpa: string
 }
 
-type SkillParsed = string[]
+type SkillParsed = {
+  category: string
+  all: string[]
+}[]
 
 type ExperienceParsed = {
   name: string
@@ -383,9 +416,7 @@ type InterestsParsed = string
 
 type FinishedParsed = {
   education: EducationParsed[]
-  skills: SkillParsed
   experience: ExperienceParsed[]
   interests: InterestsParsed
-  summary: string
   profession: string
 }

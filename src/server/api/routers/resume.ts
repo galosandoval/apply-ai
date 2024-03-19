@@ -2,6 +2,7 @@ import { createId } from "@paralleldrive/cuid2"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
+import { insertSkillsSchema } from "~/server/db/crud-schema"
 import { resume, school, work } from "~/server/db/schema"
 
 export const resumeRouter = createTRPCRouter({
@@ -47,54 +48,44 @@ export const resumeRouter = createTRPCRouter({
 
   create: protectedProcedure
     .input(
-      z.object({
-        profileId: z.string().cuid2(),
-        profession: z.string(),
-        skills: z.string().array(),
-        introduction: z.string(),
-        interests: z.string(),
-        education: z.array(
-          z.object({
-            name: z.string(),
-            startDate: z.string(),
-            endDate: z.string(),
-            degree: z.string(),
-            description: z.string().optional().nullable(),
-            gpa: z.string().optional().nullable(),
-            location: z.string().optional().nullable()
-            // keyAchievements: z.string().array()
-          })
-        ),
-        experience: z.array(
-          z.object({
-            name: z.string(),
-            startDate: z.string(),
-            endDate: z.string(),
-            title: z.string(),
-            description: z.string()
-            // keyAchievements: z.string().array()
-          })
-        )
-      })
+      z
+        .object({
+          profileId: z.string().cuid2(),
+          profession: z.string(),
+          interests: z.string(),
+          education: z.array(
+            z.object({
+              name: z.string(),
+              startDate: z.string(),
+              endDate: z.string(),
+              degree: z.string(),
+              description: z.string().optional().nullable(),
+              gpa: z.string().optional().nullable(),
+              location: z.string().optional().nullable()
+              // keyAchievements: z.string().array()
+            })
+          ),
+          experience: z.array(
+            z.object({
+              name: z.string(),
+              startDate: z.string(),
+              endDate: z.string(),
+              title: z.string(),
+              description: z.string()
+              // keyAchievements: z.string().array()
+            })
+          )
+        })
+        .merge(insertSkillsSchema)
     )
     .mutation(async ({ ctx, input }) => {
-      const {
-        profession,
-        skills,
-        introduction,
-        interests,
-        education,
-        experience,
-        profileId
-      } = input
+      const { profession, interests, education, experience, profileId } = input
 
       const newResume = await ctx.db
         .insert(resume)
         .values({
           id: createId(),
           profession,
-          skills: skills.join(","),
-          introduction,
           interests: interests,
           profileId
         })
