@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod"
-import { profile, resume, school, user, work } from "./schema"
+import { profile, resume, school, work } from "./schema"
 import { z } from "zod"
 
 const contactSchema = z.object({
@@ -33,17 +33,12 @@ export const updateProfileSchema = createInsertSchema(profile, {
     schema.profession
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters"),
-  introduction: (schema) =>
-    schema.introduction
-      .min(3, "Must be atleast 3 characters")
-      .max(500, "Must be less than 500 characters"),
   interests: (schema) =>
     schema.interests
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters")
       .optional()
       .nullable(),
-  skills: (schema) => schema.skills.optional(),
   id: (schema) => schema.id.optional()
 })
 
@@ -110,11 +105,15 @@ export const insertExperienceSchema = z.object({
 
 export type InsertExperienceSchema = z.infer<typeof insertExperienceSchema>
 
-export const maxSkills = 20
+export const maxSkills = 4
 
 export const insertSkillsSchema = z.object({
   skills: z
-    .object({ value: z.string().min(3) })
+    .object({
+      category: z.string().min(3),
+      all: z.string(),
+      position: z.number()
+    })
     .array()
     .min(1)
     .max(maxSkills)
@@ -128,16 +127,6 @@ export const insertResumeSchema = createInsertSchema(resume, {
     schema.profession
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters"),
-  skills: (schema) => schema.skills,
-  introduction: (schema) =>
-    schema.introduction
-      .min(3, "Must be at least 3 characters")
-      .max(500, "Must be less than 500 characters"),
-  interests: (schema) =>
-    schema.interests
-      .min(3, "Must be at least 3 characters")
-      .max(255, "Must be less than 255 characters"),
-
   profileId: (schema) => schema.profileId.cuid2().optional()
 })
   .merge(
@@ -150,6 +139,7 @@ export const insertResumeSchema = createInsertSchema(resume, {
   )
   .merge(insertEducationSchema)
   .merge(insertExperienceSchema)
+  .merge(insertSkillsSchema)
   .merge(z.object({ email: z.string().email() }))
 
 export type InsertResumeSchema = z.infer<typeof insertResumeSchema>
@@ -158,17 +148,16 @@ export const downloadPdfSchema = z
   .object({
     fullName: z.string(),
     email: z.string().email(),
-    skills: z.string(),
     profession: z.string()
   })
   .merge(contactSchema)
   .merge(
     updateProfileSchema.pick({
-      introduction: true,
       interests: true
     })
   )
   .merge(insertEducationSchema)
   .merge(insertExperienceSchema)
+  .merge(insertSkillsSchema)
 
 export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>

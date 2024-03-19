@@ -22,10 +22,13 @@ import { Cross1Icon } from "@radix-ui/react-icons"
 import { MyInput } from "~/components/my-input"
 import OnboardingLayout from "../_layout"
 import { FormField } from "~/components/ui/form"
+import Image from "next/image"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {
-    value: ""
+    category: "",
+    all: "",
+    position: 0
   }
 ]
 
@@ -38,7 +41,7 @@ export default function Skills() {
     { enabled: !!userId }
   )
 
-  const { mutate } = api.profile.addSkills.useMutation({
+  const { mutate } = api.profile.upsertSkills.useMutation({
     onError: (error) => {
       toast.error(error.message)
       router.push("/onboarding/skills")
@@ -55,7 +58,11 @@ export default function Skills() {
 
     values: {
       skills: profile?.skills?.length
-        ? profile.skills.map((s) => ({ value: s }))
+        ? profile.skills.map((s, i) => ({
+            category: s.category ?? "",
+            all: s.all?.join(", ") ?? "",
+            position: s.position ?? i
+          }))
         : initialSkills
     }
   })
@@ -73,11 +80,18 @@ export default function Skills() {
   })
 
   const onSubmit = (values: InsertSkillsSchema) => {
-    mutate({ skills: values.skills, userId })
+    mutate({
+      skills: values.skills.map((s, i) => ({
+        ...s,
+        all: s.all.split(", "),
+        position: i
+      })),
+      profileId: profile?.id!
+    })
   }
 
   useEffect(() => {
-    setFocus("skills.0.value")
+    setFocus("skills.0.category")
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -90,9 +104,19 @@ export default function Skills() {
       handleSubmit={handleSubmit(onSubmit)}
       title="Skills"
     >
-      <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
-        Add a few skills to show employers you&apos;re good in your field.
+      <h2 className="max-w-4xl pb-4 text-sm text-muted-foreground">
+        This is how your skills will be displayed on your resume. You can add
+        several categories and skills. Type in skills and separate them with a
+        comma.
       </h2>
+
+      <Image
+        src="/skills.png"
+        alt="Skills"
+        width={768}
+        height={100}
+        className="rounded"
+      />
 
       {fields.map((field, index) => (
         <SkillForm
@@ -124,6 +148,15 @@ export default function Skills() {
   )
 }
 
+const categoryPlaceholders = [
+  "Ex: Soft Skills",
+  "Ex: Hard Skills",
+  "Ex: Technical Skills",
+  "Ex: Frontend",
+  "Ex: Backend",
+  "Ex: Additional"
+]
+
 function SkillForm({
   field,
   index,
@@ -139,30 +172,49 @@ function SkillForm({
 }) {
   return (
     <div key={field.id}>
-      <div className="flex gap-2">
-        <FormField
-          control={control}
-          name={`skills.${index}.value`}
-          render={({ field }) => (
-            <MyInput
-              field={field}
-              label={`Skill ${index + 1}`}
-              placeholder="Ex: Customer service"
-            />
-          )}
-        />
+      <div className="grid grid-cols-8 gap-4">
+        <div className="col-span-2">
+          <FormField
+            control={control}
+            name={`skills.${index}.category`}
+            render={({ field }) => (
+              <MyInput
+                field={field}
+                label={`Category ${index + 1}`}
+                placeholder={
+                  categoryPlaceholders[index % categoryPlaceholders.length]
+                }
+              />
+            )}
+          />
+        </div>
+        <div className="col-span-6 flex gap-2">
+          <FormField
+            control={control}
+            name={`skills.${index}.all`}
+            render={({ field }) => (
+              <MyInput
+                field={field}
+                label="All"
+                placeholder="Ex: Customer service, customer support"
+              />
+            )}
+          />
 
-        {hasMoreThanOneSkill && (
-          <Button
-            size="icon"
-            variant="outline"
-            className="self-center justify-self-end text-destructive"
-            type="button"
-            onClick={() => remove(index)}
-          >
-            <Cross1Icon />
-          </Button>
-        )}
+          {hasMoreThanOneSkill && (
+            <div className="self-end justify-self-end pb-2">
+              <Button
+                size="icon"
+                variant="outline"
+                className="text-destructive"
+                type="button"
+                onClick={() => remove(index)}
+              >
+                <Cross1Icon />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

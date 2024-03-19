@@ -20,7 +20,6 @@ export const chatParams = z.object({
   experience: z.string(),
   education: z.string(),
   profession: z.string(),
-  interests: z.string().optional().nullable(),
   messages: z.array(
     z.object({
       role: z.enum(["user", "assistant", "system"]),
@@ -29,6 +28,12 @@ export const chatParams = z.object({
   )
 })
 
+function cleanupString(input: string): string {
+  // remove [] | \ " ' { } < > from the string
+
+  return input.replace(/[\[\]|\\'"\{\}<>]/g, "")
+}
+
 export type ChatParams = z.infer<typeof chatParams>
 
 export default async function handler(req: NextRequest) {
@@ -36,12 +41,20 @@ export default async function handler(req: NextRequest) {
 
   const input = chatParams.parse(request)
 
-  const { education, experience, interests, messages, profession } = input
+  const education = cleanupString(input.education)
+  const experience = cleanupString(input.experience)
 
   const chat: ChatCompletionRequestMessage[] = [
     {
       role: "system",
-      content: `You are a helpful resume building assistant. Generate a resume that is 1 page long based on the following user's information: Profession: ${profession} Work Experience: ${experience}, Interests: ${interests}, Education: ${education}. The following is the job description: ${messages[0]?.content}. Use the job description provided to fill in the resume with keywords for a recruiter or recruiting algorithm. Do not include any explanations, only provide a RFC8259 compliant JSON response following this format without deviation:
+      content: `You are a helpful resume building assistant. Generate a resume that is 1 page long based on the following user's information: Profession: ${
+        input.profession
+      } Work Experience: ${cleanupString(
+        experience
+      )}, Education: ${cleanupString(
+        education
+      )}. The following is the job description: ${input.messages[0]
+        ?.content}. Use the job description provided to response with keywords for a recruiter or recruiting algorithm. Do not include any explanations, only provide a RFC8259 compliant JSON response following this format without deviation:
       {
         "profession": "Profession of user.",
         "education": [{
@@ -52,16 +65,13 @@ export default async function handler(req: NextRequest) {
           "degree": "Degree of education.",
           "gpa": "GPA of education."
         }],
-        "skills": ["Array of skills that are relevant to the job description. Includes 5 to 10 hard or soft skills."],
         "experience": [{
           "description": "Description of work experience that is 3-6 sentences.",
           "name": "Name of company.",
           "startDate": "Start date of work experience.",
           "endDate": "End date of work experience.",
           "title": "Title of work experience."
-        }],
-        "interests": "Friendly description of interests, for example: 'When I'm not {profession}, I...'",
-        "summary": "Brief summary of resume, keep it less than 500 characters"
+        }]
       }`
     }
   ]
