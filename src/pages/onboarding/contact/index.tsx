@@ -67,6 +67,7 @@ function NameAndContactForm() {
             ...data,
             education: [],
             experience: [],
+            skills: [],
             email: profile?.email,
             contact: {
               linkedIn: input?.linkedIn ?? null,

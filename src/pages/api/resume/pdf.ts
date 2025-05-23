@@ -41,7 +41,7 @@ export default async function handler(
 }
 
 function createEndpoint(input: DownloadPdfSchema) {
-  const skillsCount = input.skills.split(", ").length
+  const skillsCount = input.skills.length
   const educationCount = input.education.length
   const experienceCount = input.experience.length
   const expDescriptionCount: Record<string, number> = {}
@@ -50,7 +50,9 @@ function createEndpoint(input: DownloadPdfSchema) {
     expDescriptionCount[`desc${index}`] = job.description.split(". ").length
   })
 
-  let endpoint = `/pdf?skillsCount=${skillsCount}&eduCount=${educationCount}&expCount=${experienceCount}&hasIntro=${!!input.introduction}&hasPhone=${!!input.phone}&hasLinkedIn=${!!input.linkedIn}&hasPortfolio=${!!input.portfolio}&hasInterests=${!!input.interests}`
+  // with introduction
+  // let endpoint = `/pdf?skillsCount=${skillsCount}&eduCount=${educationCount}&expCount=${experienceCount}&hasIntro=${!!input.introduction}&hasPhone=${!!input.phone}&hasLinkedIn=${!!input.linkedIn}&hasPortfolio=${!!input.portfolio}&hasInterests=${!!input.interests}`
+  let endpoint = `/pdf?skillsCount=${skillsCount}&eduCount=${educationCount}&expCount=${experienceCount}&hasPhone=${!!input.phone}&hasLinkedIn=${!!input.linkedIn}&hasPortfolio=${!!input.portfolio}&hasInterests=${!!input.interests}`
 
   for (const [key, value] of Object.entries(expDescriptionCount)) {
     if (value > 1) {
@@ -68,7 +70,6 @@ async function insertValuesOnPage(page: Page, values: DownloadPdfSchema) {
     email,
     location,
     skills,
-    introduction,
     phone,
     linkedIn,
     portfolio,
@@ -111,11 +112,12 @@ async function insertValuesOnPage(page: Page, values: DownloadPdfSchema) {
     )
   )
 
-  skills.split(", ").forEach((skill, index) => {
+  skills.forEach((skill, index) => {
     promises.push(
       page.$$eval(
         `#skill-${index}`,
-        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+        (elements, value) =>
+          elements.forEach((el) => (el.innerHTML = value.all)),
         skill
       )
     )
@@ -194,15 +196,15 @@ async function insertValuesOnPage(page: Page, values: DownloadPdfSchema) {
   })
 
   // optional fields
-  if (introduction) {
-    promises.push(
-      page.$$eval(
-        "#introduction",
-        (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
-        introduction
-      )
-    )
-  }
+  // if (introduction) {
+  //   promises.push(
+  //     page.$$eval(
+  //       "#introduction",
+  //       (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
+  //       introduction
+  //     )
+  //   )
+  // }
 
   if (phone) {
     promises.push(
