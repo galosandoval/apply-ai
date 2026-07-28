@@ -2,8 +2,9 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { asc, eq, sql } from "drizzle-orm"
 import { z } from "zod"
+import { assertOwnsProfile } from "~/server/api/ownership"
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
-import { db } from "~/server/db"
+import { type db } from "~/server/db"
 import {
   insertEducationSchema,
   insertExperienceSchema,
@@ -20,6 +21,13 @@ export const profileRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
+      if (input.userId !== ctx.session.user.id) {
+        throw new TRPCError({
+          message: "Profile not found",
+          code: "NOT_FOUND"
+        })
+      }
+
       const foundProfile = await ctx.db
         .select()
         .from(profile)
@@ -96,6 +104,8 @@ export const profileRouter = createTRPCRouter({
         })
       }
 
+      await assertOwnsProfile(ctx.db, ctx.session.user.id, id)
+
       const updatedProfile = await ctx.db
         .update(profile)
         .set({ firstName, lastName, profession })
@@ -118,6 +128,7 @@ export const profileRouter = createTRPCRouter({
         const updatedContact = await ctx.db
           .update(contact)
           .set({ linkedIn, location, phone, portfolio })
+          .where(eq(contact.profileId, id))
           .returning()
 
         if (!updatedContact.length) {
@@ -174,17 +185,13 @@ export const profileRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       const { education, profileId } = input
 
+      await assertOwnsEveryProfile(ctx.db, ctx.session.user.id, [
+        profileId,
+        ...education.map((e) => e.profileId)
+      ])
+
       if (profileId) {
-        const foundEducation = await ctx.db
-          .select()
-          .from(school)
-          .where(eq(school.profileId, profileId))
-
-        const educationToDelete = foundEducation.map((e) => e.id)
-
-        educationToDelete.forEach(
-          async (id) => await db.delete(school).where(eq(school.id, id))
-        )
+        await ctx.db.delete(school).where(eq(school.profileId, profileId))
       }
 
       const schoolsToInsert = education.map((e) => ({
@@ -221,17 +228,13 @@ export const profileRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       const { experience, profileId } = input
 
+      await assertOwnsEveryProfile(ctx.db, ctx.session.user.id, [
+        profileId,
+        ...experience.map((e) => e.profileId)
+      ])
+
       if (profileId) {
-        const foundWork = await ctx.db
-          .select()
-          .from(work)
-          .where(eq(work.profileId, profileId))
-
-        const workToDelete = foundWork.map((e) => e.id)
-
-        workToDelete.forEach(
-          async (id) => await db.delete(work).where(eq(work.id, id))
-        )
+        await ctx.db.delete(work).where(eq(work.profileId, profileId))
       }
 
       const workToInsert = experience.map((e) => ({
@@ -282,63 +285,32 @@ export const profileRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       const { skills, profileId } = input
 
-      const foundSkills = await ctx.db
-        .select()
-        .from(skill)
-        .where(eq(skill.profileId, profileId))
+      await assertOwnsProfile(ctx.db, ctx.session.user.id, profileId)
 
-      if (foundSkills.length > skills.length) {
-        const skillsToDelete = foundSkills.slice(skills.length).map((s) => s.id)
-
-        skillsToDelete.forEach(
-          async (id) => await db.delete(skill).where(eq(skill.id, id))
-        )
-
-        for (let i = 0; i < skills.length; i++) {
-          await ctx.db
-            .update(skill)
-            .set({
-              category: skills[i]?.category,
-              all: skills[i]?.all,
-              position: skills[i]?.position
-            })
-            .where(eq(skill.id, foundSkills[i]?.id!))
-        }
-      } else if (foundSkills.length < skills.length) {
-        const skillsToInsert = skills.slice(foundSkills.length)
-        await ctx.db
+      await ctx.db.transaction(async (tx) => {
+        await tx.delete(skill).where(eq(skill.profileId, profileId))
+        await tx
           .insert(skill)
-          .values(
-            skillsToInsert.map((s) => ({ ...s, profileId, id: createId() }))
-          )
-
-        if (foundSkills.length) {
-          const idxToUpdate = skills.length - foundSkills.length
-
-          for (let i = 0; i < idxToUpdate; i++) {
-            await ctx.db
-              .update(skill)
-              .set({
-                category: skills[i]?.category,
-                all: skills[i]?.all,
-                position: skills[i]?.position
-              })
-              .where(eq(skill.id, foundSkills[i]?.id!))
-          }
-        }
-      } else {
-        for (let i = 0; i < skills.length; i++) {
-          await ctx.db
-            .update(skill)
-            .set({
-              category: skills[i]?.category,
-              all: skills[i]?.all,
-              position: skills[i]?.position
-            })
-            .where(eq(skill.id, foundSkills[i]?.id!))
-        }
-      }
+          .values(skills.map((s) => ({ ...s, profileId, id: createId() })))
+      })
 
       return { success: true }
     })
 })
+
+/**
+ * Asserts the caller owns every profile id in `ids`, ignoring blanks. Ids can
+ * arrive both at the top level of an input and on each nested row, and every
+ * one of them ends up in a `WHERE`, so all of them need checking.
+ */
+async function assertOwnsEveryProfile(
+  database: typeof db,
+  userId: string,
+  ids: (string | null | undefined)[]
+) {
+  const unique = new Set(ids.filter((id): id is string => !!id))
+
+  for (const id of unique) {
+    await assertOwnsProfile(database, userId, id)
+  }
+}

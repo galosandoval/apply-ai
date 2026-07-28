@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
+import { assertOwnsProfile, assertOwnsResume } from "~/server/api/ownership"
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import { insertSkillsSchema } from "~/server/db/crud-schema"
 import { resume, school, work } from "~/server/db/schema"
@@ -9,6 +10,8 @@ export const resumeRouter = createTRPCRouter({
   list: protectedProcedure
     .input(z.object({ profileId: z.string().cuid2() }))
     .query(async ({ ctx, input }) => {
+      await assertOwnsProfile(ctx.db, ctx.session.user.id, input.profileId)
+
       const resumes = await ctx.db
         .select({ createdAt: resume.createdAt, id: resume.id })
         .from(resume)
@@ -24,6 +27,8 @@ export const resumeRouter = createTRPCRouter({
       })
     )
     .query(async ({ input, ctx }) => {
+      await assertOwnsResume(ctx.db, ctx.session.user.id, input.resumeId)
+
       const usersResume = await ctx.db
         .select()
         .from(resume)
@@ -81,32 +86,42 @@ export const resumeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { profession, interests, education, experience, profileId } = input
 
-      const newResume = await ctx.db
-        .insert(resume)
-        .values({
-          id: createId(),
-          profession,
-          interests: interests,
-          profileId
-        })
-        .returning()
+      await assertOwnsProfile(ctx.db, ctx.session.user.id, profileId)
 
-      if (!newResume?.length) throw new Error("Resume not created")
+      // The resume and its snapshotted work/school rows are one unit — a
+      // partial write leaves a resume that renders with missing sections.
+      const resumeId = await ctx.db.transaction(async (tx) => {
+        const newResume = await tx
+          .insert(resume)
+          .values({
+            id: createId(),
+            profession,
+            interests: interests,
+            profileId
+          })
+          .returning()
 
-      const resumeId = newResume[0]?.id!
+        if (!newResume?.length) throw new Error("Resume not created")
 
-      await ctx.db
-        .insert(work)
-        .values(experience.map((e) => ({ ...e, id: createId(), resumeId })))
+        const id = newResume[0]!.id
 
-      await ctx.db.insert(school).values(
-        education.map((e) => ({
-          ...e,
-          id: createId(),
-          name: e.name,
-          resumeId
-        }))
-      )
+        await tx
+          .insert(work)
+          .values(
+            experience.map((e) => ({ ...e, id: createId(), resumeId: id }))
+          )
+
+        await tx.insert(school).values(
+          education.map((e) => ({
+            ...e,
+            id: createId(),
+            name: e.name,
+            resumeId: id
+          }))
+        )
+
+        return id
+      })
 
       return { resumeId }
     })
