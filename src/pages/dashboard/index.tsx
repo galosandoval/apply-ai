@@ -5,17 +5,16 @@ import { useUser } from "~/utils/useUser"
 import { type ChangeEvent, useState, type FormEvent } from "react"
 import { type EditableFields, Resume2InChat } from "~/components/resume"
 import { PromptInput } from "~/components/prompt-input"
-import { useForm } from "react-hook-form"
 import {
   type InsertResumeSchema,
   insertResumeSchema,
   type DownloadPdfSchema
 } from "~/server/db/crud-schema"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "~/components/ui/button"
 import { testPrompt } from "~/lib/test-prompt"
-import { ChatParams, chatParams } from "../api/resume/chat"
+import { type ChatParams, chatParams } from "../api/resume/chat"
 import toast from "react-hot-toast"
+import { useAppForm } from "~/components/use-app-form"
 
 export default function Dashboard() {
   return (
@@ -250,8 +249,7 @@ function AssistantMessage({
     })
   )
 
-  const { register, watch, handleSubmit } = useForm<InsertResumeSchema>({
-    resolver: zodResolver(insertResumeSchema),
+  const { register, watch, handleSubmit } = useAppForm(insertResumeSchema, {
     values: {
       education:
         parsedContent?.education.map((e) => ({ ...e, name: e.name })) ?? [],
@@ -398,11 +396,6 @@ type EducationParsed = {
   degree: string
   gpa: string
 }
-
-type SkillParsed = {
-  category: string
-  all: string[]
-}[]
 
 type ExperienceParsed = {
   name: string

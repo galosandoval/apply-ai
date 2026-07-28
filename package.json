@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^0.3.2",
+    "@galosandoval/shopfloor": "^0.1.0",
     "@hookform/error-message": "^2.0.1",
     "@hookform/resolvers": "^3.3.4",
     "@paralleldrive/cuid2": "^2.2.2",
@@ -40,6 +41,7 @@
     "next": "^13.4.19",
     "next-auth": "^4.23.0",
     "openai-edge": "^1.2.2",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.11.3",
     "puppeteer": "^21.3.4",
     "react": "18.2.0",

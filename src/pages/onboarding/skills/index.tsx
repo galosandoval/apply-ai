@@ -1,11 +1,9 @@
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   type FieldArrayWithId,
   type UseFieldArrayRemove,
   useFieldArray,
-  useForm,
   type Control
 } from "react-hook-form"
 import toast from "react-hot-toast"
@@ -23,6 +21,7 @@ import { MyInput } from "~/components/my-input"
 import OnboardingLayout from "../_layout"
 import { FormField } from "~/components/ui/form"
 import Image from "next/image"
+import { useAppForm } from "~/components/use-app-form"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {
@@ -50,8 +49,7 @@ export default function Skills() {
     onMutate: () => router.push("/dashboard")
   })
 
-  const form = useForm<InsertSkillsSchema>({
-    resolver: zodResolver(insertSkillsSchema),
+  const form = useAppForm(insertSkillsSchema, {
     defaultValues: {
       skills: initialSkills
     },
@@ -59,10 +57,10 @@ export default function Skills() {
     values: {
       skills: profile?.skills?.length
         ? profile.skills.map((s, i) => ({
-            category: s.category ?? "",
-            all: s.all?.join(", ") ?? "",
-            position: s.position ?? i
-          }))
+          category: s.category ?? "",
+          all: s.all?.join(", ") ?? "",
+          position: s.position ?? i
+        }))
         : initialSkills
     }
   })

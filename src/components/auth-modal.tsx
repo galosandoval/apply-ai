@@ -10,13 +10,13 @@ import {
   DialogTrigger
 } from "./ui/dialog"
 import { useRouter } from "next/router"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { api } from "~/utils/api"
 import { signIn } from "next-auth/react"
 import { Form, FormField } from "./ui/form"
 import { MyInput } from "./my-input"
 import { z } from "zod"
+import { appPath } from "~/lib/path"
+import { useAppForm } from "~/components/use-app-form"
 
 const signUpSchema = z
   .object({
@@ -69,9 +69,7 @@ function AuthSwitch({ initialModal }: { initialModal: Modal }) {
 function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   const router = useRouter()
 
-  const form = useForm<SignUpFormValues>({
-    resolver: zodResolver(signUpSchema)
-  })
+  const form = useAppForm(signUpSchema)
 
   const { mutate, isLoading } = api.user.create.useMutation({
     onSuccess: async (_, { password, email }) => {
@@ -82,7 +80,7 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
       })
 
       if (response?.ok) {
-        await router.push("/onboarding/contact")
+        await router.push(appPath.import)
       }
     },
     onError: (error) => {
@@ -157,11 +155,9 @@ type LoginFormValues = z.infer<typeof loginFormSchema>
 function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   const router = useRouter()
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema)
-  })
+  const form = useAppForm(loginFormSchema)
 
-  const { mutate, isLoading } = api.user.create.useMutation({
+  const { isLoading } = api.user.create.useMutation({
     onSuccess: async (_, { password, email }) => {
       const response = await signIn("credentials", {
         email,

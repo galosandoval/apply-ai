@@ -4,6 +4,13 @@ import { env } from "~/env.mjs";
 import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 
+export const config = {
+  api: {
+    // The resume import posts a base64-encoded PDF, which blows past the 1mb default.
+    bodyParser: { sizeLimit: "8mb" }
+  }
+};
+
 // export API handler
 export default createNextApiHandler({
   router: appRouter,

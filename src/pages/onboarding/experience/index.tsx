@@ -1,4 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
@@ -7,7 +6,6 @@ import {
   type UseFieldArrayRemove,
   type UseFormWatch,
   useFieldArray,
-  useForm,
   type Control
 } from "react-hook-form"
 import toast from "react-hot-toast"
@@ -24,6 +22,7 @@ import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 import OnboardingLayout from "../_layout"
 import { FormField } from "~/components/ui/form"
+import { useAppForm } from "~/components/use-app-form"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
@@ -56,9 +55,7 @@ export default function Step4() {
     onMutate: () => router.push("/onboarding/skills")
   })
 
-  const form = useForm<InsertExperienceSchema>({
-    resolver: zodResolver(insertExperienceSchema),
-
+  const form = useAppForm(insertExperienceSchema, {
     defaultValues: {
       experience: initialExperience
     },
@@ -66,12 +63,12 @@ export default function Step4() {
     values: {
       experience: profile?.experience.length
         ? profile.experience.map((experience) => ({
-            name: experience.name,
-            description: experience.description,
-            startDate: experience.startDate,
-            endDate: experience.endDate,
-            title: experience.title
-          }))
+          name: experience.name,
+          description: experience.description,
+          startDate: experience.startDate,
+          endDate: experience.endDate,
+          title: experience.title
+        }))
         : initialExperience
     }
   })

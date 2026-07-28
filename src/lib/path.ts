@@ -1,4 +1,5 @@
 export const appPath = {
+  import: "/onboarding/import",
   contact: "/onboarding/contact",
   education: "/onboarding/education",
   experience: "/onboarding/experience",

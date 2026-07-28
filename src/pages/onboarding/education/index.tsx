@@ -1,4 +1,3 @@
-import { zodResolver } from "@hookform/resolvers/zod"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
@@ -7,7 +6,6 @@ import {
   type UseFieldArrayRemove,
   type UseFormWatch,
   useFieldArray,
-  useForm,
   type Control
 } from "react-hook-form"
 import toast from "react-hot-toast"
@@ -23,6 +21,7 @@ import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 import OnboardingLayout from "../_layout"
 import { FormField } from "~/components/ui/form"
+import { useAppForm } from "~/components/use-app-form"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -56,34 +55,32 @@ export default function Education() {
     onMutate: () => router.push("/onboarding/experience")
   })
 
-  const form = useForm<InsertEducationSchema>({
-    resolver: zodResolver(insertEducationSchema),
-
+  const form = useAppForm(insertEducationSchema, {
     defaultValues: {
       education: profile?.education.length
         ? profile.education.map((school) => ({
-            degree: school.degree,
-            endDate: school.endDate,
-            name: school.name,
-            startDate: school.startDate,
-            description: school.description,
-            gpa: school.gpa,
-            location: school.location
-          }))
+          degree: school.degree,
+          endDate: school.endDate,
+          name: school.name,
+          startDate: school.startDate,
+          description: school.description,
+          gpa: school.gpa,
+          location: school.location
+        }))
         : initialSchool
     },
 
     values: {
       education: profile?.education.length
         ? profile.education.map((school) => ({
-            degree: school.degree,
-            endDate: school.endDate,
-            name: school.name,
-            startDate: school.startDate,
-            description: school.description,
-            gpa: school.gpa,
-            location: school.location
-          }))
+          degree: school.degree,
+          endDate: school.endDate,
+          name: school.name,
+          startDate: school.startDate,
+          description: school.description,
+          gpa: school.gpa,
+          location: school.location
+        }))
         : initialSchool
     }
   })

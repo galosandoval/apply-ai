@@ -1,7 +1,5 @@
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/router"
 import { useEffect } from "react"
-import { useForm } from "react-hook-form"
 import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
 import {
@@ -13,6 +11,7 @@ import OnboardingLayout from "../_layout"
 import { FormField } from "~/components/ui/form"
 import toast from "react-hot-toast"
 import { useUser } from "~/utils/useUser"
+import { useAppForm } from "~/components/use-app-form"
 
 export default function Contact() {
   return <NameAndContactForm />
@@ -27,9 +26,7 @@ function NameAndContactForm() {
     { enabled: !!id }
   )
 
-  const form = useForm<InsertContactSchema>({
-    resolver: zodResolver(insertContactSchema),
-
+  const form = useAppForm(insertContactSchema, {
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -68,7 +65,7 @@ function NameAndContactForm() {
             education: [],
             experience: [],
             skills: [],
-            email: profile?.email,
+            email: profile?.email ?? null,
             contact: {
               linkedIn: input?.linkedIn ?? null,
               location: input.location,
