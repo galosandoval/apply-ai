@@ -58,24 +58,25 @@ function NameAndContactForm() {
 
     onSuccess: (data, input) => {
       if (data?.userId) {
-        utils.profile.read.setData(
-          { userId: data.userId },
-          {
-            ...data,
-            education: [],
-            experience: [],
-            skills: [],
-            email: profile?.email ?? null,
-            contact: {
-              linkedIn: input?.linkedIn ?? null,
-              location: input.location,
-              id: "",
-              phone: input?.phone ?? null,
-              portfolio: input?.portfolio ?? null,
-              profileId: ""
-            }
+        // Merge instead of replace — an imported resume's education, experience
+        // and skills live in this same cache entry, and the next onboarding
+        // steps read them from here.
+        utils.profile.read.setData({ userId: data.userId }, (old) => ({
+          ...old,
+          ...data,
+          education: old?.education ?? [],
+          experience: old?.experience ?? [],
+          skills: old?.skills ?? [],
+          email: old?.email ?? profile?.email ?? null,
+          contact: {
+            linkedIn: input?.linkedIn ?? null,
+            location: input.location,
+            id: old?.contact?.id ?? "",
+            phone: input?.phone ?? null,
+            portfolio: input?.portfolio ?? null,
+            profileId: old?.contact?.profileId ?? data.id
           }
-        )
+        }))
       }
     },
 
@@ -83,7 +84,6 @@ function NameAndContactForm() {
   })
 
   const onSubmit = (data: InsertContactSchema) => {
-    console.log(profile?.id)
     mutate({ ...data, id: profile?.id })
   }
 

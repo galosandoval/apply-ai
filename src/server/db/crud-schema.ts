@@ -86,8 +86,8 @@ export const insertExperienceSchema = z.object({
         .min(6, "Must be more than 6 characters")
         .max(1000, "Must be less than 1000 characters")
         .refine(
-          (arg) => arg.split(".").length > 3,
-          "Must be at least 3 sentences"
+          (arg) => arg.split(".").length > 2,
+          "Must be at least 2 sentences"
         ),
     endDate: (schema) =>
       schema.endDate.min(3, "Must be at least 3 characters").max(50),

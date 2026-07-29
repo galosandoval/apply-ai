@@ -2,7 +2,6 @@ import { Cross1Icon } from "@radix-ui/react-icons"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
-  type FieldArrayWithId,
   type UseFieldArrayRemove,
   type UseFormWatch,
   useFieldArray,
@@ -129,7 +128,6 @@ export default function Education() {
       {fields.map((field, index) => (
         <EducationForm
           control={control}
-          field={field}
           watch={watch}
           index={index}
           hasMoreThanOneSchool={hasMoreThanOneSchool}
@@ -158,14 +156,12 @@ export default function Education() {
 }
 
 function EducationForm({
-  field,
   watch,
   index,
   hasMoreThanOneSchool,
   remove,
   control
 }: {
-  field: FieldArrayWithId<InsertEducationSchema>
   watch: UseFormWatch<InsertEducationSchema>
   index: number
   hasMoreThanOneSchool: boolean
@@ -184,7 +180,7 @@ function EducationForm({
   }
 
   return (
-    <div key={field.id} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="flex justify-between">
         <h2>{fieldTitle}</h2>
 
