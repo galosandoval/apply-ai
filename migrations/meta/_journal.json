@@ -1,1 +1,13 @@
-{"version":"5","dialect":"pg","entries":[]}
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1785304471651,
+      "tag": "0000_common_black_queen",
+      "breakpoints": true
+    }
+  ]
+}
