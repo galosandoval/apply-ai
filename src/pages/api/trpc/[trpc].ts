@@ -5,9 +5,13 @@ import { appRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 
 export const config = {
+  // Parsing a resume means a PDF read plus an OpenAI round trip, which runs
+  // past the default serverless timeout on a long resume.
+  maxDuration: 60,
   api: {
-    // The resume import posts a base64-encoded PDF, which blows past the 1mb default.
-    bodyParser: { sizeLimit: "8mb" }
+    // The resume import posts a base64-encoded PDF: 8MB of file inflates to
+    // ~10.7MB of base64, well past the 1mb default.
+    bodyParser: { sizeLimit: "12mb" }
   }
 };
 

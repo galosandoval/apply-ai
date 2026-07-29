@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse"
 import { z } from "zod"
-import { maxSkills } from "~/server/db/crud-schema"
+import { maxBullets, maxSkills } from "~/server/db/crud-schema"
 
 /**
  * Shape the model is asked to return. Every field is lenient on purpose — a
@@ -24,7 +24,7 @@ export const parsedResumeSchema = z.object({
       startDate: z.string().default(""),
       endDate: z.string().default(""),
       location: z.string().default(""),
-      description: z.string().default("")
+      bullets: z.string().array().default([])
     })
     .array()
     .default([]),
@@ -135,7 +135,7 @@ Rules:
 - Dates are free text, formatted like "Sept 2017". Use "Present" for a current role.
 - "profession" is the person's current job title or the headline at the top of the resume.
 - "introduction" is the summary or objective paragraph, if the resume has one.
-- For each job, "description" is the bullet points joined into a single paragraph, one sentence per bullet, each ending in a period. Keep the person's own wording and metrics.
+- For each job, "bullets" is the list of accomplishment bullet points, one string per bullet, at most ${maxBullets}. Keep the person's own wording and metrics. If the job is written as a paragraph, split it into one bullet per sentence.
 - Group skills into at most ${maxSkills} categories (for example "Languages", "Frameworks"). If the resume lists skills without categories, put them all under a single "Skills" category.
 - Return at most ${maxExperience} jobs and ${maxEducation} schools, most recent first.
 
@@ -143,7 +143,7 @@ Respond with RFC8259 compliant JSON only, no explanations, in exactly this forma
 {
   "firstName": "", "lastName": "", "profession": "", "location": "", "phone": "",
   "linkedIn": "", "portfolio": "", "introduction": "",
-  "experience": [{ "name": "", "title": "", "startDate": "", "endDate": "", "location": "", "description": "" }],
+  "experience": [{ "name": "", "title": "", "startDate": "", "endDate": "", "location": "", "bullets": [""] }],
   "education": [{ "name": "", "degree": "", "startDate": "", "endDate": "", "location": "", "gpa": "", "description": "" }],
   "skills": [{ "category": "", "all": [""] }]
 }`

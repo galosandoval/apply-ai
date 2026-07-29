@@ -92,7 +92,7 @@ function PromptForm({ data }: { data: RouterOutputs["profile"]["read"] }) {
           startDate: e.startDate,
           endDate: e.endDate,
           title: e.title,
-          description: e.description
+          bullets: e.bullets
         }))
       ),
       education: JSON.stringify(
@@ -220,7 +220,7 @@ function initialEditingState({
         name: false,
         startDate: false,
         endDate: false,
-        description: false
+        bullets: false
       })) ?? []
   }
 }
@@ -401,7 +401,7 @@ type ExperienceParsed = {
   name: string
   startDate: string
   endDate: string
-  description: string
+  bullets: string[]
   title: string
 }
 

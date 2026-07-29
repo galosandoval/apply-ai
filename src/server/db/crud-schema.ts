@@ -73,6 +73,42 @@ export const insertEducationSchema = z.object({
 
 export type InsertEducationSchema = z.infer<typeof insertEducationSchema>
 
+export const minBullets = 2
+export const maxBullets = 8
+
+const maxBulletLength = 300
+
+/**
+ * One accomplishment per entry, so the length cap is per bullet rather than per
+ * job — a single runaway sentence is what breaks the layout, not the count.
+ *
+ * The checks live in a `superRefine` without a `path` so every message lands on
+ * the array itself. Onboarding edits bullets as one line-separated textarea and
+ * renders a single `FormMessage` for it; an issue reported on `bullets.2` would
+ * block submit with nothing on screen to explain why. Blank lines are ignored
+ * here for the same reason — the user is mid-typing, not writing an empty
+ * bullet, and they're stripped before the array is saved.
+ */
+const bulletsSchema = z
+  .string()
+  .array()
+  .superRefine((bullets, ctx) => {
+    const filled = bullets.filter((bullet) => bullet.trim())
+
+    const issue =
+      filled.length < minBullets
+        ? `Write at least ${minBullets} accomplishments`
+        : filled.length > maxBullets
+          ? `Write at most ${maxBullets} accomplishments`
+          : filled.some((bullet) => bullet.trim().length < 6)
+            ? "Each accomplishment must be more than 6 characters"
+            : filled.some((bullet) => bullet.length > maxBulletLength)
+              ? `Each accomplishment must be less than ${maxBulletLength} characters`
+              : null
+
+    if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue })
+  })
+
 export const insertExperienceSchema = z.object({
   experience: createInsertSchema(work, {
     id: (schema) => schema.id.optional(),
@@ -81,14 +117,7 @@ export const insertExperienceSchema = z.object({
       schema.name
         .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters"),
-    description: (schema) =>
-      schema.description
-        .min(6, "Must be more than 6 characters")
-        .max(1000, "Must be less than 1000 characters")
-        .refine(
-          (arg) => arg.split(".").length > 2,
-          "Must be at least 2 sentences"
-        ),
+    bullets: bulletsSchema,
     endDate: (schema) =>
       schema.endDate.min(3, "Must be at least 3 characters").max(50),
     startDate: (schema) =>
@@ -110,6 +139,7 @@ export const maxSkills = 4
 export const insertSkillsSchema = z.object({
   skills: z
     .object({
+      id: z.string().optional(),
       category: z.string().min(3),
       all: z.string(),
       position: z.number()

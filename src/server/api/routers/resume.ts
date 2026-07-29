@@ -76,7 +76,7 @@ export const resumeRouter = createTRPCRouter({
               startDate: z.string(),
               endDate: z.string(),
               title: z.string(),
-              description: z.string()
+              bullets: z.string().array()
               // keyAchievements: z.string().array()
             })
           )

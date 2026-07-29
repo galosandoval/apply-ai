@@ -66,7 +66,7 @@ export default async function handler(req: NextRequest) {
           "gpa": "GPA of education."
         }],
         "experience": [{
-          "description": "Description of work experience that is 3-6 sentences.",
+          "bullets": ["Accomplishment at this job. 3 to 6 entries, one sentence each."],
           "name": "Name of company.",
           "startDate": "Start date of work experience.",
           "endDate": "End date of work experience.",

@@ -372,7 +372,7 @@ export type EditableFields = {
     name: boolean
     startDate: boolean
     endDate: boolean
-    description: boolean
+    bullets: boolean
   }[]
 }
 
@@ -551,8 +551,8 @@ function Experience2({
       <SectionTitle title="Experience" />
 
       <div className="space-y-4">
-        {experience.map((job) => (
-          <div key={job.name}>
+        {experience.map((job, index) => (
+          <div key={job.id ?? index}>
             <div className="flex justify-between">
               <div className="font-semibold">
                 {job.name},{" "}
@@ -564,8 +564,8 @@ function Experience2({
               </p>
             </div>
             <ul className="list-disc pl-10">
-              {job.description.split(". ").map((ka) => (
-                <li key={ka}>{ka}</li>
+              {job.bullets.map((bullet, bulletIndex) => (
+                <li key={bulletIndex}>{bullet}</li>
               ))}
             </ul>
           </div>
@@ -585,8 +585,8 @@ function Education2({
       <SectionTitle title="Education" />
 
       <div className="space-y-2">
-        {education.map((school) => (
-          <div key={school.name}>
+        {education.map((school, index) => (
+          <div key={school.id ?? index}>
             <div className="flex justify-between">
               <div className="font-semibold">
                 {school.name},{" "}
@@ -1201,13 +1201,18 @@ function Job({
         </div>
       </div>
 
-      {isEditing.experience[index]?.description ? (
+      {isEditing.experience[index]?.bullets ? (
         <div className="flex gap-1">
-          <Textarea
-            className="text-xs"
-            autoFocus
-            {...register(`experience.${index}.description`)}
-          />
+          <div className="flex flex-1 flex-col gap-1">
+            {data.bullets.map((_, bulletIndex) => (
+              <Textarea
+                key={bulletIndex}
+                className="text-xs"
+                autoFocus={bulletIndex === 0}
+                {...register(`experience.${index}.bullets.${bulletIndex}`)}
+              />
+            ))}
+          </div>
 
           <Button onClick={finishEditing} variant="outline" size="icon">
             <Cross1Icon />
@@ -1215,11 +1220,11 @@ function Job({
         </div>
       ) : (
         <ul
-          onClick={() => startEditing("experience", index, "description")}
+          onClick={() => startEditing("experience", index, "bullets")}
           className="ml-2 cursor-pointer list-disc rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
         >
-          {data.description.split(". ").map((ka) => (
-            <li key={ka}>{ka}</li>
+          {data.bullets.map((bullet, bulletIndex) => (
+            <li key={bulletIndex}>{bullet}</li>
           ))}
         </ul>
       )}

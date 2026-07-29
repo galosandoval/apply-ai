@@ -190,7 +190,7 @@ export async function replaceExperience(
   const workToInsert = experience.map((e) => ({
     id: e?.id ? e.id : createId(),
     name: e.name,
-    description: e.description,
+    bullets: e.bullets,
     endDate: e.endDate,
     startDate: e.startDate,
     title: e.title,
@@ -330,7 +330,9 @@ export async function replaceSkills(
     await repo.deleteSkills(tx, profileId)
     await repo.insertSkills(
       tx,
-      skills.map((s) => ({ ...s, profileId, id: createId() }))
+      // Reuse the id the form sent back so a skill keeps its identity across
+      // saves; this delete-and-reinsert would otherwise mint a new one each time.
+      skills.map((s) => ({ ...s, profileId, id: s.id ?? createId() }))
     )
   })
 

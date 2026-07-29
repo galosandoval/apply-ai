@@ -58,6 +58,7 @@ export default function Education() {
     defaultValues: {
       education: profile?.education.length
         ? profile.education.map((school) => ({
+          id: school.id,
           degree: school.degree,
           endDate: school.endDate,
           name: school.name,
@@ -72,6 +73,7 @@ export default function Education() {
     values: {
       education: profile?.education.length
         ? profile.education.map((school) => ({
+          id: school.id,
           degree: school.degree,
           endDate: school.endDate,
           name: school.name,

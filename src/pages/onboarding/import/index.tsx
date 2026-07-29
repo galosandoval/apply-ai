@@ -7,7 +7,7 @@ import { appPath } from "~/lib/path"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 
-const maxFileSizeBytes = 4_500_000
+const MAX_FILE_SIZE_BYTES = 8_000_000
 
 export default function ImportResume() {
   const router = useRouter()
@@ -36,8 +36,8 @@ export default function ImportResume() {
       return
     }
 
-    if (file.size > maxFileSizeBytes) {
-      toast.error("That PDF is too large. Keep it under 4.5MB.")
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast.error("That PDF is too large. Keep it under 8MB.")
       return
     }
 
@@ -55,13 +55,6 @@ export default function ImportResume() {
           education, and skills. You get to review and edit everything before
           anything is used.
         </p>
-
-        <div className="max-w-md">
-          <MyAlert
-            title="LinkedIn"
-            description="LinkedIn doesn't let apps read your work history, but it does let you export your profile as a PDF. Open your profile, choose More, then Save to PDF, and upload that here."
-          />
-        </div>
 
         <input
           ref={inputRef}

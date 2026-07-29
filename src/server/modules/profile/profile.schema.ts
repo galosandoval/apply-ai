@@ -38,8 +38,12 @@ export const addExperienceSchema = insertExperienceSchema.merge(
 )
 export type AddExperienceInput = z.infer<typeof addExperienceSchema>
 
-/** ~6MB of base64, which is roughly a 4.5MB PDF — far above any real resume. */
-const maxPdfBase64Length = 6_000_000
+/**
+ * Base64 inflates by ~4/3, so the 8MB file the upload page accepts arrives as
+ * roughly 10.7M characters. Keep this above that or the client's own check
+ * passes and the server rejects the request anyway.
+ */
+const maxPdfBase64Length = 11_000_000
 
 export const importFromPdfSchema = z.object({
   fileBase64: z.string().min(1).max(maxPdfBase64Length, "That PDF is too large")
@@ -49,6 +53,7 @@ export type ImportFromPdfInput = z.infer<typeof importFromPdfSchema>
 export const replaceSkillsSchema = z.object({
   skills: z
     .object({
+      id: z.string().optional(),
       category: z.string().min(3),
       all: z.string().array(),
       position: z.number()

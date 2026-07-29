@@ -11,8 +11,8 @@ import {
 import toast from "react-hot-toast"
 import { MyAlert } from "~/components/alert"
 import { MyErrorMessage } from "~/components/my-error-message"
-import { MyTextarea } from "~/components/my-textarea"
 import { MyInput } from "~/components/my-input"
+import { Textarea } from "~/components/ui/textarea"
 import { Button } from "~/components/ui/button"
 import {
   insertExperienceSchema,
@@ -21,18 +21,34 @@ import {
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 import OnboardingLayout from "../_layout"
-import { FormField } from "~/components/ui/form"
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
     name: "",
-    description: "",
+    bullets: [],
     startDate: "",
     endDate: "",
     title: ""
   }
 ]
+
+/**
+ * Bullets are stored as an array but collected as one textarea, so a line is a
+ * bullet. Blank lines survive `toBullets` on purpose: stripping them as the user
+ * types would swallow the newline they just pressed. `onSubmit` drops them.
+ */
+const toBullets = (text: string) => text.split("\n")
+
+const fromBullets = (bullets: string[]) => bullets.join("\n")
 
 const maxExperience = 4
 
@@ -63,8 +79,9 @@ export default function Step4() {
     values: {
       experience: profile?.experience.length
         ? profile.experience.map((experience) => ({
+          id: experience.id,
           name: experience.name,
-          description: experience.description,
+          bullets: experience.bullets,
           startDate: experience.startDate,
           endDate: experience.endDate,
           title: experience.title
@@ -89,6 +106,9 @@ export default function Step4() {
   const onSubmit = async (data: InsertExperienceSchema) => {
     const experienceToSubmit = data.experience.map((experience) => ({
       ...experience,
+      bullets: experience.bullets
+        .map((bullet) => bullet.trim())
+        .filter(Boolean),
       profileId: profile?.id
     }))
 
@@ -112,7 +132,7 @@ export default function Step4() {
       <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
         Start with your most recent job and work backwards, including the
         company name and location, your title, and how long you worked there.
-        Finish by writing 3 to 5 accomplishments for each job.
+        Finish by writing 3 to 5 accomplishments for each job, one per line.
       </h2>
 
       {fields.map((field, index) => (
@@ -248,24 +268,51 @@ function ExperienceForm({
           <div className="mt-4">
             <MyAlert
               title="Accomplishments"
-              description={`Write a paragraph with 3 to 5 sentences, each sentence should be an accomplishment. Be concise and try to use numbers and percentages in your accomplishments. Each sentence will be a bullet point on your resume.`}
+              description={`Write 3 to 5 accomplishments, one per line. Be concise and try to use numbers and percentages. Each line becomes a bullet point on your resume.`}
             />
           </div>
         )}
       </div>
 
-      <FormField
-        control={control}
-        name={`experience.${index}.description`}
-        render={({ field }) => (
-          <MyTextarea
-            field={field}
-            label="Write 3 to 5 accomplishments"
-            placeholder="Collaborated closely with cross-functional teams to ensure seamless integration of new features and improvements..."
-            required
-          />
-        )}
-      />
+      <BulletsField control={control} index={index} />
     </div>
+  )
+}
+
+function BulletsField({
+  control,
+  index
+}: {
+  control: Control<InsertExperienceSchema>
+  index: number
+}) {
+  return (
+    <FormField
+      control={control}
+      name={`experience.${index}.bullets`}
+      render={({ field }) => (
+        <FormItem className="w-full">
+          <FormLabel>
+            Write 3 to 5 accomplishments
+            <span className="text-destructive">*</span>
+          </FormLabel>
+          <FormControl>
+            <Textarea
+              className="min-h-[100px]"
+              placeholder={
+                "Collaborated closely with cross-functional teams to ship new features\nCut page load time by 40% by splitting the bundle"
+              }
+              name={field.name}
+              ref={field.ref}
+              onBlur={field.onBlur}
+              value={fromBullets(field.value)}
+              onChange={(e) => field.onChange(toBullets(e.target.value))}
+            />
+          </FormControl>
+          <FormDescription>One accomplishment per line.</FormDescription>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
   )
 }

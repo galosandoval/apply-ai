@@ -175,7 +175,7 @@ export async function upsertExperience(db: DbOrTx, values: WorkValues[]) {
       target: work.id,
       set: {
         name: sql`excluded.name`,
-        description: sql`excluded.description`,
+        bullets: sql`excluded.bullets`,
         endDate: sql`excluded.end_date`,
         title: sql`excluded.title`,
         startDate: sql`excluded.start_date`,

@@ -93,7 +93,7 @@ function ProtectedNavbar() {
             <NavigationMenuList>
               <MyLink href={appPath.dashboard}>Dashboard</MyLink>
               {showOnboarding && (
-                <MyLink href={appPath.contact}>Onboarding</MyLink>
+                <MyLink href={appPath.import}>Onboarding</MyLink>
               )}
               <MyLink href={appPath.resume}>Resumes</MyLink>
               <NavigationMenuItem asChild>
@@ -115,6 +115,7 @@ function ProtectedNavbar() {
 function Breadcrumbs() {
   const router = useRouter()
 
+  const isImportStep = router.pathname === appPath.import
   const isContactStep = router.pathname === appPath.contact
   const isEducationStep = router.pathname === appPath.education
   const isExperienceStep = router.pathname === appPath.experience
@@ -123,6 +124,16 @@ function Breadcrumbs() {
   return (
     <Breadcrumb className="">
       <BreadcrumbList className="justify-center">
+        <BreadcrumbItem>
+          {isImportStep ? (
+            <BreadcrumbPage>Import</BreadcrumbPage>
+          ) : (
+            <BreadcrumbLink href={appPath.import}>Import</BreadcrumbLink>
+          )}
+        </BreadcrumbItem>
+
+        <BreadcrumbSeparator />
+
         <BreadcrumbItem>
           {isContactStep ? (
             <BreadcrumbPage>Contact</BreadcrumbPage>

@@ -57,6 +57,7 @@ export default function Skills() {
     values: {
       skills: profile?.skills?.length
         ? profile.skills.map((s, i) => ({
+          id: s.id,
           category: s.category ?? "",
           all: s.all?.join(", ") ?? "",
           position: s.position ?? i

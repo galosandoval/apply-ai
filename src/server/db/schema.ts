@@ -66,7 +66,8 @@ export const work = pgTable("work", {
   endDate: text("end_date").notNull(),
   title: text("title").notNull(),
   location: text("location"),
-  description: text("description").notNull(),
+  /** One accomplishment per entry. Rendered as the job's bullet list. */
+  bullets: text("bullets").array().notNull(),
   profileId: text("profile_id").references(() => profile.id),
   resumeId: text("resume_id").references(() => resume.id)
 })

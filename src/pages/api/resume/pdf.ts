@@ -47,7 +47,7 @@ function createEndpoint(input: DownloadPdfSchema) {
   const expDescriptionCount: Record<string, number> = {}
 
   input.experience.forEach((job, index) => {
-    expDescriptionCount[`desc${index}`] = job.description.split(". ").length
+    expDescriptionCount[`desc${index}`] = job.bullets.length
   })
 
   // with introduction
@@ -184,12 +184,12 @@ async function insertValuesOnPage(page: Page, values: DownloadPdfSchema) {
       )
     )
 
-    job.description.split(". ").forEach((sentence, i) => {
+    job.bullets.forEach((bullet, i) => {
       promises.push(
         page.$$eval(
           `#job-${index}-desc-${i}`,
           (elements, value) => elements.forEach((el) => (el.innerHTML = value)),
-          sentence
+          bullet
         )
       )
     })
