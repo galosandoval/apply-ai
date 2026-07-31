@@ -3,7 +3,11 @@ import { type RouterOutputs, api } from "~/utils/api"
 import { type Message, useChat } from "ai/react"
 import { useUser } from "~/utils/useUser"
 import { type ChangeEvent, useState, type FormEvent } from "react"
-import { type EditableFields, Resume2InChat } from "~/components/resume"
+import {
+  ResumeDocument,
+  type OnEditField,
+  type ResumeDocumentData
+} from "~/components/resume"
 import { PromptInput } from "~/components/prompt-input"
 import {
   type InsertResumeSchema,
@@ -185,46 +189,6 @@ function ChatMessage({
   return <p className="whitespace-pre-line">{message.content}</p>
 }
 
-function initialEditingState({
-  education,
-  experience
-}: {
-  education: EducationParsed[]
-  experience: ExperienceParsed[]
-}) {
-  return {
-    skills: false,
-    interests: false,
-    profession: false,
-    linkedIn: false,
-    portfolio: false,
-    location: false,
-    phone: false,
-    firstName: false,
-    lastName: false,
-    email: false,
-    summary: false,
-    education:
-      education.map((_e) => ({
-        name: false,
-        degree: false,
-        startDate: false,
-        endDate: false,
-        description: false,
-        gpa: false,
-        location: false
-      })) ?? [],
-    experience:
-      experience.map((_e) => ({
-        title: false,
-        name: false,
-        startDate: false,
-        endDate: false,
-        bullets: false
-      })) ?? []
-  }
-}
-
 function AssistantMessage({
   content,
   profile
@@ -242,14 +206,7 @@ function AssistantMessage({
 
   const parsedContent = parseContent(content)
 
-  const [isEditing, setIsEditing] = useState<EditableFields>(
-    initialEditingState({
-      education: parsedContent?.education ?? [],
-      experience: parsedContent?.experience ?? []
-    })
-  )
-
-  const { register, watch, handleSubmit } = useAppForm(insertResumeSchema, {
+  const { watch, setValue, handleSubmit } = useAppForm(insertResumeSchema, {
     values: {
       education:
         parsedContent?.education.map((e) => ({ ...e, name: e.name })) ?? [],
@@ -272,32 +229,6 @@ function AssistantMessage({
     return <p className="whitespace-pre-line">{content}</p>
   }
 
-  const startEditing = (
-    id: keyof typeof isEditing,
-    index?: number,
-    key?:
-      | keyof (typeof isEditing.experience)[number]
-      | keyof (typeof isEditing.education)[number]
-  ) => {
-    const initialState = initialEditingState(parsedContent)
-
-    const toChange = initialState[id]
-
-    if (index !== undefined && key && Array.isArray(toChange)) {
-      // @ts-ignore - key exists
-      toChange[index][key] = !toChange[index][key]
-    } else {
-      // @ts-ignore - key exists
-      initialState[id] = !toChange
-    }
-
-    setIsEditing(initialState)
-  }
-
-  const finishEditing = () => {
-    setIsEditing(initialEditingState(parsedContent))
-  }
-
   const onSubmitSaveResume = async (data: InsertResumeSchema) => {
     mutate({
       ...data,
@@ -308,30 +239,32 @@ function AssistantMessage({
     })
   }
 
-  const email = watch("email")
-  const phone = watch("phone")
-  const linkedIn = watch("linkedIn")
-  const portfolio = watch("portfolio")
-  const location = watch("location")
-  const skills = watch("skills")
-  const experience = watch("experience")
-  const education = watch("education")
-  const profession = watch("profession")
+  const resumeData: ResumeDocumentData = {
+    fullName: `${profile.firstName} ${profile.lastName}`,
+    profession: watch("profession"),
+    email: watch("email"),
+    phone: watch("phone"),
+    linkedIn: watch("linkedIn"),
+    portfolio: watch("portfolio"),
+    location: watch("location"),
+    skills: watch("skills"),
+    experience: watch("experience"),
+    education: watch("education")
+  }
+
+  /**
+   * Commits one `Editable` edit into form state.
+   *
+   * The chat preview edits an unsaved resume, so there is no row to autosave to
+   * — `resume.updateField` and `useEditableResume` serve `/resume/[id]`, where
+   * the resume already exists. Edits here live in form state until saved.
+   */
+  const handleEditField: OnEditField = (path, value) => {
+    setValue(path, value, { shouldDirty: true })
+  }
 
   const handleDownloadPdf = async () => {
-    const requestBody: DownloadPdfSchema = {
-      email,
-      profession,
-      fullName: `${profile.firstName} ${profile.lastName}`,
-      location,
-      phone,
-      linkedIn,
-      portfolio,
-      skills,
-      education,
-      experience
-    }
-    console.log(requestBody)
+    const requestBody: DownloadPdfSchema = resumeData
 
     try {
       const response = await fetch("/api/resume/pdf", {
@@ -358,14 +291,7 @@ function AssistantMessage({
       onSubmit={handleSubmit(onSubmitSaveResume)}
       className="flex flex-col items-center gap-4 overflow-y-auto pt-16"
     >
-      <Resume2InChat
-        fullName={`${profile.firstName} ${profile.lastName}`}
-        watch={watch}
-        isEditing={isEditing}
-        startEditing={startEditing}
-        finishEditing={finishEditing}
-        register={register}
-      />
+      <ResumeDocument data={resumeData} onEdit={handleEditField} />
       <Button onClick={handleDownloadPdf} type="button">
         Download
       </Button>

@@ -1,491 +1,270 @@
-import { Fragment } from "react"
-import { Input } from "./ui/input"
-import { Textarea } from "./ui/textarea"
-import { Button } from "./ui/button"
-import { Cross1Icon } from "@radix-ui/react-icons"
-import { type UseFormWatch, type UseFormRegister } from "react-hook-form"
+import { createContext, Fragment, useContext, useState } from "react"
+import { type FieldPath, type FieldPathValue } from "react-hook-form"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
 
-export const Resume = ({
-  expDescCount,
-  educationCount,
-  experienceCount,
-  hasIntro,
-  hasPhone,
-  hasLinkedIn,
-  hasPortfolio,
-  skillsCount,
-  hasInterests
-}: {
-  expDescCount: Record<string, number>
-  educationCount: number
-  experienceCount: number
-  skillsCount: number
-  hasIntro: boolean
-  hasPhone: boolean
-  hasLinkedIn: boolean
-  hasPortfolio: boolean
-  hasInterests: boolean
-}) => {
-  const skills = Array(skillsCount).fill(0)
-  const education = Array(educationCount).fill(0)
-  const experience = Array(experienceCount).fill(0)
-
-  return (
-    <div className="h-[29.7cm] w-[21cm] bg-white px-20 py-16 text-[#727272]">
-      <div className="flex h-full overflow-hidden">
-        <div className="my-auto max-h-full border-b border-[#737373]">
-          <div className="flex max-h-[100px] flex-col items-center gap-4 pb-2">
-            <h1
-              id="fullName"
-              className="text-4xl font-semibold uppercase tracking-[.75rem]"
-            ></h1>
-            <h1
-              id="profession"
-              className="text-md mb-4 font-semibold uppercase tracking-[.25rem]"
-            ></h1>
-          </div>
-          <div className="w-full border-b border-[#737373]" />
-          <section className="flex h-full">
-            <div
-              id="resume__left"
-              className="flex w-[38.2%] flex-col bg-[#f8f8f8] text-[.65rem]"
-            >
-              <div
-                id="contact"
-                className="w-full border-b border-dotted border-[#737373] px-3"
-              >
-                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                  Contact
-                </h2>
-                {hasPhone && <p id="phone" className="pb-3"></p>}
-                <p id="email" className="pb-3"></p>
-                {hasLinkedIn && <p id="linkedIn" className="pb-3"></p>}
-                {hasPortfolio && <p id="portfolio" className="pb-3"></p>}
-                <address id="location" className="pb-4"></address>
-              </div>
-
-              <div className="w-full border-b border-dotted border-[#737373] px-2 leading-tight">
-                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                  skills
-                </h2>
-                <ul className="grid list-disc pb-2 pl-2">
-                  {skills.map((_, index) => (
-                    <li id={`skill-${index}`} key={`skill-${index}`}></li>
-                  ))}
-                </ul>
-              </div>
-
-              <div
-                id="education"
-                className="w-full border-b border-dotted border-[#737373] px-3 pb-3 leading-tight"
-              >
-                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                  Education
-                </h2>
-                {education.map((_, index) => (
-                  <Fragment key={`school-${index}`}>
-                    <h4
-                      id={`school-${index}-degree`}
-                      className="pb-1 font-bold"
-                    ></h4>
-                    <h3
-                      id={`school-${index}-name`}
-                      className="pb-1 text-[1rem] font-semibold"
-                    ></h3>
-                    <p id={`school-${index}-duration`} className="pb-1"></p>
-
-                    <p id={`school-${index}-description`}></p>
-                  </Fragment>
-                ))}
-              </div>
-
-              {hasInterests && (
-                <div className="w-full px-3 pb-3">
-                  <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                    Interests
-                  </h2>
-                  <p id="interests"></p>
-                </div>
-              )}
-            </div>
-            <div
-              id="resume__right"
-              className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight"
-            >
-              {hasIntro && (
-                <div
-                  id="profile"
-                  className="border-b border-dotted border-[#737373] pr-2"
-                >
-                  <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                    Profile
-                  </h2>
-                  <p id="introduction" className="pb-4"></p>
-                </div>
-              )}
-
-              <div id="work">
-                <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-                  Work Experience
-                </h2>
-
-                <div className="flex max-h-full flex-col justify-between">
-                  {experience.map((_, index) => (
-                    <div className="pb-3" key={`job-${index}`}>
-                      <h3
-                        id={`job-${index}-title`}
-                        className="pb-2 text-[1rem] font-semibold"
-                      ></h3>
-                      <div className="flex justify-between pb-2">
-                        <p id={`job-${index}-name`}></p>
-                        <p
-                          id={`job-${index}-duration`}
-                          className="capitalize"
-                        ></p>
-                      </div>
-
-                      {/* <p>{job.description}</p> */}
-                      <ul className="ml-2 list-disc">
-                        {Array(expDescCount[`desc${index}`])
-                          .fill(0)
-                          .map((_, descIndex) => (
-                            <li
-                              id={`job-${index}-desc-${descIndex}`}
-                              key={`desc-${descIndex}`}
-                            ></li>
-                          ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export function Resume2InChat({
-  isEditing,
-  fullName,
-  watch,
-  register,
-  startEditing,
-  finishEditing
-}: {
-  isEditing: EditableFields
-  fullName: string
-  watch: UseFormWatch<InsertResumeSchema>
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) {
-  const handleFinishEditingOnEscape = (
-    e: React.KeyboardEvent<HTMLDivElement>
-  ) => {
-    if (e.key === "Escape" || e.key === "Enter") finishEditing()
-  }
-
-  const email = watch("email")
-  const phone = watch("phone")
-  const linkedIn = watch("linkedIn")
-  const portfolio = watch("portfolio")
-  const location = watch("location")
-  const skills = watch("skills")
-  const experience = watch("experience")
-  const education = watch("education")
-  const profession = watch("profession")
-
-  return (
-    <div
-      onKeyDown={handleFinishEditingOnEscape}
-      className="text-10pt h-[29.7cm] w-[21cm] rounded-md bg-white px-10"
-    >
-      <div className="flex h-full overflow-hidden">
-        <div className="my-auto">
-          <Header2
-            profession={profession}
-            fullName={fullName}
-            isEditing={isEditing}
-            email={email}
-            phone={phone}
-            linkedIn={linkedIn}
-            portfolio={portfolio}
-            location={location}
-            register={register}
-            startEditing={startEditing}
-            finishEditing={finishEditing}
-          />
-
-          <Skills2 skills={skills} />
-
-          <Experience2 experience={experience} />
-
-          <Education2 education={education} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// export const ResumeInChat = ({
-//   isEditing,
-//   fullName,
-//   watch,
-//   register,
-//   startEditing,
-//   finishEditing
-// }: {
-//   isEditing: EditableFields
-//   fullName: string
-//   watch: UseFormWatch<InsertResumeSchema>
-//   register: UseFormRegister<InsertResumeSchema>
-//   startEditing: StartEditing
-//   finishEditing: () => void
-// }) => {
-//   const handleFinishEditingOnEscape = (
-//     e: React.KeyboardEvent<HTMLDivElement>
-//   ) => {
-//     if (e.key === "Escape" || e.key === "Enter") finishEditing()
-//   }
-
-//   const email = watch("email")
-//   const phone = watch("phone")
-//   const linkedIn = watch("linkedIn")
-//   const portfolio = watch("portfolio")
-//   const location = watch("location")
-//   const skills = watch("skills")
-//   const introduction = watch("introduction")
-//   const experience = watch("experience")
-//   const education = watch("education")
-//   const interests = watch("interests")
-//   const profession = watch("profession")
-
-//   return (
-//     <div
-//       onKeyDown={handleFinishEditingOnEscape}
-//       className="h-[29.7cm] w-[21cm] rounded-md bg-white px-20 py-16"
-//     >
-//       <div className="flex h-full overflow-hidden">
-//         <div className="my-auto max-h-full border-b border-[#737373]">
-//           <Header
-//             profession={profession}
-//             fullName={fullName}
-//             isEditing={isEditing}
-//             register={register}
-//             startEditing={startEditing}
-//             finishEditing={finishEditing}
-//           />
-
-//           <div className="w-full border-b border-[#737373]" />
-
-//           <div className="flex h-full">
-//             {/* left */}
-//             <div className="flex w-[38.2%] flex-col bg-[#f8f8f8] text-[.65rem]">
-//               <Contact
-//                 isEditing={isEditing}
-//                 phone={phone}
-//                 email={email}
-//                 linkedIn={linkedIn}
-//                 portfolio={portfolio}
-//                 location={location}
-//                 register={register}
-//                 startEditing={startEditing}
-//                 finishEditing={finishEditing}
-//               />
-
-//               <Skills
-//                 isEditing={isEditing}
-//                 skills={skills}
-//                 register={register}
-//                 startEditing={startEditing}
-//                 finishEditing={finishEditing}
-//               />
-
-//               <Education
-//                 isEditing={isEditing}
-//                 register={register}
-//                 education={education}
-//                 startEditing={startEditing}
-//                 finishEditing={finishEditing}
-//               />
-
-//               <Interests
-//                 isEditing={isEditing}
-//                 register={register}
-//                 interests={interests}
-//                 startEditing={startEditing}
-//                 finishEditing={finishEditing}
-//               />
-//             </div>
-
-//             {/* right */}
-
-//             <div className="flex w-[61.8%] flex-col overflow-hidden pl-4 text-[.65rem] leading-tight">
-//               <Profile
-//                 isEditing={isEditing}
-//                 introduction={introduction}
-//                 register={register}
-//                 startEditing={startEditing}
-//                 finishEditing={finishEditing}
-//               />
-
-//               <Experience
-//                 isEditing={isEditing}
-//                 experience={experience}
-//                 register={register}
-//                 startEditing={startEditing}
-//                 finishEditing={finishEditing}
-//               />
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   )
-// }
-
-export type EditableFields = {
-  skills: boolean
-  interests: boolean
-  profession: boolean
-  linkedIn: boolean
-  portfolio: boolean
-  location: boolean
-  phone: boolean
-  email: boolean
-  summary: boolean
-  education: {
-    name: boolean
-    degree: boolean
-    startDate: boolean
-    endDate: boolean
-    description: boolean
-    gpa: boolean
-    location: boolean
-  }[]
-  experience: {
-    title: boolean
-    name: boolean
-    startDate: boolean
-    endDate: boolean
-    bullets: boolean
-  }[]
-}
-
-function Header({
-  isEditing,
-  fullName,
-  profession,
-  register,
-  startEditing,
-  finishEditing
-}: {
-  isEditing: EditableFields
-  fullName: string
-  profession: string
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) {
-  return (
-    <div className="flex max-h-[100px] flex-col items-center gap-4 pb-2">
-      <div className="flex gap-5 justify-self-center">
-        <h1 className="rounded border border-transparent text-4xl font-semibold uppercase tracking-[.75rem]">
-          {fullName}
-        </h1>
-      </div>
-
-      {isEditing.profession ? (
-        <div className="flex justify-start gap-1">
-          <Input
-            autoFocus
-            className="text-md mb-4 w-fit border border-transparent font-semibold uppercase tracking-[.25rem]"
-            {...register("profession")}
-          />
-
-          <Button onClick={finishEditing} variant="outline" size="icon">
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <h1
-          id="profession"
-          className="text-md mb-4 cursor-pointer rounded border border-transparent font-semibold uppercase tracking-[.25rem] hover:border-blue-800 hover:bg-sky-200"
-          onClick={() => startEditing("profession")}
-        >
-          {profession}
-        </h1>
-      )}
-    </div>
-  )
-}
-
-function Header2({
-  isEditing,
-  fullName,
-  profession,
-  email,
-  linkedIn,
-  location,
-  phone,
-  portfolio,
-  register,
-  startEditing,
-  finishEditing
-}: {
-  isEditing: EditableFields
+/**
+ * Everything the resume template renders. Deliberately not a Zod-derived type:
+ * the editor, the chat preview and the PDF each assemble it from a different
+ * source, and this is the contract they agree on.
+ */
+export type ResumeDocumentData = {
   fullName: string
   profession: string
   email: string
-  phone: string
-  linkedIn: string
-  portfolio: string
   location: string
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
+  phone?: string
+  linkedIn?: string
+  portfolio?: string
+  skills: InsertResumeSchema["skills"]
+  experience: InsertResumeSchema["experience"]
+  education: InsertResumeSchema["education"]
+}
+
+/**
+ * The address of a single editable string, e.g. `experience.0.bullets.2`.
+ *
+ * Borrowed from react-hook-form so the same string is simultaneously the click
+ * target's identity, a `setValue` key, and (later) the scope handed to a
+ * "rewrite this section" call.
+ *
+ * Narrowed to paths whose value is actually a string: bare `FieldPath` also
+ * admits `experience.0` and `experience.0.bullets`, which would render as an
+ * empty click target and let `setValue` write a string over an array.
+ */
+export type ResumeFieldPath = {
+  [Path in FieldPath<InsertResumeSchema>]: NonNullable<
+    FieldPathValue<InsertResumeSchema, Path>
+  > extends string
+    ? Path
+    : never
+}[FieldPath<InsertResumeSchema>]
+
+export type OnEditField = (path: ResumeFieldPath, value: string) => void
+
+/**
+ * Supplies `Editable` with the value behind a path and the commit handler.
+ * A `null` `onEdit` renders the whole document read-only, which is what the
+ * PDF render wants.
+ */
+const ResumeEditingContext = createContext<{
+  data: ResumeDocumentData
+  onEdit: OnEditField | null
+  canEditPath: (path: ResumeFieldPath) => boolean
+} | null>(null)
+
+function useResumeEditing() {
+  const context = useContext(ResumeEditingContext)
+
+  if (!context) {
+    throw new Error("Editable must be rendered inside a ResumeDocument")
+  }
+
+  return context
+}
+
+/**
+ * The one resume template. Props in, markup out — no form state, no ids for
+ * Puppeteer to inject into. Rendered by the editor, the chat preview and the
+ * PDF so all three stay in agreement.
+ *
+ * Omit `onEdit` for a read-only render. `canEditPath` narrows that further —
+ * the resume editor only owns the resume's own snapshot, so it marks the
+ * profile-level fields (skills, contact) read-only while the rest stays live.
+ */
+export function ResumeDocument({
+  data,
+  onEdit = null,
+  canEditPath = () => true
+}: {
+  data: ResumeDocumentData
+  onEdit?: OnEditField | null
+  canEditPath?: (path: ResumeFieldPath) => boolean
 }) {
-  const contactInfo = [location, email, linkedIn, portfolio, "", phone].filter(
-    Boolean
+  return (
+    <ResumeEditingContext.Provider value={{ data, onEdit, canEditPath }}>
+      <div className="text-10pt h-[29.7cm] w-[21cm] rounded-md bg-white px-10">
+        <div className="flex h-full overflow-hidden">
+          <div className="my-auto">
+            <Header data={data} />
+
+            <Skills skills={data.skills} />
+
+            <Experience experience={data.experience} />
+
+            <Education education={data.education} />
+          </div>
+        </div>
+      </div>
+    </ResumeEditingContext.Provider>
+  )
+}
+
+/** Walks a dotted path down the document data. Array indices are just keys. */
+function readTextAtPath(data: ResumeDocumentData, path: string) {
+  const value = path
+    .split(".")
+    .reduce<unknown>(
+      (current, key) =>
+        current == null
+          ? undefined
+          : (current as Record<string, unknown>)[key],
+      data
+    )
+
+  return typeof value === "string" ? value : ""
+}
+
+type EditableTag = "span" | "p" | "li" | "h1" | "h2" | "h3" | "div"
+
+/** Grows a textarea to fit its content, so no text is hidden behind a scroll. */
+function fitToContent(element: HTMLTextAreaElement | null) {
+  if (!element) return
+
+  element.style.height = "auto"
+  element.style.height = `${element.scrollHeight}px`
+}
+
+/**
+ * A single click-to-edit string. Renders as plain text until clicked, then
+ * swaps to an input in the same box: commit on blur or Enter, cancel on Escape.
+ *
+ * The value is read out of the document data by `path` rather than passed in,
+ * so the text on screen and the field an edit writes to cannot drift apart.
+ */
+function Editable({
+  path,
+  as: Tag = "span",
+  multiline = false,
+  className = ""
+}: {
+  path: ResumeFieldPath
+  as?: EditableTag
+  multiline?: boolean
+  className?: string
+}) {
+  const { data, onEdit, canEditPath } = useResumeEditing()
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const value = readTextAtPath(data, path)
+
+  // A multiline field accepts Shift+Enter, so its newlines have to survive the
+  // round trip back to display instead of collapsing to a space.
+  const textClassName = multiline
+    ? `${className} whitespace-pre-line`
+    : className
+
+  if (!onEdit || !canEditPath(path)) {
+    return <Tag className={textClassName}>{value}</Tag>
+  }
+
+  if (draft === null) {
+    return (
+      <Tag
+        className={`${textClassName} cursor-text rounded hover:bg-sky-100`}
+        onClick={() => setDraft(value)}
+      >
+        {value || <span className="text-neutral-400">&mdash;</span>}
+      </Tag>
+    )
+  }
+
+  const commit = () => {
+    if (draft !== value) onEdit(path, draft)
+    setDraft(null)
+  }
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      setDraft(null)
+      return
+    }
+
+    // Shift+Enter stays a newline in a textarea; plain Enter always commits.
+    if (event.key === "Enter" && !(multiline && event.shiftKey)) {
+      event.preventDefault()
+      commit()
+    }
+  }
+
+  const fieldClassName = `${className} rounded bg-sky-50 outline-none ring-1 ring-sky-400`
+
+  if (multiline) {
+    return (
+      <Tag className={className}>
+        <textarea
+          autoFocus
+          className={`${fieldClassName} w-full resize-none overflow-hidden`}
+          rows={1}
+          // Sized from content rather than from newline count: a long bullet
+          // wraps to several lines without containing any newline at all.
+          ref={fitToContent}
+          value={draft}
+          onChange={(event) => {
+            fitToContent(event.target)
+            setDraft(event.target.value)
+          }}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+        />
+      </Tag>
+    )
+  }
+
+  return (
+    <Tag className={className}>
+      <input
+        autoFocus
+        className={`${fieldClassName} max-w-full`}
+        // Most single-line fields sit inline in a flex row, where `w-full`
+        // would resolve against the wrong box and blow the layout apart.
+        // `max-w-full` stops a long value pushing past the page edge.
+        style={{ width: `${Math.max(draft.length, 3) + 1}ch` }}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={handleKeyDown}
+      />
+    </Tag>
+  )
+}
+
+function Header({ data }: { data: ResumeDocumentData }) {
+  const { onEdit, canEditPath } = useResumeEditing()
+
+  const allContactFields: { path: ResumeFieldPath; value: string }[] = [
+    { path: "location", value: data.location },
+    { path: "email", value: data.email },
+    { path: "linkedIn", value: data.linkedIn ?? "" },
+    { path: "portfolio", value: data.portfolio ?? "" },
+    { path: "phone", value: data.phone ?? "" }
+  ]
+
+  // A blank contact is dropped from the rendered document, but kept as an empty
+  // placeholder where it's editable — otherwise there's no way to fill it in.
+  const contactFields = allContactFields.filter(
+    (field) => field.value || (onEdit && canEditPath(field.path))
   )
 
   return (
     <div className="flex flex-col items-center pb-2">
       <div className="justify-self-center">
-        <h1 className="text-24pt font-bold">{fullName}</h1>
+        <h1 className="text-24pt font-bold">{data.fullName}</h1>
       </div>
 
-      {isEditing.profession ? (
-        <div className="flex justify-start gap-1">
-          <Input
-            autoFocus
-            className="text-md mb-4 w-fit border border-transparent font-semibold uppercase tracking-[.25rem]"
-            {...register("profession")}
-          />
-
-          <Button onClick={finishEditing} variant="outline" size="icon">
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <h1
-          id="profession"
-          className="text-14pt cursor-pointer rounded border border-transparent font-bold tracking-wide hover:border-blue-800 hover:bg-sky-200"
-          onClick={() => startEditing("profession")}
-        >
-          {profession}
-        </h1>
-      )}
+      <Editable
+        path="profession"
+        as="h2"
+        className="text-14pt font-bold tracking-wide"
+      />
 
       <div className="mx-auto flex gap-1 text-center">
-        {contactInfo.map((contact, i) => (
-          <Fragment key={contact}>
-            <ContactLine contact={contact} />
-            {i !== contactInfo.length - 1 && <span>&bull;</span>}
+        {contactFields.map((field, index) => (
+          <Fragment key={field.path}>
+            <ContactLine path={field.path} value={field.value} />
+            {index !== contactFields.length - 1 && <span>&bull;</span>}
           </Fragment>
         ))}
       </div>
@@ -504,44 +283,33 @@ function SectionTitle({ title }: { title: string }) {
   )
 }
 
-function Skills2({ skills }: { skills: InsertResumeSchema["skills"] }) {
+function Skills({ skills }: { skills: InsertResumeSchema["skills"] }) {
   return (
     <div className="pb-4">
       <SectionTitle title="Skills" />
 
       <div>
-        {skills.map((skill) => (
-          <div className="flex gap-1" key={skill.category}>
-            <h3 className="whitespace-nowrap font-semibold">
-              {skill.category}
-            </h3>
-            <p>{skill.all}</p>
+        {skills.map((skill, index) => (
+          <div className="flex gap-1" key={skill.id ?? index}>
+            <Editable
+              path={`skills.${index}.category`}
+              as="h3"
+              className="whitespace-nowrap font-semibold"
+            />
+            <Editable
+              path={`skills.${index}.all`}
+              as="p"
+              multiline
+              className="flex-1"
+            />
           </div>
         ))}
-        {/* <div className="flex gap-1">
-          <h3 className="font-semibold">Frontend:</h3>
-          <p>
-            React.js, TailwindCSS, Redux, React Query, Jest, Typescript,
-            JavaScript, HTML, CSS, Zod/Yup, Vite, Vitest, Next.js
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <h3 className="font-semibold">Backend:</h3>
-          <p>Node.js, Express, tRPC, SQL, PostgreSQL</p>
-        </div>
-        <div className="flex gap-1">
-          <h3 className="font-semibold">Additional:</h3>
-          <p>
-            Agile Project Management, Algorithms, Architecture, Debugging,
-            Deployment, Software Development Life Cycle
-          </p>
-        </div> */}
       </div>
     </div>
   )
 }
 
-function Experience2({
+function Experience({
   experience
 }: {
   experience: InsertResumeSchema["experience"]
@@ -555,17 +323,26 @@ function Experience2({
           <div key={job.id ?? index}>
             <div className="flex justify-between">
               <div className="font-semibold">
-                {job.name},{" "}
-                <span className="font-normal italic">{job.title}</span>
+                <Editable path={`experience.${index}.name`} />,{" "}
+                <Editable
+                  path={`experience.${index}.title`}
+                  className="font-normal italic"
+                />
               </div>
 
-              <p>
-                {job.startDate} - {job.endDate}
-              </p>
+              <DateRange
+                startPath={`experience.${index}.startDate`}
+                endPath={`experience.${index}.endDate`}
+              />
             </div>
             <ul className="list-disc pl-10">
-              {job.bullets.map((bullet, bulletIndex) => (
-                <li key={bulletIndex}>{bullet}</li>
+              {job.bullets.map((_, bulletIndex) => (
+                <Editable
+                  key={bulletIndex}
+                  path={`experience.${index}.bullets.${bulletIndex}`}
+                  as="li"
+                  multiline
+                />
               ))}
             </ul>
           </div>
@@ -575,7 +352,7 @@ function Experience2({
   )
 }
 
-function Education2({
+function Education({
   education
 }: {
   education: InsertResumeSchema["education"]
@@ -589,645 +366,87 @@ function Education2({
           <div key={school.id ?? index}>
             <div className="flex justify-between">
               <div className="font-semibold">
-                {school.name},{" "}
-                <span className="font-normal italic">{school.degree}</span>
-              </div>
-
-              <p>
-                {school.startDate} - {school.endDate}
-              </p>
-            </div>
-            <p>{school.description}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ContactLine({ contact }: { contact: string }) {
-  if (contact.includes("linkedin.com")) {
-    return (
-      <a
-        className="text-blue-600 underline"
-        href={contact}
-        target="_blank"
-        rel="noreferrer"
-      >
-        LinkedIn
-      </a>
-    )
-  }
-  if (contact.includes("github.com")) {
-    return (
-      <a
-        className="text-blue-600 underline"
-        href={contact}
-        target="_blank"
-        rel="noreferrer"
-      >
-        GitHub
-      </a>
-    )
-  }
-  if (contact.includes("www.")) {
-    return (
-      <a
-        className="text-blue-600 underline"
-        href={contact}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Portfolio
-      </a>
-    )
-  }
-  if (contact.includes("@")) {
-    return (
-      <a
-        className="text-blue-600 underline"
-        href={`mailto:${contact}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {contact}
-      </a>
-    )
-  }
-
-  return (
-    <Fragment>
-      <span>{contact}</span>
-    </Fragment>
-  )
-}
-
-function Contact({
-  isEditing,
-  phone,
-  email,
-  linkedIn,
-  portfolio,
-  location,
-  register,
-  finishEditing,
-  startEditing
-}: {
-  isEditing: EditableFields
-  phone: string
-  email: string
-  linkedIn?: string
-  portfolio?: string
-  location: string
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) {
-  return (
-    <div
-      id="contact"
-      className="w-full border-b border-dotted border-[#737373] px-3"
-    >
-      <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-        Contact
-      </h2>
-      {isEditing.phone ? (
-        <div>
-          <Input autoFocus className="text-xs" {...register("phone")} />
-
-          <Button
-            onClick={finishEditing}
-            className="z-10"
-            variant="outline"
-            size="icon"
-          >
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <p
-          onClick={() => startEditing("phone")}
-          className="cursor-pointer rounded border border-transparent pb-3 hover:border-blue-800 hover:bg-sky-200"
-        >
-          {phone}
-        </p>
-      )}
-
-      {isEditing.email ? (
-        <div className="flex gap-1">
-          <Input
-            autoFocus
-            className="rounded border border-transparent text-xs"
-            {...register("email")}
-          />
-
-          <Button
-            onClick={finishEditing}
-            className="z-10"
-            variant="outline"
-            size="icon"
-          >
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <p
-          onClick={() => startEditing("email")}
-          className="cursor-pointer rounded border border-transparent pb-3 hover:border-blue-800 hover:bg-sky-200"
-        >
-          {email}
-        </p>
-      )}
-
-      {isEditing.linkedIn ? (
-        <div className="flex gap-1">
-          <Input autoFocus className="text-xs" {...register("linkedIn")} />
-
-          <Button
-            onClick={finishEditing}
-            className="z-10"
-            variant="outline"
-            size="icon"
-          >
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <p
-          onClick={() => startEditing("linkedIn")}
-          className="cursor-pointer rounded border border-transparent pb-3 hover:border-blue-800 hover:bg-sky-200"
-        >
-          {linkedIn}
-        </p>
-      )}
-
-      {isEditing.portfolio ? (
-        <div className="flex gap-1">
-          <Input autoFocus className="text-xs" {...register("portfolio")} />
-
-          <Button
-            onClick={finishEditing}
-            className="z-10"
-            variant="outline"
-            size="icon"
-          >
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <p
-          onClick={() => startEditing("portfolio")}
-          className="cursor-pointer rounded border border-transparent pb-3 hover:border-blue-800 hover:bg-sky-200"
-        >
-          {portfolio}
-        </p>
-      )}
-
-      {isEditing.location ? (
-        <div className="flex gap-1">
-          <Input autoFocus className="text-xs" {...register("location")} />
-
-          <Button
-            onClick={finishEditing}
-            className="z-10"
-            variant="outline"
-            size="icon"
-          >
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <address
-          onClick={() => startEditing("location")}
-          className="cursor-pointer rounded border border-transparent pb-4 hover:border-blue-800 hover:bg-sky-200"
-        >
-          {location}
-        </address>
-      )}
-    </div>
-  )
-}
-
-function Skills({
-  isEditing,
-  skills,
-  register,
-  finishEditing,
-  startEditing
-}: {
-  isEditing: EditableFields
-  skills?: string | null
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) {
-  return (
-    <div
-      id="skills"
-      className="w-full border-b border-dotted border-[#737373] px-2 leading-tight"
-    >
-      <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-        skills
-      </h2>
-      {isEditing.skills ? (
-        <div className="flex gap-1">
-          <Textarea className="text-xs" autoFocus {...register("skills")} />
-
-          <Button
-            onClick={finishEditing}
-            className="z-10"
-            variant="outline"
-            size="icon"
-          >
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : skills ? (
-        <ul
-          onClick={() => startEditing("skills")}
-          className="grid cursor-pointer list-disc rounded border border-transparent pb-2 pl-2 hover:border-blue-800 hover:bg-sky-200"
-        >
-          {skills.split(", ").map((skill) => (
-            <li key={skill}>{skill}</li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  )
-}
-
-function Education({
-  isEditing,
-  education,
-  register,
-  finishEditing,
-  startEditing
-}: {
-  isEditing: EditableFields
-  education: InsertResumeSchema["education"]
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) {
-  return (
-    <div
-      id="education"
-      className="w-full border-b border-dotted border-[#737373] px-3 pb-3 leading-tight"
-    >
-      <h2 className="py-3 text-sm font-semibold uppercase tracking-[.15em]">
-        Education
-      </h2>
-      <div className="flex flex-col gap-2">
-        {education.map((school, index) => (
-          <Fragment key={school.name}>
-            {isEditing.education[index]?.name ? (
-              <div className="flex gap-1">
-                <Input
-                  autoFocus
-                  className="w-fit text-[1rem] font-semibold"
-                  {...register(`education.${index}.name`)}
+                <Editable path={`education.${index}.name`} />,{" "}
+                <Editable
+                  path={`education.${index}.degree`}
+                  className="font-normal italic"
                 />
-
-                <Button
-                  onClick={finishEditing}
-                  className="z-10"
-                  variant="outline"
-                  size="icon"
-                >
-                  <Cross1Icon />
-                </Button>
               </div>
-            ) : (
-              <h3
-                onClick={() => startEditing("education", index, "name")}
-                className="cursor-pointer rounded border border-transparent text-[1rem] font-semibold hover:border-blue-800 hover:bg-sky-200"
-              >
-                {school.name}
-              </h3>
-            )}
 
-            {isEditing.education[index]?.degree ? (
-              <div className="flex gap-1">
-                <Input autoFocus {...register(`education.${index}.degree`)} />
-
-                <Button onClick={finishEditing} variant="outline" size="icon">
-                  <Cross1Icon />
-                </Button>
-              </div>
-            ) : (
-              <h4
-                onClick={() => startEditing("education", index, "degree")}
-                className="cursor-pointer rounded border border-transparent font-bold hover:border-blue-800 hover:bg-sky-200"
-              >
-                {school.degree}
-              </h4>
-            )}
-
-            <div>
-              {isEditing.education[index]?.startDate ? (
-                <div className="flex gap-1">
-                  <Input
-                    autoFocus
-                    className="w-1/2 text-xs"
-                    {...register(`education.${index}.startDate`)}
-                  />
-
-                  <Button onClick={finishEditing} variant="outline" size="icon">
-                    <Cross1Icon />
-                  </Button>
-                </div>
-              ) : (
-                <span
-                  onClick={() => startEditing("education", index, "startDate")}
-                  className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-                >
-                  {school.startDate}
-                </span>
-              )}{" "}
-              -{" "}
-              {isEditing.education[index]?.endDate ? (
-                <div className="flex gap-1">
-                  <Input
-                    autoFocus
-                    className="w-1/2 text-xs"
-                    {...register(`education.${index}.endDate`)}
-                  />
-
-                  <Button onClick={finishEditing} variant="outline" size="icon">
-                    <Cross1Icon />
-                  </Button>
-                </div>
-              ) : (
-                <span
-                  className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-                  onClick={() => startEditing("education", index, "endDate")}
-                >
-                  {school.endDate}
-                </span>
-              )}
+              <DateRange
+                startPath={`education.${index}.startDate`}
+                endPath={`education.${index}.endDate`}
+              />
             </div>
-          </Fragment>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Interests({
-  isEditing,
-  interests,
-  register,
-  finishEditing,
-  startEditing
-}: {
-  isEditing: EditableFields
-  interests: string | null | undefined
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) {
-  return (
-    <div id="interests" className="w-full px-3 pb-3">
-      <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-        Interests
-      </h2>
-      {isEditing.interests ? (
-        <div className="flex gap-1">
-          <Textarea className="text-xs" autoFocus {...register("interests")} />
-
-          <Button onClick={finishEditing} variant="outline" size="icon">
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <p
-          onClick={() => startEditing("interests")}
-          className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-        >
-          {interests}
-        </p>
-      )}
-    </div>
-  )
-}
-
-function Profile({
-  isEditing,
-  introduction,
-  register,
-  finishEditing,
-  startEditing
-}: {
-  isEditing: EditableFields
-  introduction: string | null | undefined
-  register: UseFormRegister<InsertResumeSchema>
-  startEditing: StartEditing
-  finishEditing: () => void
-}) {
-  return (
-    <div id="profile" className="border-b border-dotted border-[#737373] pr-2">
-      <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-        Profile
-      </h2>
-      {isEditing.summary ? (
-        <div className="flex gap-1">
-          <Textarea
-            autoFocus
-            className="text-xs"
-            {...register("introduction")}
-          />
-
-          <Button onClick={finishEditing} variant="outline" size="icon">
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <p
-          onClick={() => startEditing("summary")}
-          className="cursor-pointer rounded border border-transparent pb-4 hover:border-blue-800 hover:bg-sky-200"
-        >
-          {introduction}
-        </p>
-      )}
-    </div>
-  )
-}
-
-type StartEditing = (
-  id: keyof EditableFields,
-  index?: number,
-  key?:
-    | keyof EditableFields["experience"][number]
-    | keyof EditableFields["education"][number]
-) => void
-
-function Experience({
-  isEditing,
-  experience,
-  finishEditing,
-  startEditing,
-  register
-}: {
-  isEditing: EditableFields
-  experience: InsertResumeSchema["experience"]
-  startEditing: StartEditing
-  finishEditing: () => void
-  register: UseFormRegister<InsertResumeSchema>
-}) {
-  return (
-    <div id="work">
-      <h2 className="py-3 text-[1rem] font-semibold uppercase tracking-[.15em]">
-        Work Experience
-      </h2>
-
-      <div className="flex max-h-full flex-col justify-between">
-        {experience.map((job, index) => (
-          <Job
-            key={`${job.name}_${index}`}
-            index={index}
-            isEditing={isEditing}
-            data={job}
-            finishEditing={finishEditing}
-            startEditing={startEditing}
-            register={register}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Job({
-  isEditing,
-  index,
-  data,
-  startEditing,
-  finishEditing,
-  register
-}: {
-  isEditing: EditableFields
-  index: number
-  data: InsertResumeSchema["experience"][number]
-  finishEditing: () => void
-  startEditing: StartEditing
-  register: UseFormRegister<InsertResumeSchema>
-}) {
-  return (
-    <div className="pb-3">
-      {isEditing.experience[index]?.title ? (
-        <div className="flex gap-1">
-          <Input
-            autoFocus
-            className="w-fit text-[1rem] font-semibold"
-            {...register(`experience.${index}.title`)}
-          />
-
-          <Button onClick={finishEditing} variant="outline" size="icon">
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <h3
-          onClick={() => startEditing("experience", index, "title")}
-          className="cursor-pointer rounded border border-transparent pb-2 text-[1rem] font-semibold hover:border-blue-800 hover:bg-sky-200"
-        >
-          {data.title}
-        </h3>
-      )}
-
-      <div className="flex justify-between pb-2">
-        {isEditing.experience[index]?.name ? (
-          <div className="flex gap-1">
-            <Input
-              autoFocus
-              className="w-fit text-xs"
-              {...register(`experience.${index}.name`)}
+            <Editable
+              path={`education.${index}.description`}
+              as="p"
+              multiline
             />
-
-            <Button onClick={finishEditing} variant="outline" size="icon">
-              <Cross1Icon />
-            </Button>
           </div>
-        ) : (
-          <span
-            className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-            onClick={() => startEditing("experience", index, "name")}
-          >
-            {data.name}
-          </span>
-        )}
-
-        <div className="flex w-max gap-1">
-          {isEditing.experience[index]?.startDate ? (
-            <div className="flex gap-1">
-              <Input
-                autoFocus
-                className="w-fit text-xs"
-                {...register(`experience.${index}.startDate`)}
-              />
-              <Button onClick={finishEditing} variant="outline" size="icon">
-                <Cross1Icon />
-              </Button>
-            </div>
-          ) : (
-            <span
-              className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-              onClick={() => startEditing("experience", index, "startDate")}
-            >
-              {data.startDate}
-            </span>
-          )}
-          <span> - </span>
-          {isEditing.experience[index]?.endDate ? (
-            <div className="flex gap-1">
-              <Input
-                autoFocus
-                className="w-fit text-xs"
-                {...register(`experience.${index}.endDate`)}
-              />
-
-              <Button onClick={finishEditing} variant="outline" size="icon">
-                <Cross1Icon />
-              </Button>
-            </div>
-          ) : (
-            <span
-              className="cursor-pointer rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-              onClick={() => startEditing("experience", index, "endDate")}
-            >
-              {data.endDate}
-            </span>
-          )}
-        </div>
+        ))}
       </div>
-
-      {isEditing.experience[index]?.bullets ? (
-        <div className="flex gap-1">
-          <div className="flex flex-1 flex-col gap-1">
-            {data.bullets.map((_, bulletIndex) => (
-              <Textarea
-                key={bulletIndex}
-                className="text-xs"
-                autoFocus={bulletIndex === 0}
-                {...register(`experience.${index}.bullets.${bulletIndex}`)}
-              />
-            ))}
-          </div>
-
-          <Button onClick={finishEditing} variant="outline" size="icon">
-            <Cross1Icon />
-          </Button>
-        </div>
-      ) : (
-        <ul
-          onClick={() => startEditing("experience", index, "bullets")}
-          className="ml-2 cursor-pointer list-disc rounded border border-transparent hover:border-blue-800 hover:bg-sky-200"
-        >
-          {data.bullets.map((bullet, bulletIndex) => (
-            <li key={bulletIndex}>{bullet}</li>
-          ))}
-        </ul>
-      )}
     </div>
+  )
+}
+
+function DateRange({
+  startPath,
+  endPath
+}: {
+  startPath: ResumeFieldPath
+  endPath: ResumeFieldPath
+}) {
+  return (
+    <p className="whitespace-nowrap">
+      <Editable path={startPath} /> - <Editable path={endPath} />
+    </p>
+  )
+}
+
+/**
+ * Contact details render as links so they stay clickable in the preview and the
+ * PDF — but a link that opens on click can't also be a click-to-edit target,
+ * so the editor gets the plain-text `Editable` instead.
+ */
+function ContactLine({
+  path,
+  value
+}: {
+  path: ResumeFieldPath
+  value: string
+}) {
+  const { onEdit, canEditPath } = useResumeEditing()
+
+  if (onEdit && canEditPath(path)) {
+    return <Editable path={path} />
+  }
+
+  if (value.includes("linkedin.com")) {
+    return <ContactLink href={value} label="LinkedIn" />
+  }
+  if (value.includes("github.com")) {
+    return <ContactLink href={value} label="GitHub" />
+  }
+  if (value.includes("www.")) {
+    return <ContactLink href={value} label="Portfolio" />
+  }
+  if (value.includes("@")) {
+    return <ContactLink href={`mailto:${value}`} label={value} />
+  }
+
+  return <span>{value}</span>
+}
+
+function ContactLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      className="text-blue-600 underline"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+    >
+      {label}
+    </a>
   )
 }
