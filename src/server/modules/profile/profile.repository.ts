@@ -2,15 +2,13 @@ import { asc, eq, sql } from "drizzle-orm"
 import { type DbOrTx } from "~/server/db/types"
 import { contact, school, skill, user, work } from "~/server/db/schema"
 
-/**
- * Data access for the profile aggregate (the user's own row, contact,
- * education, experience, skills).
- *
- * Every function takes a `DbOrTx` handle as its first argument so services can
- * compose them inside a transaction. Nothing here throws `TRPCError` or reads
- * the session — missing rows come back as `null`/`[]` and the service decides
- * what that means.
- */
+// Data access for the profile aggregate (the user's own row, contact,
+// education, experience, skills).
+//
+// Every function takes a `DbOrTx` handle as its first argument so services can
+// compose them inside a transaction. Nothing here throws `TRPCError` or reads
+// the session — missing rows come back as `null`/`[]` and the service decides
+// what that means.
 
 export async function findByUserId(db: DbOrTx, userId: string) {
   const rows = await db.select().from(user).where(eq(user.id, userId))

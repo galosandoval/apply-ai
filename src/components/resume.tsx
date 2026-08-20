@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { PlainField } from "~/components/plain-field"
 import {
   ResumeDocument as BaseResumeDocument,
-  PlainField,
   type FieldProps,
   type OnEditField,
   type ResumeDocumentData,

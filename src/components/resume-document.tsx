@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from "react"
 import { type FieldPath, type FieldPathValue } from "react-hook-form"
+import { PlainField } from "~/components/plain-field"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
 
 /**
@@ -72,22 +73,6 @@ export function readTextAtPath(data: ResumeDocumentData, path: string) {
     )
 
   return typeof value === "string" ? value : ""
-}
-
-/** The read-only default: plain tags, no click target. */
-export function PlainField({
-  value,
-  as: Tag = "span",
-  multiline = false,
-  className = ""
-}: FieldProps) {
-  // A multiline field accepts Shift+Enter, so its newlines have to survive the
-  // round trip back to display instead of collapsing to a space.
-  return (
-    <Tag className={multiline ? `${className} whitespace-pre-line` : className}>
-      {value}
-    </Tag>
-  )
 }
 
 /**

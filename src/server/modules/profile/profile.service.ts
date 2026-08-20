@@ -16,16 +16,14 @@ import {
   type ParsedResume
 } from "./parse-resume-pdf"
 
-/**
- * Business rules for the profile aggregate.
- *
- * Services take a `userId` rather than a session, own every transaction
- * boundary, and are the only layer that raises `TRPCError`.
- *
- * There are no ownership checks left here. Every row the profile owns is keyed
- * by `userId`, and `userId` comes from the session — so a client cannot name a
- * row it doesn't own, rather than naming one and being told no.
- */
+// Business rules for the profile aggregate.
+//
+// Services take a `userId` rather than a session, own every transaction
+// boundary, and are the only layer that raises `TRPCError`.
+//
+// There are no ownership checks left here. Every row the profile owns is keyed
+// by `userId`, and `userId` comes from the session — so a client cannot name a
+// row it doesn't own, rather than naming one and being told no.
 
 const notFound = (message: string) =>
   new TRPCError({ code: "NOT_FOUND", message })
