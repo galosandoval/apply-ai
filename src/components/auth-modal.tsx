@@ -70,7 +70,9 @@ function AuthSwitch({ initialModal }: { initialModal: Modal }) {
 function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   const router = useRouter()
 
-  const form = useAppForm(signUpSchema)
+  const form = useAppForm(signUpSchema, {
+    defaultValues: { email: "", password: "", confirm: "" }
+  })
   const [isPending, setIsPending] = useState(false)
 
   // better-auth signs the new user straight in, so there is no second call and
@@ -149,7 +151,9 @@ type LoginFormValues = z.infer<typeof loginFormSchema>
 function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   const router = useRouter()
 
-  const form = useAppForm(loginFormSchema)
+  const form = useAppForm(loginFormSchema, {
+    defaultValues: { email: "", password: "" }
+  })
   const [isPending, setIsPending] = useState(false)
 
   const onSubmit = async ({ email, password }: LoginFormValues) => {
