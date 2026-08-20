@@ -2,34 +2,40 @@
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
  * for Docker builds.
  */
-await import("./src/env.mjs")
+import "./src/env"
+import type { NextConfig } from "next"
 
-/** @type {import("next").NextConfig} */
-const config = {
+const config: NextConfig = {
   reactStrictMode: true,
 
-  /**
-   * If you are using `appDir` then you must comment the below `i18n` config out.
-   *
-   * @see https://github.com/vercel/next.js/issues/41980
-   */
-  i18n: {
-    locales: ["en"],
-    defaultLocale: "en"
-  },
+  /** Next writes AGENTS.md / CLAUDE.md on dev boot otherwise. */
+  agentRules: false,
+
+  /** Fly runs the standalone server; the Dockerfile copies `.next/standalone`. */
+  output: "standalone",
 
   transpilePackages: ["geist"],
+
+  /**
+   * Playwright resolves its own files at runtime (browsers.json, the driver),
+   * which the bundler cannot see. Keep it external and ship the package whole.
+   */
+  serverExternalPackages: ["playwright-core"],
+
+  outputFileTracingIncludes: {
+    "/api/resume/pdf": ["./node_modules/playwright-core/**"]
+  },
 
   redirects: async () => {
     return [
       {
         source: "/",
         destination: "/dashboard",
-        permanent: true,
+        permanent: false,
         has: [
           {
             type: "cookie",
-            key: "next-auth.session-token"
+            key: "better-auth.session_token"
           }
         ]
       }

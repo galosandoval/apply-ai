@@ -1,4 +1,4 @@
-import Head from "next/head"
+import { type Metadata } from "next"
 import Link from "next/link"
 import { Button } from "~/components/ui/button"
 import Image from "next/image"
@@ -9,18 +9,13 @@ import {
 } from "@radix-ui/react-icons"
 import { AuthModal } from "~/components/auth-modal"
 
+export const metadata: Metadata = { title: "Sign up" }
+
 export default function Home() {
   return (
-    <>
-      <Head>
-        <title>Sign Up</title>
-        <meta name="description" content="Created by Galo Sandoval" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-      <main className="overflow-y-auto">
-        <Landing />
-      </main>
-    </>
+    <main className="overflow-y-auto">
+      <Landing />
+    </main>
   )
 }
 

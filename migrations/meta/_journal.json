@@ -22,6 +22,27 @@
       "when": 1785308381938,
       "tag": "0002_petite_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787175775130,
+      "tag": "0003_merge_profile_into_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787175799867,
+      "tag": "0004_drop_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787176653863,
+      "tag": "0005_account_issuer",
+      "breakpoints": true
     }
   ]
 }

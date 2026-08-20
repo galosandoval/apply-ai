@@ -1,3 +1,5 @@
+"use client"
+
 import { ErrorMessage } from "@hookform/error-message"
 import { type FieldErrors, type Path } from "react-hook-form"
 

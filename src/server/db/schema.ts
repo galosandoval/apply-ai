@@ -1,53 +1,101 @@
 import { relations } from "drizzle-orm"
-import { integer, pgTableCreator, text, timestamp } from "drizzle-orm/pg-core"
+import {
+  boolean,
+  integer,
+  pgTableCreator,
+  text,
+  timestamp
+} from "drizzle-orm/pg-core"
 
 export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
 
+/**
+ * The account and the profile are one row.
+ *
+ * They were two tables in a 1:1 relation, which meant every procedure took a
+ * `profileId` whose only legal value was "the one this session owns", and a
+ * user could exist without a profile — a state the whole app read as
+ * "Profile not found". Neither is representable now.
+ *
+ * `name`, `emailVerified`, `createdAt` and `updatedAt` are better-auth's;
+ * `firstName` … `interests` came from `profile`.
+ */
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
-  email: text("email").notNull(),
+  name: text("name").default("").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
-  password: text("password").notNull()
-})
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 
-export const userRelations = relations(user, ({ one }) => ({
-  profile: one(profile, {
-    fields: [user.id],
-    references: [profile.userId]
-  })
-}))
-
-export const profile = pgTable("profile", {
-  id: text("id").primaryKey(),
   firstName: text("first_name"),
   lastName: text("last_name"),
   profession: text("profession").default("").notNull(),
-  introduction: text("profile"),
-  interests: text("interests"),
-  userId: text("user_id").references(() => user.id)
+  introduction: text("introduction"),
+  interests: text("interests")
 })
 
-export const profileRelations = relations(profile, ({ many, one }) => ({
+export const userRelations = relations(user, ({ many, one }) => ({
   experience: many(work),
   education: many(school),
   contact: one(contact, {
-    fields: [profile.id],
-    references: [contact.profileId]
-  }),
-  user: one(user, {
-    fields: [profile.userId],
-    references: [user.id]
+    fields: [user.id],
+    references: [contact.userId]
   }),
   resumes: many(resume),
   skills: many(skill)
 }))
+
+/** better-auth owns these three. Password hashes live on `account`. */
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+})
+
+export const account = pgTable("account", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  /** Namespaces `accountId`: better-auth scopes account identity by issuer. */
+  issuer: text("issuer").default("").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+})
+
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+})
 
 export const skill = pgTable("skill", {
   id: text("id").primaryKey(),
   category: text("category").notNull(),
   all: text("all").array().notNull(),
   position: integer("position").notNull(),
-  profileId: text("profile_id").references(() => profile.id)
+  userId: text("user_id").references(() => user.id)
 })
 
 export const contact = pgTable("contact", {
@@ -56,7 +104,7 @@ export const contact = pgTable("contact", {
   linkedIn: text("linked_in"),
   portfolio: text("portfolio"),
   location: text("location").notNull(),
-  profileId: text("profile_id").notNull()
+  userId: text("user_id").notNull()
 })
 
 export const work = pgTable("work", {
@@ -68,14 +116,14 @@ export const work = pgTable("work", {
   location: text("location"),
   /** One accomplishment per entry. Rendered as the job's bullet list. */
   bullets: text("bullets").array().notNull(),
-  profileId: text("profile_id").references(() => profile.id),
+  userId: text("user_id").references(() => user.id),
   resumeId: text("resume_id").references(() => resume.id)
 })
 
 export const workRelations = relations(work, ({ one }) => ({
-  file: one(profile, {
-    fields: [work.profileId],
-    references: [profile.id]
+  user: one(user, {
+    fields: [work.userId],
+    references: [user.id]
   }),
   resume: one(resume, {
     fields: [work.resumeId],
@@ -92,14 +140,14 @@ export const school = pgTable("school", {
   location: text("location"),
   gpa: text("gpa"),
   description: text("description"),
-  profileId: text("profile_id").references(() => profile.id),
+  userId: text("user_id").references(() => user.id),
   resumeId: text("resume_id").references(() => resume.id)
 })
 
 export const schoolRelations = relations(school, ({ one }) => ({
-  profile: one(profile, {
-    fields: [school.profileId],
-    references: [profile.id]
+  user: one(user, {
+    fields: [school.userId],
+    references: [user.id]
   }),
   resume: one(resume, {
     fields: [school.resumeId],
@@ -112,14 +160,14 @@ export const resume = pgTable("resume", {
   profession: text("profession").notNull(),
   introduction: text("introduction"),
   interests: text("interests"),
-  profileId: text("profile_id").references(() => profile.id),
+  userId: text("user_id").references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })
 
 export const resumeRelations = relations(resume, ({ one, many }) => ({
-  profile: one(profile, {
-    fields: [resume.profileId],
-    references: [profile.id]
+  user: one(user, {
+    fields: [resume.userId],
+    references: [user.id]
   }),
   experience: many(work),
   education: many(school)

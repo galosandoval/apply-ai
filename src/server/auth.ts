@@ -1,126 +1,64 @@
-import { compare } from "bcryptjs"
-import { eq } from "drizzle-orm"
-import { type GetServerSidePropsContext } from "next"
-import {
-  getServerSession,
-  type DefaultSession,
-  type NextAuthOptions
-} from "next-auth"
-import Credentials from "next-auth/providers/credentials"
-import { z } from "zod"
-
+import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { nextCookies } from "better-auth/next-js"
+import { env } from "~/env"
 import { db } from "~/server/db"
-import { user } from "~/server/db/schema"
+import * as schema from "~/server/db/schema"
 
 /**
- * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
- * object and keep type safety.
+ * better-auth owns signup, sign-in and the session cookie.
  *
- * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
+ * Passwords live on `account`, not on `user` — the old bcrypt column is gone
+ * and was not migrated: there were no accounts to keep, and that made a
+ * breaking auth change free exactly once.
  */
-declare module "next-auth" {
-  interface Session extends DefaultSession {
-    user: {
-      id: string
-      // ...other properties
-      // role: UserRole;
-    } & DefaultSession["user"]
-  }
+export const auth = betterAuth({
+  baseURL: env.APP_URL,
+  secret: env.BETTER_AUTH_SECRET,
 
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
-}
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user: schema.user,
+      session: schema.session,
+      account: schema.account,
+      verification: schema.verification
+    }
+  }),
 
-export const authorizeParams = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(50)
-})
+  emailAndPassword: {
+    enabled: true,
+    // Matches what the sign-up form has always accepted.
+    minPasswordLength: 8,
+    maxPasswordLength: 50,
+    // No email provider in this spec, so there is nothing to verify against
+    // and no reset flow to offer.
+    requireEmailVerification: false
+  },
 
-/**
- * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
- *
- * @see https://next-auth.js.org/configuration/options
- */
-export const authOptions: NextAuthOptions = {
-  callbacks: {
-    jwt: ({ token, user }) => {
-      if (user) {
-        token.id = user.id
-      }
-
-      return token
-    },
-    session: ({ session, token }) => {
-      if (token?.id) {
-        session.user.id = token.id as string
-      }
-
-      return session
+  user: {
+    additionalFields: {
+      firstName: { type: "string", required: false, input: false },
+      lastName: { type: "string", required: false, input: false },
+      profession: { type: "string", required: false, input: false },
+      introduction: { type: "string", required: false, input: false },
+      interests: { type: "string", required: false, input: false }
     }
   },
 
-  session: {
-    strategy: "jwt"
-  },
+  // Sets the session cookie from a route handler response.
+  plugins: [nextCookies()]
+})
 
-  pages: {
-    signIn: "/"
-  },
-  providers: [
-    Credentials({
-      credentials: {
-        email: { label: "Username", type: "text", placeholder: "jsmith" },
-        password: { label: "Password", type: "password" }
-      },
-      authorize: async (credentials) => {
-        const input = authorizeParams.parse(credentials)
-
-        const foundUser = await db
-          .select()
-          .from(user)
-          .where(eq(user.email, input.email))
-
-        if (!foundUser || foundUser.length === 0) {
-          return null
-        }
-        const isValidPassword = await compare(
-          input.password,
-          foundUser[0]?.password ?? ""
-        )
-
-        if (!isValidPassword) {
-          return null
-        }
-
-        return {
-          id: foundUser[0]?.id ?? "",
-          email: foundUser[0]?.email ?? "",
-          profileId: ""
-        }
-      }
-    })
-    /**
-     * ...add more providers here.
-     *
-     * Most other providers require a bit more work than the Discord provider. For example, the
-     * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-     * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-     *
-     * @see https://next-auth.js.org/providers/github
-     */
-  ]
-}
+export type Session = typeof auth.$Infer.Session
 
 /**
- * Wrapper for `getServerSession` so that you don't need to import the `authOptions` in every file.
+ * The one way to read a session on the server.
  *
- * @see https://next-auth.js.org/configuration/nextjs
+ * Takes `Headers` rather than a `Request` so a route handler (`req.headers`)
+ * and a layout (`await headers()`) reach it the same way — otherwise each grows
+ * its own call into better-auth.
  */
-export const getServerAuthSession = (ctx: {
-  req: GetServerSidePropsContext["req"]
-  res: GetServerSidePropsContext["res"]
-}) => {
-  return getServerSession(ctx.req, ctx.res, authOptions)
+export function getServerAuthSession(headers: Headers) {
+  return auth.api.getSession({ headers })
 }

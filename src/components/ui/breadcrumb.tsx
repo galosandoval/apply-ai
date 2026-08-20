@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { ChevronRightIcon, DotsHorizontalIcon } from "@radix-ui/react-icons"
 import { Slot } from "@radix-ui/react-slot"

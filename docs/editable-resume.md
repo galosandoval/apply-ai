@@ -1,7 +1,8 @@
 # Editable resume
 
 Plan for turning the resume from a write-once PDF export into a document you can
-click into and edit. Steps 1–4 are done; steps 5–6 are the remaining work.
+click into and edit. All six steps are done — steps 5 and 6 landed with the
+App Router modernization (issue #47), which also gave the repo a test runner.
 
 ## Why this refactor exists
 
@@ -185,8 +186,11 @@ is stable but arbitrary; a real `position` column is still owed** on `work` and
 
 ### Verified
 
-Two probes, both run and passing, neither committed (there's no test runner in
-this repo — worth adding).
+Both probes are committed now, as `src/server/api/routers/resume.test.ts` and
+`src/lib/resume-field-path.test.ts`. The committed suites are supersets of the
+counts below — the router file adds an unauthenticated caller and a
+row-untouched-after-rejection check, and the parser file one more rejected
+shape — so treat the numbers here as the origin, not the current total.
 
 - **Server, 17 checks** against the live database through the real router,
   including `assertOwnsResume`: writes land on the right column and replace
@@ -209,9 +213,10 @@ this repo — worth adding).
 - No add/remove for bullets, jobs or schools — `updateField` replaces existing
   strings only.
 
-## Step 5 — PDF via `setContent`
+## Step 5 — PDF via `setContent` (done)
 
-Replace `page.goto(url)` + `$$eval` with a direct render:
+`page.goto(url)` + `$$eval` became a direct render, with Playwright's Chromium
+in place of Puppeteer (`src/server/modules/profile/render-resume-pdf.ts`):
 
 ```ts
 const html = renderToStaticMarkup(<ResumeDocument data={input} />)
@@ -219,35 +224,32 @@ await page.setContent(shell(html, tailwindCss), { waitUntil: "load" })
 const pdf = await page.pdf({ format: "A4", printBackground: true })
 ```
 
-**Deletes:** `createEndpoint` and `insertValuesOnPage` in
+**Deleted:** `createEndpoint` and `insertValuesOnPage` in
 `src/pages/api/resume/pdf.ts` (~200 lines), the whole querystring protocol, and
-the `/pdf` route.
+the `/pdf` route. The route is now `src/app/api/resume/pdf/route.ts`.
+
+The markup comes from `renderResumeHtml` — one function over the same component
+the editor renders. Making that possible split the template in two: the pure,
+hook-free `resume-document.tsx`, and `resume.tsx`, which supplies the stateful
+click-to-edit field renderer. A component that calls `useState` cannot be
+rendered from a route handler, and the PDF is rendered from a route handler.
 
 **Wins beyond the line count:** no network round-trip, so it's faster; and
 Puppeteer no longer needs a session, which is otherwise a wall the moment the
 PDF needs authenticated data.
 
-**The one new problem:** the shell needs the compiled Tailwind CSS inlined.
-Read it off the built stylesheet rather than hand-maintaining a copy.
+**The one new problem:** the shell needs the compiled Tailwind CSS inlined. It
+is read off `.next/static` at request time rather than hand-maintained.
 
-This step is worth doing on its own even if the editing work slips.
+## Step 6 — Page overflow (done)
 
-## Step 6 — Page overflow
+`ResumeDocument` hardcoded `h-[29.7cm]` with `overflow-hidden`, so content past
+one page was **silently clipped** — no scrollbar, no warning, the text simply
+was not in the document.
 
-`ResumeDocument` hardcodes `h-[29.7cm]` with `overflow-hidden`
-(`src/components/resume.tsx:28`). Content past one page is **silently
-clipped** — no scrollbar, no warning, the text just isn't there.
-
-Today that's latent. Once users type freely they will hit it constantly and have
-no idea why their text vanished.
-
-- Replace the fixed height + `overflow-hidden` with normal flow.
-- Add `break-inside: avoid` to section blocks so a job doesn't split across the
+- The fixed height and `overflow-hidden` are gone; the page is normal flow.
+- Each job and school carries `break-inside-avoid`, so neither splits across a
   page boundary.
-- Draw a visible page-boundary rule in the editor, so overflow is something the
-  user can see rather than something that eats their work.
-
-## Suggested order
-
-Steps 2–4 deliver the editable resume. Steps 5–6 make the PDF agree with it.
-They're separable, and step 5 stands alone.
+- **Still owed:** a visible page-boundary rule in the editor, so overflow is
+  something the user can see rather than only something that no longer eats
+  their work. That belongs to the editor rework, not here.

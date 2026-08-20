@@ -1,11 +1,10 @@
-import { useSession } from "next-auth/react"
+"use client"
 
+import { useSession } from "~/lib/auth-client"
+
+/** The signed-in user, or an empty id while the session is still loading. */
 export function useUser() {
-  const { data: session } = useSession()
+  const { data } = useSession()
 
-  if (!session) {
-    return { id: "" }
-  }
-
-  return session.user
+  return data?.user ?? { id: "" }
 }

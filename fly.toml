@@ -1,0 +1,23 @@
+# One host, one process: the Next server and the Chromium it prints PDFs with.
+app = "apply-ai"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Chromium is expensive to start and the machine holds the pg pool, so the
+  # process stays up rather than cold-starting on every PDF.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  # Chromium needs the headroom; a shared-1x/256mb machine OOMs mid-print.
+  size = "shared-cpu-2x"
+  memory = "2gb"

@@ -3,11 +3,15 @@ import { TRPCError } from "@trpc/server"
 import { and, asc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { parseResumeFieldPath } from "~/lib/resume-field-path"
-import { assertOwnsProfile, assertOwnsResume } from "~/server/api/ownership"
+import { assertOwnsResume } from "~/server/api/ownership"
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import { type db } from "~/server/db"
 import { insertSkillsSchema } from "~/server/db/crud-schema"
 import { resume, school, work } from "~/server/db/schema"
+import {
+  generateResume,
+  generateResumeInput
+} from "~/server/modules/profile/generate-resume"
 
 type Database = typeof db
 
@@ -82,18 +86,25 @@ async function updateSnapshotColumn(
 }
 
 export const resumeRouter = createTRPCRouter({
-  list: protectedProcedure
-    .input(z.object({ profileId: z.string().cuid2() }))
-    .query(async ({ ctx, input }) => {
-      await assertOwnsProfile(ctx.db, ctx.session.user.id, input.profileId)
+  /**
+   * Drafts a resume against a job description.
+   *
+   * An ordinary mutation rather than a streaming API route: the dashboard shows
+   * a loading state and needs the whole object before it can render anything,
+   * so the stream was overhead with a `JSON.parse` on the end of it.
+   */
+  generate: protectedProcedure
+    .input(generateResumeInput)
+    .mutation(({ input }) => generateResume(input)),
 
-      const resumes = await ctx.db
-        .select({ createdAt: resume.createdAt, id: resume.id })
-        .from(resume)
-        .where(eq(resume.profileId, input.profileId))
+  list: protectedProcedure.query(async ({ ctx }) => {
+    const resumes = await ctx.db
+      .select({ createdAt: resume.createdAt, id: resume.id })
+      .from(resume)
+      .where(eq(resume.userId, ctx.session.user.id))
 
-      return resumes
-    }),
+    return resumes
+  }),
 
   readById: protectedProcedure
     .input(
@@ -191,7 +202,6 @@ export const resumeRouter = createTRPCRouter({
     .input(
       z
         .object({
-          profileId: z.string().cuid2(),
           profession: z.string(),
           interests: z.string(),
           education: z.array(
@@ -220,9 +230,8 @@ export const resumeRouter = createTRPCRouter({
         .merge(insertSkillsSchema)
     )
     .mutation(async ({ ctx, input }) => {
-      const { profession, interests, education, experience, profileId } = input
-
-      await assertOwnsProfile(ctx.db, ctx.session.user.id, profileId)
+      const { profession, interests, education, experience } = input
+      const userId = ctx.session.user.id
 
       // The resume and its snapshotted work/school rows are one unit — a
       // partial write leaves a resume that renders with missing sections.
@@ -233,7 +242,7 @@ export const resumeRouter = createTRPCRouter({
             id: createId(),
             profession,
             interests: interests,
-            profileId
+            userId
           })
           .returning()
 

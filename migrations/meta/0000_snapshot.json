@@ -1,10 +1,8 @@
 {
-  "id": "895aa5a5-6da1-4395-a55f-78b82cce0046",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "version": "5",
-  "dialect": "pg",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "apply-ai_contact": {
+    "public.apply-ai_contact": {
       "name": "apply-ai_contact",
       "schema": "",
       "columns": {
@@ -48,9 +46,12 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "apply-ai_profile": {
+    "public.apply-ai_profile": {
       "name": "apply-ai_profile",
       "schema": "",
       "columns": {
@@ -103,21 +104,24 @@
         "apply-ai_profile_user_id_apply-ai_user_id_fk": {
           "name": "apply-ai_profile_user_id_apply-ai_user_id_fk",
           "tableFrom": "apply-ai_profile",
-          "tableTo": "apply-ai_user",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "apply-ai_user",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "apply-ai_resume": {
+    "public.apply-ai_resume": {
       "name": "apply-ai_resume",
       "schema": "",
       "columns": {
@@ -164,21 +168,24 @@
         "apply-ai_resume_profile_id_apply-ai_profile_id_fk": {
           "name": "apply-ai_resume_profile_id_apply-ai_profile_id_fk",
           "tableFrom": "apply-ai_resume",
-          "tableTo": "apply-ai_profile",
           "columnsFrom": [
             "profile_id"
           ],
+          "tableTo": "apply-ai_profile",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "apply-ai_school": {
+    "public.apply-ai_school": {
       "name": "apply-ai_school",
       "schema": "",
       "columns": {
@@ -248,34 +255,37 @@
         "apply-ai_school_profile_id_apply-ai_profile_id_fk": {
           "name": "apply-ai_school_profile_id_apply-ai_profile_id_fk",
           "tableFrom": "apply-ai_school",
-          "tableTo": "apply-ai_profile",
           "columnsFrom": [
             "profile_id"
           ],
+          "tableTo": "apply-ai_profile",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "apply-ai_school_resume_id_apply-ai_resume_id_fk": {
           "name": "apply-ai_school_resume_id_apply-ai_resume_id_fk",
           "tableFrom": "apply-ai_school",
-          "tableTo": "apply-ai_resume",
           "columnsFrom": [
             "resume_id"
           ],
+          "tableTo": "apply-ai_resume",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "apply-ai_skill": {
+    "public.apply-ai_skill": {
       "name": "apply-ai_skill",
       "schema": "",
       "columns": {
@@ -315,21 +325,24 @@
         "apply-ai_skill_profile_id_apply-ai_profile_id_fk": {
           "name": "apply-ai_skill_profile_id_apply-ai_profile_id_fk",
           "tableFrom": "apply-ai_skill",
-          "tableTo": "apply-ai_profile",
           "columnsFrom": [
             "profile_id"
           ],
+          "tableTo": "apply-ai_profile",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "apply-ai_user": {
+    "public.apply-ai_user": {
       "name": "apply-ai_user",
       "schema": "",
       "columns": {
@@ -361,9 +374,12 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "apply-ai_work": {
+    "public.apply-ai_work": {
       "name": "apply-ai_work",
       "schema": "",
       "columns": {
@@ -427,39 +443,48 @@
         "apply-ai_work_profile_id_apply-ai_profile_id_fk": {
           "name": "apply-ai_work_profile_id_apply-ai_profile_id_fk",
           "tableFrom": "apply-ai_work",
-          "tableTo": "apply-ai_profile",
           "columnsFrom": [
             "profile_id"
           ],
+          "tableTo": "apply-ai_profile",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "apply-ai_work_resume_id_apply-ai_resume_id_fk": {
           "name": "apply-ai_work_resume_id_apply-ai_resume_id_fk",
           "tableFrom": "apply-ai_work",
-          "tableTo": "apply-ai_resume",
           "columnsFrom": [
             "resume_id"
           ],
+          "tableTo": "apply-ai_resume",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     }
   },
   "enums": {},
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "895aa5a5-6da1-4395-a55f-78b82cce0046",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "sequences": {},
+  "policies": {},
+  "views": {},
+  "roles": {}
 }

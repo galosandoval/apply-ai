@@ -1,4 +1,12 @@
-import { type ChangeEvent, type KeyboardEvent, useRef, useEffect } from "react"
+"use client"
+
+import {
+  type ChangeEvent,
+  type KeyboardEvent,
+  type RefObject,
+  useRef,
+  useEffect
+} from "react"
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
 import { PaperPlaneIcon } from "@radix-ui/react-icons"
@@ -11,7 +19,7 @@ export function PromptInput({
   handleInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  useAutosizeTextArea(textareaRef.current, input)
+  useAutosizeTextArea(textareaRef, input)
 
   const submitBtnRef = useRef<HTMLButtonElement>(null)
 
@@ -56,18 +64,20 @@ export function PromptInput({
 }
 
 function useAutosizeTextArea(
-  textAreaRef: HTMLTextAreaElement | null,
+  textAreaRef: RefObject<HTMLTextAreaElement | null>,
   value: string
 ) {
   useEffect(() => {
-    if (textAreaRef) {
+    const textArea = textAreaRef.current
+
+    if (textArea) {
       // We need to reset the height momentarily to get the correct scrollHeight for the textarea
-      textAreaRef.style.height = "0px"
-      const scrollHeight = textAreaRef.scrollHeight
+      textArea.style.height = "0px"
+      const scrollHeight = textArea.scrollHeight
 
       // We then set the height directly, outside of the render loop
       // Trying to set this with state or a ref will product an incorrect value.
-      textAreaRef.style.height = scrollHeight + "px"
+      textArea.style.height = scrollHeight + "px"
     }
   }, [textAreaRef, value])
 }

@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod"
-import { profile, resume, school, work } from "./schema"
+import { resume, school, user, work } from "./schema"
 import { z } from "zod"
 
 const contactSchema = z.object({
@@ -20,7 +20,6 @@ export const insertContactSchema = z
       .min(1, "Must be at least 1 characters")
       .max(50, "Must be less than 50 characters"),
 
-    id: z.string().optional(),
     profession: z.string().min(3).max(255),
     interests: z.string().min(3).max(255).optional()
   })
@@ -28,7 +27,14 @@ export const insertContactSchema = z
 
 export type InsertContactSchema = z.infer<typeof insertContactSchema>
 
-export const updateProfileSchema = createInsertSchema(profile, {
+/**
+ * The profile-shaped columns of `user`.
+ *
+ * `user` also carries the account columns better-auth owns (`email`,
+ * `emailVerified`, timestamps); picking keeps them out of a profile form's
+ * input, where they would be both required and unwritable.
+ */
+export const updateProfileSchema = createInsertSchema(user, {
   profession: (schema) =>
     schema.profession
       .min(3, "Must be at least 3 characters")
@@ -38,8 +44,13 @@ export const updateProfileSchema = createInsertSchema(profile, {
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters")
       .optional()
-      .nullable(),
-  id: (schema) => schema.id.optional()
+      .nullable()
+}).pick({
+  firstName: true,
+  lastName: true,
+  profession: true,
+  introduction: true,
+  interests: true
 })
 
 export type UpdateProfileSchema = z.infer<typeof updateProfileSchema>
@@ -63,9 +74,11 @@ export const insertEducationSchema = z.object({
       schema.location.max(255, "Must be less than 255 characters").optional(),
     startDate: (schema) => schema.startDate.min(4).max(50),
     endDate: (schema) => schema.endDate.min(4).max(50),
-    gpa: (schema) => schema.gpa.optional(),
-    profileId: (schema) => schema.profileId.cuid2().optional()
+    gpa: (schema) => schema.gpa.optional()
   })
+    // The owner and the resume a row is snapshotted onto are the server's to
+    // decide — a client that could name them could write onto someone else's.
+    .omit({ userId: true, resumeId: true })
     .array()
     .min(1)
     .max(4)
@@ -112,7 +125,6 @@ const bulletsSchema = z
 export const insertExperienceSchema = z.object({
   experience: createInsertSchema(work, {
     id: (schema) => schema.id.optional(),
-    profileId: (schema) => schema.profileId.optional(),
     name: (schema) =>
       schema.name
         .min(3, "Must be at least 3 characters")
@@ -127,6 +139,7 @@ export const insertExperienceSchema = z.object({
         .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters")
   })
+    .omit({ userId: true, resumeId: true })
     .array()
     .min(1)
     .max(5)
@@ -157,8 +170,8 @@ export const insertResumeSchema = createInsertSchema(resume, {
     schema.profession
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters"),
-  profileId: (schema) => schema.profileId.cuid2().optional()
 })
+  .omit({ userId: true })
   .merge(
     z.object({
       phone: z.string(),

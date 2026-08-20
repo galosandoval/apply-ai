@@ -56,7 +56,8 @@ The Resume Generator with Chat-GPT is a web application that leverages Chat-GPT 
 - [Zod](https://github.com/colinhacks/zod)
 - [React Hook Form](https://react-hook-form.com/)
 - [React Query](https://react-query.tanstack.com/)
-- [NextAuth](https://next-auth.js.org/)
+- [better-auth](https://www.better-auth.com/)
+- [Vitest](https://vitest.dev/) and [Playwright](https://playwright.dev/)
 
 <!-- GETTING STARTED -->
 
@@ -91,11 +92,15 @@ Make sure you have the following software and services installed:
 
 Configure your application by setting up environment variables, such as API keys and database connections. Create a .env file in the root directory and define the necessary variables.
 
+See `.env.example` for the full list.
+
 ```bash
 DATABASE_URL="your db url"
 OPENAI_API_KEY="your openai api key"
-NEXTAUTH_SECRET="your nextauth secret"
-NEXTAUTH_URL="http://localhost:3000"
+BETTER_AUTH_SECRET="openssl rand -base64 32"
+APP_URL="http://localhost:3000"
+# Only needed to run the router integration tests
+TEST_DATABASE_URL="your throwaway db url"
 ```
 
 ## Usage
@@ -109,6 +114,29 @@ yarn dev
 ```
 
 2. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### Tests
+
+```bash
+npm test         # vitest: parser, schemas, resume markup, and the tRPC router
+npm run test:e2e # playwright: sign up, sign in, download a PDF
+```
+
+`npm test` runs the router integration tests only when `TEST_DATABASE_URL` is
+set; they truncate every table in that database between tests, so point it at a
+throwaway one.
+
+### Deployment
+
+One image runs the Next server and the Chromium the PDF route prints with:
+
+```bash
+docker build -t apply-ai .
+fly deploy
+```
+
+`fly.toml` keeps a machine running rather than cold-starting per request —
+Chromium is expensive to launch and the process holds the database pool.
 
 <!-- ROADMAP -->
 

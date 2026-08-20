@@ -1,0 +1,1 @@
+ALTER TABLE "apply-ai_account" ADD COLUMN "issuer" text DEFAULT '' NOT NULL;

@@ -18,11 +18,11 @@ import {
 // guards, captures the transcript, and checks for a zero-commit run; this
 // script owns translating a failure into CI-glue (failure_reason.txt, exit 1).
 
-const ISSUE_NUMBER = process.env.ISSUE_NUMBER as string
-const ISSUE_TITLE = process.env.ISSUE_TITLE as string
-const BRANCH = process.env.BRANCH as string
+const ISSUE_NUMBER = process.env.ISSUE_NUMBER!
+const ISSUE_TITLE = process.env.ISSUE_TITLE!
+const BRANCH = process.env.BRANCH!
 /** Subscription / flat-rate token — never `ANTHROPIC_API_KEY` (metered). */
-const CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN as string
+const CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN!
 
 /**
  * Absolute path to the coding-standard rules (the skills repo's rules/, cloned
