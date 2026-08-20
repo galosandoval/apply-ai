@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from "next/server"
  * procedure behind these routes is a `protectedProcedure`, which is where the
  * actual check lives.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (getSessionCookie(request)) return NextResponse.next()
 
   return NextResponse.redirect(new URL("/", request.url))
