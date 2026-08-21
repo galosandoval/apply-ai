@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import {
+  type ContactColumn,
   parseResumeFieldPath,
   type ResumeFieldTarget
 } from "~/lib/resume-field-path"
@@ -55,15 +56,17 @@ export async function readById(db: Database, userId: string, resumeId: string) {
 
   const found = await repo.findResume(db, resumeId)
 
-  if (!found) throw new TRPCError({ code: "NOT_FOUND", message: "Resume not found" })
+  if (!found)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Resume not found" })
 
-  const [experience, education, skills, contact, sectionRows] = await Promise.all([
-    repo.findExperience(db, resumeId),
-    repo.findEducation(db, resumeId),
-    repo.findSkills(db, resumeId),
-    repo.findContact(db, resumeId),
-    repo.findSections(db, resumeId)
-  ])
+  const [experience, education, skills, contact, sectionRows] =
+    await Promise.all([
+      repo.findExperience(db, resumeId),
+      repo.findEducation(db, resumeId),
+      repo.findSkills(db, resumeId),
+      repo.findContact(db, resumeId),
+      repo.findSections(db, resumeId)
+    ])
 
   return {
     ...found,
@@ -195,7 +198,8 @@ export async function refreshFromAccount(
         all: toSkillLine(group.all)
       })),
       contact: {
-        fullName: `${account?.firstName ?? ""} ${account?.lastName ?? ""}`.trim(),
+        fullName:
+          `${account?.firstName ?? ""} ${account?.lastName ?? ""}`.trim(),
         email: account?.email ?? "",
         location: accountContact?.location ?? "",
         phone: accountContact?.phone ?? "",
@@ -304,7 +308,13 @@ async function writeTarget(
         return
       }
 
-      await sections.writeContent(db, resumeId, target.row, target.content, value)
+      await sections.writeContent(
+        db,
+        resumeId,
+        target.row,
+        target.content,
+        value
+      )
       return
 
     case "skill":
@@ -349,12 +359,12 @@ async function writeTarget(
  * row belonging to another resume updates nothing, and nothing is what this
  * reports as a missing field.
  */
-async function writeRow(
+async function writeRow<Table extends repo.SnapshotTable>(
   db: DbOrTx,
-  table: typeof work | typeof school | typeof skill,
+  table: Table,
   resumeId: string,
   rowId: string,
-  values: Record<string, unknown>
+  values: repo.SnapshotValues<Table>
 ) {
   const updated = await repo.updateSnapshotColumn(db, table, {
     resumeId,
@@ -372,7 +382,7 @@ async function writeRow(
 async function writeContact(
   db: Database,
   resumeId: string,
-  column: string,
+  column: ContactColumn,
   value: string
 ) {
   const updated = await repo.updateContactColumn(db, resumeId, column, value)

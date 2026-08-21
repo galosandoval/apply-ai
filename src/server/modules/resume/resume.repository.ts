@@ -1,4 +1,6 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
+import { type PgUpdateSetSource } from "drizzle-orm/pg-core"
+import { type ContactColumn, type ResumeColumn } from "~/lib/resume-field-path"
 import { type DbOrTx } from "~/server/db/types"
 import {
   contact,
@@ -19,6 +21,17 @@ import {
 //
 // Every function takes a `DbOrTx` so services can compose them in one
 // transaction, and returns `null` / `[]` rather than throwing.
+
+/**
+ * The snapshotted row tables, and the columns of one of them.
+ *
+ * `SnapshotValues` is what keeps a write honest: a `work` column cannot be set
+ * on a `school` row, because the table decides which keys the values may carry.
+ */
+export type SnapshotTable = typeof work | typeof school | typeof skill
+
+export type SnapshotValues<Table extends SnapshotTable> =
+  PgUpdateSetSource<Table>
 
 export async function findResume(db: DbOrTx, resumeId: string) {
   const rows = await db.select().from(resume).where(eq(resume.id, resumeId))
@@ -51,7 +64,7 @@ export async function insertResume(
 export async function updateResumeColumn(
   db: DbOrTx,
   resumeId: string,
-  column: string,
+  column: ResumeColumn,
   value: string
 ) {
   return db
@@ -186,9 +199,9 @@ export async function insertSkills(
  * Scoping the write to `resumeId` as well as the row id is what stops a caller
  * editing another resume's rows through a resume they do own.
  */
-export async function updateSnapshotColumn(
+export async function updateSnapshotColumn<Table extends SnapshotTable>(
   db: DbOrTx,
-  table: typeof work | typeof school | typeof skill,
+  table: Table,
   {
     resumeId,
     rowId,
@@ -196,7 +209,7 @@ export async function updateSnapshotColumn(
   }: {
     resumeId: string
     rowId: string
-    values: Record<string, unknown>
+    values: SnapshotValues<Table>
   }
 ) {
   return db
@@ -208,8 +221,12 @@ export async function updateSnapshotColumn(
 
 export async function updateRowPosition(
   db: DbOrTx,
-  table: typeof work | typeof school | typeof skill,
-  { resumeId, rowId, position }: { resumeId: string; rowId: string; position: number }
+  table: SnapshotTable,
+  {
+    resumeId,
+    rowId,
+    position
+  }: { resumeId: string; rowId: string; position: number }
 ) {
   return db
     .update(table)
@@ -238,7 +255,7 @@ export async function insertContact(
 export async function updateContactColumn(
   db: DbOrTx,
   resumeId: string,
-  column: string,
+  column: ContactColumn,
   value: string
 ) {
   return db

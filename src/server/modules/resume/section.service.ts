@@ -1,12 +1,12 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
-import { type SectionContentTarget } from "~/lib/resume-field-path"
 import {
-  type AnySectionContent,
   type CoreSectionKind,
   emptySectionContent,
   isCoreSectionKind,
-  parseSectionContent
+  parseSectionContent,
+  replaceSectionContentString,
+  type SectionContentTarget
 } from "~/lib/section-content"
 import { assertOwnsResume } from "~/server/api/ownership"
 import { type Database, type DbOrTx } from "~/server/db/types"
@@ -55,7 +55,11 @@ export function coreSections(resumeId: string) {
 }
 
 /** Appends a custom section, empty, at the end of the resume. */
-export async function add(db: Database, userId: string, input: AddSectionInput) {
+export async function add(
+  db: Database,
+  userId: string,
+  input: AddSectionInput
+) {
   const resumeId = input.resumeId
 
   await assertOwnsResume(db, userId, resumeId)
@@ -170,9 +174,10 @@ export async function writeContent(
       })
     }
 
-    const next = nextContent(target, found.content, value)
+    const next = replaceSectionContentString(target, found.content, value)
 
-    if (!next) throw new TRPCError({ code: "NOT_FOUND", message: "Field not found" })
+    if (!next)
+      throw new TRPCError({ code: "NOT_FOUND", message: "Field not found" })
 
     await repo.updateSection(tx, resumeId, sectionId, { content: next })
   })
@@ -234,69 +239,4 @@ async function loadCustomSection(
   }
 
   return found
-}
-
-/**
- * The stored content with one element replaced, or `null` when the target names
- * an element that isn't there — writing past the end of a list would otherwise
- * pad it with holes.
- *
- * The stored value is re-parsed against the target's component type on the way
- * in, so a row whose content somehow disagrees with its component is refused
- * rather than half-rewritten.
- */
-function nextContent(
-  target: SectionContentTarget,
-  stored: unknown,
-  value: string
-): AnySectionContent | null {
-  switch (target.componentType) {
-    case "richText": {
-      const current = parseSectionContent("richText", stored)
-
-      return current && { markdown: value }
-    }
-
-    case "list": {
-      const current = parseSectionContent("list", stored)
-      const items = current && replaceAt(current.items, target.index, value)
-
-      return items && { items }
-    }
-
-    case "tagList": {
-      const current = parseSectionContent("tagList", stored)
-      const tags = current && replaceAt(current.tags, target.index, value)
-
-      return tags && { tags }
-    }
-
-    case "twoColumn": {
-      const current = parseSectionContent("twoColumn", stored)
-      const row = current?.rows[target.index]
-
-      if (!current || !row) return null
-
-      return { rows: replace(current.rows, target.index, { ...row, [target.side]: value }) }
-    }
-
-    case "iconList": {
-      const current = parseSectionContent("iconList", stored)
-      const icon = current?.icons[target.index]
-
-      if (!current || !icon) return null
-
-      return {
-        icons: replace(current.icons, target.index, { ...icon, [target.field]: value })
-      }
-    }
-  }
-}
-
-function replaceAt(values: string[], index: number, value: string) {
-  return index < values.length ? replace(values, index, value) : null
-}
-
-function replace<Value>(values: Value[], index: number, value: Value) {
-  return values.map((current, at) => (at === index ? value : current))
 }

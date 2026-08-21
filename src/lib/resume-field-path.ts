@@ -9,6 +9,14 @@
  * so one parser serves both — use `withRow` to swap an index for an id.
  */
 
+import {
+  formatSectionContentPath,
+  parseSectionContentPath,
+  type SectionContentTarget
+} from "./section-content"
+
+export type { SectionContentTarget }
+
 /**
  * Columns reachable from a path, by section. Anything absent is unaddressable:
  * a path arrives as a plain string, so this is the only thing between it and an
@@ -19,33 +27,21 @@
  * sits are not string writes.
  */
 export const editableColumns = {
+  resume: ["profession"],
   experience: ["name", "title", "startDate", "endDate"],
   education: ["name", "degree", "startDate", "endDate", "description"],
   skill: ["category", "all"],
   contact: ["fullName", "email", "location", "phone", "linkedIn", "portfolio"]
 } as const
 
+export type ResumeColumn = (typeof editableColumns.resume)[number]
 export type ExperienceColumn = (typeof editableColumns.experience)[number]
 export type EducationColumn = (typeof editableColumns.education)[number]
 export type SkillColumn = (typeof editableColumns.skill)[number]
 export type ContactColumn = (typeof editableColumns.contact)[number]
 
-/**
- * One string inside a custom section's content.
- *
- * Every shape belongs to exactly one component type, so the path alone says
- * which component the write is for — which is how a write addressed in one
- * component's shape can be refused on a section that renders as another.
- */
-export type SectionContentTarget =
-  | { componentType: "richText"; field: "markdown" }
-  | { componentType: "list"; index: number }
-  | { componentType: "tagList"; index: number }
-  | { componentType: "twoColumn"; index: number; side: "left" | "right" }
-  | { componentType: "iconList"; index: number; field: "icon" | "text" }
-
 export type ResumeFieldTarget =
-  | { section: "resume"; kind: "column"; column: "profession" }
+  | { section: "resume"; kind: "column"; column: ResumeColumn }
   | {
       section: "experience"
       kind: "column"
@@ -53,7 +49,12 @@ export type ResumeFieldTarget =
       column: ExperienceColumn
     }
   | { section: "experience"; kind: "bullet"; row: string; bulletIndex: number }
-  | { section: "education"; kind: "column"; row: string; column: EducationColumn }
+  | {
+      section: "education"
+      kind: "column"
+      row: string
+      column: EducationColumn
+    }
   | { section: "skill"; kind: "column"; row: string; column: SkillColumn }
   | { section: "contact"; kind: "column"; column: ContactColumn }
   | { section: "section"; kind: "label"; row: string }
@@ -65,14 +66,30 @@ export type ResumeFieldTarget =
     }
 
 /**
+ * The sections addressed a row at a time, as opposed to the ones the resume
+ * holds a single copy of. Every one of them is a list keyed by row id, so a
+ * caller can index the resume by the section name alone.
+ */
+export const rowSections = ["experience", "education", "skill"] as const
+
+export type RowSection = (typeof rowSections)[number]
+
+export type RowTarget = Extract<ResumeFieldTarget, { section: RowSection }>
+
+/** True when `target` addresses one row of a list rather than the resume. */
+export function isRowTarget(target: ResumeFieldTarget): target is RowTarget {
+  return (rowSections as readonly string[]).includes(target.section)
+}
+
+/**
  * Parses a resume field path. Returns `null` for anything that isn't an
  * editable field — an unknown section, a non-whitelisted column, a container
  * rather than a string inside it, or a malformed index.
  */
 export function parseResumeFieldPath(path: string): ResumeFieldTarget | null {
-  if (path === "profession") {
-    return { section: "resume", kind: "column", column: "profession" }
-  }
+  const own = editableColumns.resume.find((name) => name === path)
+
+  if (own) return { section: "resume", kind: "column", column: own }
 
   const segments = path.split(".")
   const [section, row, third] = segments
@@ -145,50 +162,10 @@ function parseSectionPath(
 
   if (third !== "content") return null
 
-  const content = parseSectionContentPath(segments)
+  // Everything after `section.<id>.content.` is the component's own grammar.
+  const content = parseSectionContentPath(segments.slice(3))
 
   return content ? { section: "section", kind: "content", row, content } : null
-}
-
-function parseSectionContentPath(
-  segments: string[]
-): SectionContentTarget | null {
-  const [, , , field, fifth] = segments
-
-  if (field === "markdown") {
-    return segments.length === 4
-      ? { componentType: "richText", field: "markdown" }
-      : null
-  }
-
-  if (field === "items" || field === "tags") {
-    const index = parseIndex(segments, 4)
-
-    if (index === null) return null
-
-    return field === "items"
-      ? { componentType: "list", index }
-      : { componentType: "tagList", index }
-  }
-
-  if (field === "rows" || field === "icons") {
-    if (segments.length !== 6 || !isIndex(fifth)) return null
-
-    const index = Number(fifth)
-    const leaf = segments[5]
-
-    if (field === "rows") {
-      return leaf === "left" || leaf === "right"
-        ? { componentType: "twoColumn", index, side: leaf }
-        : null
-    }
-
-    return leaf === "icon" || leaf === "text"
-      ? { componentType: "iconList", index, field: leaf }
-      : null
-  }
-
-  return null
 }
 
 /**
@@ -233,7 +210,7 @@ export function formatResumeFieldPath(target: ResumeFieldTarget): string {
   if (target.section === "section") {
     return target.kind === "label"
       ? `section.${target.row}.label`
-      : `section.${target.row}.content.${formatContentPath(target.content)}`
+      : `section.${target.row}.content.${formatSectionContentPath(target.content)}`
   }
 
   if (target.kind === "bullet") {
@@ -241,19 +218,4 @@ export function formatResumeFieldPath(target: ResumeFieldTarget): string {
   }
 
   return `${target.section}.${target.row}.${target.column}`
-}
-
-function formatContentPath(content: SectionContentTarget) {
-  switch (content.componentType) {
-    case "richText":
-      return "markdown"
-    case "list":
-      return `items.${content.index}`
-    case "tagList":
-      return `tags.${content.index}`
-    case "twoColumn":
-      return `rows.${content.index}.${content.side}`
-    case "iconList":
-      return `icons.${content.index}.${content.field}`
-  }
 }

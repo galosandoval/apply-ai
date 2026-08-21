@@ -1,4 +1,4 @@
-ALTER TABLE "apply-ai_resume" DROP COLUMN "introduction";--> statement-breakpoint
-ALTER TABLE "apply-ai_resume" DROP COLUMN "interests";--> statement-breakpoint
-ALTER TABLE "apply-ai_user" DROP COLUMN "introduction";--> statement-breakpoint
-ALTER TABLE "apply-ai_user" DROP COLUMN "interests";
+ALTER TABLE "apply-ai_resume" DROP COLUMN IF EXISTS "introduction";--> statement-breakpoint
+ALTER TABLE "apply-ai_resume" DROP COLUMN IF EXISTS "interests";--> statement-breakpoint
+ALTER TABLE "apply-ai_user" DROP COLUMN IF EXISTS "introduction";--> statement-breakpoint
+ALTER TABLE "apply-ai_user" DROP COLUMN IF EXISTS "interests";
