@@ -95,9 +95,7 @@ export async function updateDetails(
   userId: string,
   input: UpdateDetailsInput
 ) {
-  const { profession, interests, introduction } = input
-
-  return repo.updateDetails(db, userId, { profession, interests, introduction })
+  return repo.updateDetails(db, userId, { profession: input.profession })
 }
 
 /** Replaces the profile's education with `input.education`. */
@@ -106,9 +104,10 @@ export async function replaceEducation(
   userId: string,
   input: AddEducationInput
 ) {
-  const schoolsToInsert = input.education.map((e) => ({
+  const schoolsToInsert = input.education.map((e, position) => ({
     ...e,
     id: e.id ?? createId(),
+    position,
     userId
   }))
 
@@ -125,8 +124,9 @@ export async function replaceExperience(
   userId: string,
   input: AddExperienceInput
 ) {
-  const workToInsert = input.experience.map((e) => ({
+  const workToInsert = input.experience.map((e, position) => ({
     id: e.id ?? createId(),
+    position,
     name: e.name,
     bullets: e.bullets,
     endDate: e.endDate,
@@ -194,11 +194,6 @@ async function writeParsedResume(
     profession: parsed.profession
   })
 
-  await repo.updateDetails(tx, userId, {
-    profession: parsed.profession,
-    introduction: parsed.introduction
-  })
-
   const contactValues = {
     location: parsed.location,
     phone: parsed.phone,
@@ -225,14 +220,24 @@ async function writeParsedResume(
   if (parsed.experience.length) {
     await repo.upsertExperience(
       tx,
-      parsed.experience.map((e) => ({ ...e, id: createId(), userId }))
+      parsed.experience.map((e, position) => ({
+        ...e,
+        id: createId(),
+        position,
+        userId
+      }))
     )
   }
 
   if (parsed.education.length) {
     await repo.upsertEducation(
       tx,
-      parsed.education.map((e) => ({ ...e, id: createId(), userId }))
+      parsed.education.map((e, position) => ({
+        ...e,
+        id: createId(),
+        position,
+        userId
+      }))
     )
   }
 

@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm"
 import {
   boolean,
   integer,
+  jsonb,
   pgTableCreator,
   text,
   timestamp
@@ -18,7 +19,10 @@ export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
  * "Profile not found". Neither is representable now.
  *
  * `name`, `emailVerified`, `createdAt` and `updatedAt` are better-auth's;
- * `firstName` … `interests` came from `profile`.
+ * `firstName` … `profession` came from `profile`.
+ *
+ * The account is the **master copy** that seeds a new resume, and nothing more.
+ * No resume reads through to it at render time — see `resume`.
  */
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -31,9 +35,7 @@ export const user = pgTable("user", {
 
   firstName: text("first_name"),
   lastName: text("last_name"),
-  profession: text("profession").default("").notNull(),
-  introduction: text("introduction"),
-  interests: text("interests")
+  profession: text("profession").default("").notNull()
 })
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -90,21 +92,40 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 })
 
+/**
+ * A skill group, either the account's master copy (`resumeId` null) or one
+ * resume's snapshot of it (`resumeId` set).
+ *
+ * The two are never the same row: editing a resume's skills has to be unable to
+ * reach a resume the user already sent.
+ */
 export const skill = pgTable("skill", {
   id: text("id").primaryKey(),
   category: text("category").notNull(),
   all: text("all").array().notNull(),
   position: integer("position").notNull(),
-  userId: text("user_id").references(() => user.id)
+  userId: text("user_id").references(() => user.id),
+  resumeId: text("resume_id").references(() => resume.id)
 })
 
+/**
+ * Contact details, master copy (`resumeId` null) or resume snapshot.
+ *
+ * `fullName` and `email` are on the snapshot rather than read off `user`,
+ * because a saved resume has to still say what it said when it was sent — a
+ * changed name or address on the account is not a retroactive edit to it. The
+ * master row leaves both null; the account's own name and email live on `user`.
+ */
 export const contact = pgTable("contact", {
   id: text("id").primaryKey(),
+  fullName: text("full_name"),
+  email: text("email"),
   phone: text("phone"),
   linkedIn: text("linked_in"),
   portfolio: text("portfolio"),
   location: text("location").notNull(),
-  userId: text("user_id").notNull()
+  userId: text("user_id").notNull(),
+  resumeId: text("resume_id").references(() => resume.id)
 })
 
 export const work = pgTable("work", {
@@ -116,6 +137,8 @@ export const work = pgTable("work", {
   location: text("location"),
   /** One accomplishment per entry. Rendered as the job's bullet list. */
   bullets: text("bullets").array().notNull(),
+  /** Order within the Experience section. Row order was `ORDER BY id` before. */
+  position: integer("position").default(0).notNull(),
   userId: text("user_id").references(() => user.id),
   resumeId: text("resume_id").references(() => resume.id)
 })
@@ -140,6 +163,8 @@ export const school = pgTable("school", {
   location: text("location"),
   gpa: text("gpa"),
   description: text("description"),
+  /** Order within the Education section. */
+  position: integer("position").default(0).notNull(),
   userId: text("user_id").references(() => user.id),
   resumeId: text("resume_id").references(() => resume.id)
 })
@@ -155,11 +180,21 @@ export const schoolRelations = relations(school, ({ one }) => ({
   })
 }))
 
+/**
+ * A resume owns everything it renders.
+ *
+ * `introduction` and `interests` are gone: they were half-built columns nothing
+ * wrote and nothing rendered, and a block of text on a resume is now a custom
+ * `section` — one way to express it rather than two.
+ */
 export const resume = pgTable("resume", {
   id: text("id").primaryKey(),
   profession: text("profession").notNull(),
-  introduction: text("introduction"),
-  interests: text("interests"),
+  /**
+   * The posting this resume was written for, kept so the list can tell one
+   * resume from another and so scoring has something to score against.
+   */
+  jobDescription: text("job_description").default("").notNull(),
   userId: text("user_id").references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })
@@ -170,5 +205,42 @@ export const resumeRelations = relations(resume, ({ one, many }) => ({
     references: [user.id]
   }),
   experience: many(work),
-  education: many(school)
+  education: many(school),
+  sections: many(section)
+}))
+
+/**
+ * The sections a resume is made of, in the order they are drawn.
+ *
+ * Two kinds share the table so that `label` is a real column, so core and
+ * custom sections can interleave on one comparable `position`, and so adding a
+ * section is a single insert.
+ *
+ * - **Core** (`experience`, `education`, `skills`) carries no `content`: it is a
+ *   label, an order, and a pointer to its own typed rows. Those rows are what
+ *   make a resume machine-readable, so their structure is not the user's to
+ *   change — only the label and the position are.
+ * - **Custom** (`custom`) holds its own `content`, shaped by `componentType`.
+ */
+export const section = pgTable("section", {
+  id: text("id").primaryKey(),
+  resumeId: text("resume_id")
+    .notNull()
+    .references(() => resume.id, { onDelete: "cascade" }),
+  /** `experience` | `education` | `skills` | `custom`. */
+  kind: text("kind").notNull(),
+  /** The heading as the user wants it read — "Work History", not "experience". */
+  label: text("label").notNull(),
+  /** How the section draws. The set is fixed; see `~/lib/section-content`. */
+  componentType: text("component_type").notNull(),
+  position: integer("position").notNull(),
+  /** Custom sections only, validated against `componentType` on write. */
+  content: jsonb("content")
+})
+
+export const sectionRelations = relations(section, ({ one }) => ({
+  resume: one(resume, {
+    fields: [section.resumeId],
+    references: [resume.id]
+  })
 }))

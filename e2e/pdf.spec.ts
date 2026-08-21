@@ -3,15 +3,16 @@ import { newAccount, signUp } from "./support"
 
 /** Any valid `downloadPdfSchema` body — the assertion is about the response. */
 const resume = {
-  fullName: "Ada Lovelace",
-  email: "ada@example.com",
   profession: "Software Engineer",
-  location: "London, UK",
-  phone: "555-0100",
-  linkedIn: "linkedin.com/in/ada",
-  portfolio: "https://ada.dev",
-  interests: "Mathematics",
-  skills: [{ category: "Languages", all: "TypeScript, Go", position: 0 }],
+  contact: {
+    fullName: "Ada Lovelace",
+    email: "ada@example.com",
+    location: "London, UK",
+    phone: "555-0100",
+    linkedIn: "linkedin.com/in/ada",
+    portfolio: "https://ada.dev"
+  },
+  skill: [{ category: "Languages", all: "TypeScript, Go" }],
   experience: [
     {
       name: "Analytical Engines",

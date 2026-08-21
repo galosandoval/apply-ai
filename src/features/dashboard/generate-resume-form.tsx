@@ -61,7 +61,13 @@ export function GenerateResumeForm({
   }
 
   if (generated) {
-    return <GeneratedResumeView generated={generated} profile={profile} />
+    return (
+      <GeneratedResumeView
+        generated={generated}
+        jobDescription={jobDescription}
+        profile={profile}
+      />
+    )
   }
 
   return (

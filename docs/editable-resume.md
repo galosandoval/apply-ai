@@ -139,21 +139,37 @@ reads the name from the profile.
 
 ### Only the snapshot is editable
 
+> **Superseded by spec B (#48).** What follows is why the editor was
+> snapshot-only; the paragraph after it is what is true now.
+
 A saved resume snapshots its own `work` / `school` rows via `resumeId` — but
-**`skill` and `contact` have no `resumeId`, and email lives on `user`.** Those
-are shared by every resume the profile owns, so editing one from a resume editor
-would silently rewrite the others.
+**`skill` and `contact` had no `resumeId`, and email lived on `user`.** Those
+were shared by every resume the profile owned, so editing one from a resume
+editor would silently rewrite the others.
 
-So the editor is snapshot-only: `profession`, experience and education are live;
-skills, contact details and name render read-only. Both the click target
-(`canEditPath`) and the server write derive that from **one** parser —
-`src/lib/resume-field-path.ts` — so the UI and the write can't disagree about
-what's editable, and a hand-made request can't reach a column the template
-wouldn't offer.
+So the editor was snapshot-only: `profession`, experience and education were
+live; skills, contact details and name rendered read-only.
 
-Making the shared fields editable means snapshotting them first: `resumeId` on
-`skill`, a per-resume contact snapshot, a migration and a backfill. That's its
-own step, not a corner of this one.
+**Since #48 a resume owns all of it.** `skill` and `contact` both carry a
+nullable `resumeId`: a row with it set is one resume's copy, a row with it null
+is the account's master copy, which seeds a new resume and is never read at
+render time. `contact` also carries `full_name` and `email`, so a saved resume
+still says what it said when it was sent even after the account changes its
+name. Everything the document draws is now editable, and editing the account
+deliberately does not reach an existing resume — `resume.refreshFromAccount`
+pulls current details in when that is actually wanted.
+
+Both the click target (`canEditPath`) and the server write still derive from
+**one** parser — `src/lib/resume-field-path.ts` — so the UI and the write can't
+disagree about what's editable, and a hand-made request can't reach a column the
+template wouldn't offer.
+
+**Contact and skills got addresses of their own rather than the ones that were
+closed.** `contact.email` and `skill.<row>.all` are editable; bare `email` and
+`skills.0.all` are still rejected, unchanged, along with the other 19 shapes the
+parser refused before. That is the proof the grammar was extended rather than
+replaced, and it is why the document data nests contact under `contact` and
+names the skill array `skill`.
 
 ### One parser, two path flavours
 
@@ -169,9 +185,10 @@ react-hook-form paths look like; the mutation speaks in row ids
 rows come back in a different order.
 
 `readById` also gained `ORDER BY id` — previously the row order was whatever
-Postgres felt like, so indices meant something different on each fetch. **`id`
-is stable but arbitrary; a real `position` column is still owed** on `work` and
-`school`, and until it exists the editor can't offer reordering.
+Postgres felt like, so indices meant something different on each fetch. `id` was
+stable but arbitrary; **#48 added the `position` column** that was owed on `work`
+and `school`, backfilled from that id order, and `resume.reorderRows` moves a
+job, a school or a skill group within its section.
 
 ### Autosave details worth remembering
 
@@ -208,6 +225,16 @@ shape — so treat the numbers here as the origin, not the current total.
   `<form>` while the only button is `type="button"` — so `resume.create` never
   fires. That predates this work. The editor is the path that persists; the
   preview is still save-less.
+- **Deleting a resume would strand its snapshot.** `section.resume_id` cascades
+  — a section has no meaning without its resume — but `work`, `school`, `skill`
+  and `contact` do not, which is the convention those tables already had. There
+  is no delete-a-resume path yet; whoever adds one owns cleaning those up.
+- **Sections exist but are not drawn from.** `resume.readById` returns them in
+  order and `section.add` / `remove` / `reorder` and `section.<id>.label` all
+  work, but `ResumeDocument` still hardcodes Skills → Experience → Education and
+  hardcodes their headings. Rendering a section — including the five component
+  types a custom section can be — is spec C; the editing affordances around them
+  are spec D.
 - `Editable` keys bullets by array index, so reordering or deleting a bullet
   would carry edit state to the wrong row. Only matters once add/remove exists.
 - No add/remove for bullets, jobs or schools — `updateField` replaces existing

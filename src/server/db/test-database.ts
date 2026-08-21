@@ -49,6 +49,7 @@ export async function disconnectTestDatabase() {
 export async function resetTestDatabase(db: TestDatabase) {
   await db.execute(
     sql.raw(`TRUNCATE TABLE
+      "apply-ai_section",
       "apply-ai_work",
       "apply-ai_school",
       "apply-ai_skill",

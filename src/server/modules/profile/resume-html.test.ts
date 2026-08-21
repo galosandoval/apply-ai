@@ -11,14 +11,16 @@ import { renderResumeHtml, resumePdfDocument } from "./resume-html"
  */
 
 const data: ResumeDocumentData = {
-  fullName: "Ada Lovelace",
   profession: "Software Engineer",
-  email: "ada@example.com",
-  location: "London, UK",
-  phone: "555-0100",
-  linkedIn: "linkedin.com/in/ada",
-  portfolio: "https://ada.dev",
-  skills: [{ id: "s1", category: "Languages", all: "TypeScript, Go", position: 0 }],
+  contact: {
+    fullName: "Ada Lovelace",
+    email: "ada@example.com",
+    location: "London, UK",
+    phone: "555-0100",
+    linkedIn: "linkedin.com/in/ada",
+    portfolio: "https://ada.dev"
+  },
+  skill: [{ id: "s1", category: "Languages", all: "TypeScript, Go" }],
   experience: [
     {
       id: "w1",

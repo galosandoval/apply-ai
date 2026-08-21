@@ -9,14 +9,10 @@ import { type InsertResumeSchema } from "~/server/db/crud-schema"
  * source, and this is the contract they agree on.
  */
 export type ResumeDocumentData = {
-  fullName: string
   profession: string
-  email: string
-  location: string
-  phone?: string
-  linkedIn?: string
-  portfolio?: string
-  skills: InsertResumeSchema["skills"]
+  /** The resume's own snapshot, not the account's — see `schema.contact`. */
+  contact: InsertResumeSchema["contact"]
+  skill: InsertResumeSchema["skill"]
   experience: InsertResumeSchema["experience"]
   education: InsertResumeSchema["education"]
 }
@@ -31,14 +27,17 @@ export type ResumeDocumentData = {
  * Narrowed to paths whose value is actually a string: bare `FieldPath` also
  * admits `experience.0` and `experience.0.bullets`, which would render as an
  * empty click target and let `setValue` write a string over an array.
+ *
+ * Taken from the document rather than from an insert schema, because the
+ * document is what a path addresses.
  */
 export type ResumeFieldPath = {
-  [Path in FieldPath<InsertResumeSchema>]: NonNullable<
-    FieldPathValue<InsertResumeSchema, Path>
+  [Path in FieldPath<ResumeDocumentData>]: NonNullable<
+    FieldPathValue<ResumeDocumentData, Path>
   > extends string
     ? Path
     : never
-}[FieldPath<InsertResumeSchema>]
+}[FieldPath<ResumeDocumentData>]
 
 export type OnEditField = (path: ResumeFieldPath, value: string) => void
 
@@ -144,11 +143,11 @@ function Header({ doc }: { doc: Doc }) {
   const { data, canEditPath } = doc
 
   const allContactFields: { path: ResumeFieldPath; value: string }[] = [
-    { path: "location", value: data.location },
-    { path: "email", value: data.email },
-    { path: "linkedIn", value: data.linkedIn ?? "" },
-    { path: "portfolio", value: data.portfolio ?? "" },
-    { path: "phone", value: data.phone ?? "" }
+    { path: "contact.location", value: data.contact.location },
+    { path: "contact.email", value: data.contact.email },
+    { path: "contact.linkedIn", value: data.contact.linkedIn ?? "" },
+    { path: "contact.portfolio", value: data.contact.portfolio ?? "" },
+    { path: "contact.phone", value: data.contact.phone ?? "" }
   ]
 
   // A blank contact is dropped from the rendered document, but kept as an empty
@@ -160,7 +159,12 @@ function Header({ doc }: { doc: Doc }) {
   return (
     <div className="flex flex-col items-center pb-2">
       <div className="justify-self-center">
-        <h1 className="text-24pt font-bold">{data.fullName}</h1>
+        <Field
+          doc={doc}
+          path="contact.fullName"
+          as="h1"
+          className="text-24pt font-bold"
+        />
       </div>
 
       <Field
@@ -199,17 +203,17 @@ function Skills({ doc }: { doc: Doc }) {
       <SectionTitle title="Skills" />
 
       <div>
-        {doc.data.skills.map((skill, index) => (
-          <div className="flex gap-1" key={skill.id ?? index}>
+        {doc.data.skill.map((group, index) => (
+          <div className="flex gap-1" key={group.id ?? index}>
             <Field
               doc={doc}
-              path={`skills.${index}.category`}
+              path={`skill.${index}.category`}
               as="h3"
               className="whitespace-nowrap font-semibold"
             />
             <Field
               doc={doc}
-              path={`skills.${index}.all`}
+              path={`skill.${index}.all`}
               as="p"
               multiline
               className="flex-1"

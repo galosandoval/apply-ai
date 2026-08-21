@@ -8,7 +8,6 @@ import {
   type ResumeDocumentData,
   type ResumeFieldPath
 } from "~/components/resume-document"
-import { profileDocumentFields } from "~/lib/resume-document-data"
 import {
   formatResumeFieldPath,
   isEditableResumePath,
@@ -17,7 +16,6 @@ import {
   withRow
 } from "~/lib/resume-field-path"
 import { api, type RouterOutputs } from "~/utils/api"
-import { useUser } from "~/utils/useUser"
 
 type SavedResume = RouterOutputs["resume"]["readById"]
 
@@ -28,14 +26,13 @@ export function ResumeEditorView() {
 }
 
 function Editor({ resumeId }: { resumeId: string }) {
-  const { resume, profile, errorMessage, isSaving, onEdit } =
-    useEditableResume(resumeId)
+  const { resume, errorMessage, isSaving, onEdit } = useEditableResume(resumeId)
 
   if (errorMessage) {
     return <main className="grid h-full place-items-center">{errorMessage}</main>
   }
 
-  if (!resume || !profile) {
+  if (!resume) {
     return <main className="grid h-full place-items-center">Loading...</main>
   }
 
@@ -46,7 +43,7 @@ function Editor({ resumeId }: { resumeId: string }) {
       </p>
 
       <ResumeDocument
-        data={toDocumentData(resume, profile)}
+        data={toDocumentData(resume)}
         onEdit={onEdit}
         canEditPath={isEditableResumePath}
       />
@@ -55,19 +52,18 @@ function Editor({ resumeId }: { resumeId: string }) {
 }
 
 /**
- * The editable resume: the saved snapshot, plus the profile fields the document
- * still needs to render, plus an autosaving `onEdit` for `ResumeDocument`.
+ * The editable resume, plus an autosaving `onEdit` for `ResumeDocument`.
+ *
+ * There is no profile query any more: a saved resume owns its own contact
+ * details and skills, so everything the document draws comes from one snapshot.
  */
 function useEditableResume(resumeId: string) {
-  const { id: userId } = useUser()
   const utils = api.useContext()
 
   const resumeQuery = api.resume.readById.useQuery(
     { resumeId },
     { enabled: !!resumeId }
   )
-
-  const profileQuery = api.profile.read.useQuery(undefined, { enabled: !!userId })
 
   // Tracks writes still in the air. Refetching while any remain would serve a
   // response that predates them and clobber their optimistic values.
@@ -130,14 +126,14 @@ function useEditableResume(resumeId: string) {
       return
     }
 
-    if (target.section === "resume") {
+    const indexed = indexedRows(resume, target)
+
+    if (!indexed) {
       mutate({ resumeId, path, value })
       return
     }
 
-    const rows =
-      target.section === "experience" ? resume.experience : resume.education
-    const rowId = rows[Number(target.row)]?.id
+    const rowId = indexed.rows[Number(indexed.row)]?.id
 
     if (!rowId) {
       console.error(`No row for editable path: ${path}`)
@@ -153,22 +149,27 @@ function useEditableResume(resumeId: string) {
 
   return {
     resume: resumeQuery.data,
-    profile: profileQuery.data,
-    errorMessage: loadErrorMessage(resumeQuery.isError, profileQuery.isError),
+    errorMessage: resumeQuery.isError ? "Resume not found." : null,
     isSaving,
     onEdit
   }
 }
 
 /**
- * A missing resume and a failed profile load are different problems, and
- * "Not found" for the latter sends the reader hunting in the wrong place.
+ * The list a row-addressed target indexes into, or `null` for a target the
+ * resume holds directly — those paths carry no row to swap.
  */
-function loadErrorMessage(resumeFailed: boolean, profileFailed: boolean) {
-  if (resumeFailed) return "Resume not found."
-  if (profileFailed) return "Could not load your profile."
-
-  return null
+function indexedRows(resume: SavedResume, target: ResumeFieldTarget) {
+  switch (target.section) {
+    case "experience":
+      return { rows: resume.experience, row: target.row }
+    case "education":
+      return { rows: resume.education, row: target.row }
+    case "skill":
+      return { rows: resume.skill, row: target.row }
+    default:
+      return null
+  }
 }
 
 /** Reads the value a target currently points at, for rollback. */
@@ -178,21 +179,37 @@ function readFieldValue(
 ) {
   if (!resume) return undefined
 
-  if (target.section === "resume") return resume.profession
+  switch (target.section) {
+    case "resume":
+      return resume.profession
 
-  if (target.section === "education") {
-    const school = resume.education.find((row) => row.id === target.row)
+    case "contact":
+      return resume.contact[target.column] ?? undefined
 
-    return school?.[target.column] ?? undefined
+    case "education":
+      return (
+        resume.education.find((row) => row.id === target.row)?.[
+          target.column
+        ] ?? undefined
+      )
+
+    case "skill":
+      return resume.skill.find((row) => row.id === target.row)?.[target.column]
+
+    case "experience": {
+      const job = resume.experience.find((row) => row.id === target.row)
+
+      if (!job) return undefined
+
+      return target.kind === "bullet"
+        ? job.bullets[target.bulletIndex]
+        : job[target.column] ?? undefined
+    }
+
+    // Sections are not drawn from the document data yet — spec C renders them.
+    default:
+      return undefined
   }
-
-  const job = resume.experience.find((row) => row.id === target.row)
-
-  if (!job) return undefined
-
-  return target.kind === "bullet"
-    ? job.bullets[target.bulletIndex]
-    : job[target.column]
 }
 
 /**
@@ -205,40 +222,59 @@ function writeField(
   target: ResumeFieldTarget,
   value: string
 ): SavedResume {
-  if (target.section === "resume") return { ...resume, profession: value }
+  switch (target.section) {
+    case "resume":
+      return { ...resume, profession: value }
 
-  if (target.section === "education") {
-    return {
-      ...resume,
-      education: resume.education.map((school) =>
-        school.id === target.row ? { ...school, [target.column]: value } : school
-      )
-    }
-  }
+    case "contact":
+      return { ...resume, contact: { ...resume.contact, [target.column]: value } }
 
-  return {
-    ...resume,
-    experience: resume.experience.map((job) => {
-      if (job.id !== target.row) return job
+    case "education":
+      return {
+        ...resume,
+        education: resume.education.map((school) =>
+          school.id === target.row
+            ? { ...school, [target.column]: value }
+            : school
+        )
+      }
 
-      if (target.kind !== "bullet") return { ...job, [target.column]: value }
+    case "skill":
+      return {
+        ...resume,
+        skill: resume.skill.map((group) =>
+          group.id === target.row ? { ...group, [target.column]: value } : group
+        )
+      }
 
-      const bullets = [...job.bullets]
-      bullets[target.bulletIndex] = value
+    case "experience":
+      return {
+        ...resume,
+        experience: resume.experience.map((job) => {
+          if (job.id !== target.row) return job
 
-      return { ...job, bullets }
-    })
+          if (target.kind !== "bullet") return { ...job, [target.column]: value }
+
+          return {
+            ...job,
+            bullets: job.bullets.map((bullet, index) =>
+              index === target.bulletIndex ? value : bullet
+            )
+          }
+        })
+      }
+
+    default:
+      return resume
   }
 }
 
-/** Assembles the document from the resume snapshot and the shared profile. */
-function toDocumentData(
-  resume: SavedResume,
-  profile: RouterOutputs["profile"]["read"]
-): ResumeDocumentData {
+/** The document, entirely from the resume's own snapshot. */
+function toDocumentData(resume: SavedResume): ResumeDocumentData {
   return {
-    ...profileDocumentFields(profile),
     profession: resume.profession,
+    contact: resume.contact,
+    skill: resume.skill,
     experience: resume.experience,
     education: resume.education
   }

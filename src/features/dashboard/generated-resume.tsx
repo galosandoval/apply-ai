@@ -13,7 +13,7 @@ import {
   type InsertResumeSchema,
   insertResumeSchema
 } from "~/server/db/crud-schema"
-import { profileDocumentFields } from "~/lib/resume-document-data"
+import { seedFromAccount } from "~/lib/resume-document-data"
 import { type GeneratedResume } from "~/server/modules/profile/generate-resume"
 import { api, type RouterOutputs } from "~/utils/api"
 
@@ -25,9 +25,12 @@ import { api, type RouterOutputs } from "~/utils/api"
  */
 export function GeneratedResumeView({
   generated,
+  jobDescription,
   profile
 }: {
   generated: GeneratedResume
+  /** Saved with the resume, so the list can say which posting it was for. */
+  jobDescription: string
   profile: RouterOutputs["profile"]["read"]
 }) {
   const [savedResumeId, setSavedResumeId] = useState("")
@@ -39,40 +42,24 @@ export function GeneratedResumeView({
     }
   })
 
-  const fromProfile = profileDocumentFields(profile)
-
   const { watch, setValue, handleSubmit } = useAppForm(insertResumeSchema, {
     values: {
+      ...seedFromAccount(profile),
       education: generated.education,
       experience: generated.experience,
       profession: generated.profession,
-      skills: fromProfile.skills,
-      email: fromProfile.email,
-      phone: fromProfile.phone,
-      location: fromProfile.location,
-      portfolio: fromProfile.portfolio,
-      linkedIn: fromProfile.linkedIn
+      jobDescription
     }
   })
 
   const onSubmitSaveResume = (data: InsertResumeSchema) => {
-    mutate({
-      ...data,
-      education: data.education.map((school) => ({ ...school })),
-      skills: data.skills,
-      interests: data.interests ?? ""
-    })
+    mutate(data)
   }
 
   const resumeData: ResumeDocumentData = {
-    fullName: fromProfile.fullName,
     profession: watch("profession"),
-    email: watch("email"),
-    phone: watch("phone"),
-    linkedIn: watch("linkedIn"),
-    portfolio: watch("portfolio"),
-    location: watch("location"),
-    skills: watch("skills"),
+    contact: watch("contact"),
+    skill: watch("skill"),
     experience: watch("experience"),
     education: watch("education")
   }

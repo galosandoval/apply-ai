@@ -73,7 +73,11 @@ function NameAndContactForm() {
           id: old?.contact?.id ?? "",
           phone: input?.phone ?? null,
           portfolio: input?.portfolio ?? null,
-          userId: data.id
+          userId: data.id,
+          // The master copy, never a resume's snapshot of it.
+          resumeId: null,
+          fullName: null,
+          email: null
         }
       }))
     },
