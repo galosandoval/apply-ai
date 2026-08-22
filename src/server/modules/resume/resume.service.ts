@@ -284,12 +284,17 @@ export async function updateField(
     })
   }
 
-  await writeTarget(db, input.resumeId, target, input.value)
+  await writeTarget(
+    db,
+    { resumeId: input.resumeId, userId },
+    target,
+    input.value
+  )
 }
 
 async function writeTarget(
   db: Database,
-  resumeId: string,
+  { resumeId, userId }: { resumeId: string; userId: string },
   target: ResumeFieldTarget,
   value: string
 ) {
@@ -299,7 +304,7 @@ async function writeTarget(
       return
 
     case "contact":
-      await writeContact(db, resumeId, target.column, value)
+      await writeContact(db, { resumeId, userId }, target.column, value)
       return
 
     case "section":
@@ -378,10 +383,14 @@ async function writeRow<Table extends repo.SnapshotTable>(
 /**
  * A resume created before contact was snapshotted has no row to write to, and
  * refusing the edit would leave those fields permanently unreachable.
+ *
+ * The owner is the session's, not a re-read of the resume: `updateField` has
+ * already proved the two match, and falling back to `""` would file the new row
+ * under a user that doesn't exist.
  */
 async function writeContact(
   db: Database,
-  resumeId: string,
+  { resumeId, userId }: { resumeId: string; userId: string },
   column: ContactColumn,
   value: string
 ) {
@@ -389,12 +398,10 @@ async function writeContact(
 
   if (updated.length) return
 
-  const found = await repo.findResume(db, resumeId)
-
   await repo.insertContact(db, {
     id: createId(),
     location: "",
-    userId: found?.userId ?? "",
+    userId,
     resumeId,
     [column]: value
   })
