@@ -18,11 +18,42 @@ const config = {
       }
     },
     extend: {
+      /*
+        The resume type scale, as tokens rather than literals.
+
+        Every value indirects through a CSS variable declared in `global.css`,
+        so a second resume style is a variable change and reflow mode can widen
+        the body text without a component knowing it happened. No resume
+        component names a size, a spacing step or a rule weight directly.
+      */
       fontSize: {
-        "10pt": ["13.333px", "18px"],
-        "11pt": ["14.667px", "20px"],
-        "14pt": ["18.667px", "28px"],
-        "24pt": ["32px", "40px"]
+        "resume-name": ["var(--resume-text-name)", "var(--resume-leading-name)"],
+        "resume-title": [
+          "var(--resume-text-title)",
+          "var(--resume-leading-title)"
+        ],
+        "resume-heading": [
+          "var(--resume-text-heading)",
+          "var(--resume-leading-heading)"
+        ],
+        "resume-body": ["var(--resume-text-body)", "var(--resume-leading-body)"]
+      },
+      spacing: {
+        "resume-page-x": "var(--resume-space-page-x)",
+        "resume-page-y": "var(--resume-space-page-y)",
+        "resume-section": "var(--resume-space-section)",
+        "resume-entry": "var(--resume-space-entry)",
+        "resume-inline": "var(--resume-space-inline)",
+        "resume-bullet": "var(--resume-space-bullet)",
+        "resume-rule": "var(--resume-rule-weight)",
+        "resume-rule-gap": "var(--resume-rule-gap)",
+        "resume-tag-x": "var(--resume-tag-space-x)",
+        "resume-tag-y": "var(--resume-tag-space-y)",
+        "resume-icon": "var(--resume-icon-size)"
+      },
+      width: {
+        "resume-page": "var(--resume-page-width)",
+        "resume-left-column": "var(--resume-left-column-width)"
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)"]
@@ -64,6 +95,7 @@ const config = {
         gradient: "var(--gradient)"
       },
       borderRadius: {
+        "resume-tag": "var(--resume-tag-radius)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)"

@@ -41,6 +41,64 @@
     --radius: 0.5rem;
   }
 
+  /*
+    The resume style, as one token set.
+
+    Every resume component draws from these and names no literal of its own, so
+    a second style is a change here rather than a rewrite of five components.
+    The values are the current document's, carried over unchanged — this is the
+    surface the style work lands on, not the style itself.
+  */
+  :root {
+    --resume-page-width: 21cm;
+    --resume-left-column-width: 7.5rem;
+
+    --resume-text-name: 32px;
+    --resume-leading-name: 40px;
+    --resume-text-title: 18.667px;
+    --resume-leading-title: 28px;
+    --resume-text-heading: 14.667px;
+    --resume-leading-heading: 20px;
+    --resume-text-body: 13.333px;
+    --resume-leading-body: 18px;
+
+    --resume-space-page-x: 2.5rem;
+    --resume-space-page-y: 2rem;
+    --resume-space-section: 1rem;
+    --resume-space-entry: 1rem;
+    --resume-space-inline: 0.25rem;
+    --resume-space-bullet: 1.5rem;
+
+    --resume-rule-weight: 2px;
+    --resume-rule-gap: 0.25rem;
+
+    --resume-tag-space-x: 0.5rem;
+    --resume-tag-space-y: 0.125rem;
+    --resume-tag-radius: 0.25rem;
+    --resume-icon-size: 1rem;
+  }
+
+  /*
+    Reflow mode: the same tokens, re-valued for a phone.
+
+    The A4 page scaled into a 390px viewport renders body text at roughly 5pt.
+    Reflow drops the page instead of shrinking it, so the type can go up rather
+    than down — and because it moves the tokens, no component branches on it.
+  */
+  .resume-reflow {
+    --resume-text-name: 1.5rem;
+    --resume-leading-name: 2rem;
+    --resume-text-title: 1.125rem;
+    --resume-leading-title: 1.5rem;
+    --resume-text-heading: 1rem;
+    --resume-leading-heading: 1.5rem;
+    --resume-text-body: 1rem;
+    --resume-leading-body: 1.5rem;
+
+    --resume-space-page-x: 1rem;
+    --resume-space-page-y: 1.5rem;
+  }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
