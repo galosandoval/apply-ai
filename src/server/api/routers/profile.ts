@@ -3,19 +3,22 @@ import {
   addEducationSchema,
   addExperienceSchema,
   importFromPdfSchema,
-  readProfileSchema,
   replaceSkillsSchema,
   updateDetailsSchema,
   upsertNameAndContactSchema
 } from "~/server/modules/profile/profile.schema"
 import * as profileService from "~/server/modules/profile/profile.service"
 
+/**
+ * The signed-in user's own profile.
+ *
+ * Every procedure resolves the row from `ctx.session.user.id`. There is no
+ * `profileId` input to check because there is no id a client could name.
+ */
 export const profileRouter = createTRPCRouter({
-  // `userId` stays in the input for the existing callers, but the profile is
-  // always resolved from the session — a client can't read someone else's.
-  read: protectedProcedure
-    .input(readProfileSchema)
-    .query(({ ctx }) => profileService.read(ctx.db, ctx.session.user.id)),
+  read: protectedProcedure.query(({ ctx }) =>
+    profileService.read(ctx.db, ctx.session.user.id)
+  ),
 
   upsertNameAndContact: protectedProcedure
     .input(upsertNameAndContactSchema)

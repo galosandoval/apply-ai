@@ -1,1 +1,62 @@
-{"version":"5","dialect":"pg","entries":[]}
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1785304471651,
+      "tag": "0000_common_black_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1785308360664,
+      "tag": "0001_dazzling_fallen_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785308381938,
+      "tag": "0002_petite_vapor",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787175775130,
+      "tag": "0003_merge_profile_into_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787175799867,
+      "tag": "0004_drop_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787176653863,
+      "tag": "0005_account_issuer",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787250145081,
+      "tag": "0006_sections_and_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787250152330,
+      "tag": "0007_drop_introduction_interests",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "apply-ai_work" DROP COLUMN IF EXISTS "description";

@@ -1,12 +1,12 @@
-import { userRouter } from "~/server/api/routers/user"
 import { createTRPCRouter } from "~/server/api/trpc"
 import { profileRouter } from "./routers/profile"
 import { resumeRouter } from "./routers/resume"
+import { sectionRouter } from "./routers/section"
 
 export const appRouter = createTRPCRouter({
-  user: userRouter,
   profile: profileRouter,
-  resume: resumeRouter
+  resume: resumeRouter,
+  section: sectionRouter
 })
 
 export type AppRouter = typeof appRouter

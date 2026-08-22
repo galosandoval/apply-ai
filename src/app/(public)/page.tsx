@@ -1,0 +1,165 @@
+import { type Metadata } from "next"
+import Link from "next/link"
+import { Button } from "~/components/ui/button"
+import Image from "next/image"
+import {
+  ClipboardCopyIcon,
+  DownloadIcon,
+  Pencil1Icon
+} from "@radix-ui/react-icons"
+import { AuthModal } from "~/components/auth-modal"
+
+export const metadata: Metadata = { title: "Sign up" }
+
+export default function Home() {
+  return (
+    <main className="overflow-y-auto">
+      <Landing />
+    </main>
+  )
+}
+
+function Landing() {
+  return (
+    <div className="w-full">
+      <Hero />
+
+      <HowItWorks />
+
+      <section className="w-full py-12 md:py-16 xl:py-24">
+        <div className="container px-4 md:px-6">
+          <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-12">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+                Testimonial
+              </h2>
+              <p className="max-w-prose text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                {`The resume builder was so easy to use, and the templates are
+                fantastic. I got the job!" - Sarah T.`}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <Footer />
+    </div>
+  )
+}
+
+function Hero() {
+  return (
+    <section className="w-full py-12 md:py-16 xl:py-24">
+      <div className="container px-4 md:px-6">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-12">
+          <div className="flex flex-col justify-center space-y-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+                AI-Powered Resume Builder
+              </h1>
+              <p className="max-w-[500px] text-gray-500 dark:text-gray-400">
+                Create a professional resume in minutes with our easy-to-use
+                builder. Stand out to employers with a polished and
+                well-designed CV.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button asChild variant="outline">
+                <AuthModal label="Get Started" initialModal="sign-up" />
+              </Button>
+              <p className="text-xs text-gray-500">
+                No credit card required. 14-day free trial.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <Image
+              alt="Hero"
+              className="aspect-[4/3] overflow-hidden rounded-xl object-cover object-top"
+              height="400"
+              src="/landing-resume.png"
+              width="600"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function HowItWorks() {
+  return (
+    <section className="w-full py-12 md:py-24 lg:py-32">
+      <div className="container grid items-center gap-4 px-4 text-center md:px-6 lg:gap-10">
+        <div className="space-y-3">
+          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+            How it works
+          </h2>
+          <p className="mx-auto max-w-[600px] text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+            Let our AI help you create the perfect resume. Stand out with
+            beautifully designed components that you can copy and paste into
+            your apps. Accessible. Customizable. Open Source.
+          </p>
+        </div>
+        <div className="mx-auto grid max-w-5xl items-start gap-6 sm:grid-cols-2 md:gap-12 lg:max-w-6xl lg:grid-cols-3">
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <Pencil1Icon className="h-24 w-24" />
+            <div className="space-y-2 text-center">
+              <h3 className="text-xl font-bold">Save your profile</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Fill in your contact info, work experience, education, and
+                skills to get started. We will never use your data.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <ClipboardCopyIcon className="h-24 w-24" />
+            <div className="space-y-2 text-center">
+              <h3 className="text-xl font-bold">Copy/Paste</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Copy the job description of the position you are applying for.
+                On the dashboard, paste the job description onto the input field
+                and hit enter to generate your resume.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center space-y-2">
+            <DownloadIcon className="h-24 w-24" />
+            <div className="space-y-2 text-center">
+              <h3 className="text-xl font-bold">Download your resume</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Download your resume in PDF format. Share it with employers and
+                get the job!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Footer() {
+  return (
+    <section className="w-full py-6 md:py-12">
+      <div className="container flex flex-col items-center space-y-4 px-4 md:flex-row md:justify-between md:space-y-0 md:px-6">
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400 md:text-base">
+          © 2024 ApplyAI All rights reserved.
+        </div>
+        <nav className="flex items-center space-x-4 text-sm md:space-x-6">
+          <Link className="text-gray-500 underline" href="/privacy-policy">
+            Privacy
+          </Link>
+          <Link className="text-gray-500 underline" href="/terms-of-service">
+            Terms of Service
+          </Link>
+          <Link
+            className="text-gray-500 underline"
+            href="mailto:galo.sandoval.dev@gmail.com"
+          >
+            Contact
+          </Link>
+        </nav>
+      </div>
+    </section>
+  )
+}

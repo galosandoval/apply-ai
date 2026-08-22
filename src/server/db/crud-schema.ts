@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod"
-import { profile, resume, school, work } from "./schema"
+import { school, user, work } from "./schema"
 import { z } from "zod"
 
 const contactSchema = z.object({
@@ -20,26 +20,28 @@ export const insertContactSchema = z
       .min(1, "Must be at least 1 characters")
       .max(50, "Must be less than 50 characters"),
 
-    id: z.string().optional(),
-    profession: z.string().min(3).max(255),
-    interests: z.string().min(3).max(255).optional()
+    profession: z.string().min(3).max(255)
   })
   .merge(contactSchema)
 
 export type InsertContactSchema = z.infer<typeof insertContactSchema>
 
-export const updateProfileSchema = createInsertSchema(profile, {
+/**
+ * The profile-shaped columns of `user`.
+ *
+ * `user` also carries the account columns better-auth owns (`email`,
+ * `emailVerified`, timestamps); picking keeps them out of a profile form's
+ * input, where they would be both required and unwritable.
+ */
+export const updateProfileSchema = createInsertSchema(user, {
   profession: (schema) =>
     schema.profession
       .min(3, "Must be at least 3 characters")
-      .max(255, "Must be less than 255 characters"),
-  interests: (schema) =>
-    schema.interests
-      .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters")
-      .optional()
-      .nullable(),
-  id: (schema) => schema.id.optional()
+}).pick({
+  firstName: true,
+  lastName: true,
+  profession: true
 })
 
 export type UpdateProfileSchema = z.infer<typeof updateProfileSchema>
@@ -63,9 +65,11 @@ export const insertEducationSchema = z.object({
       schema.location.max(255, "Must be less than 255 characters").optional(),
     startDate: (schema) => schema.startDate.min(4).max(50),
     endDate: (schema) => schema.endDate.min(4).max(50),
-    gpa: (schema) => schema.gpa.optional(),
-    profileId: (schema) => schema.profileId.cuid2().optional()
+    gpa: (schema) => schema.gpa.optional()
   })
+    // The owner and the resume a row is snapshotted onto are the server's to
+    // decide — a client that could name them could write onto someone else's.
+    .omit({ userId: true, resumeId: true })
     .array()
     .min(1)
     .max(4)
@@ -73,22 +77,50 @@ export const insertEducationSchema = z.object({
 
 export type InsertEducationSchema = z.infer<typeof insertEducationSchema>
 
+export const minBullets = 2
+export const maxBullets = 8
+
+const maxBulletLength = 300
+
+/**
+ * One accomplishment per entry, so the length cap is per bullet rather than per
+ * job — a single runaway sentence is what breaks the layout, not the count.
+ *
+ * The checks live in a `superRefine` without a `path` so every message lands on
+ * the array itself. Onboarding edits bullets as one line-separated textarea and
+ * renders a single `FormMessage` for it; an issue reported on `bullets.2` would
+ * block submit with nothing on screen to explain why. Blank lines are ignored
+ * here for the same reason — the user is mid-typing, not writing an empty
+ * bullet, and they're stripped before the array is saved.
+ */
+const bulletsSchema = z
+  .string()
+  .array()
+  .superRefine((bullets, ctx) => {
+    const filled = bullets.filter((bullet) => bullet.trim())
+
+    const issue =
+      filled.length < minBullets
+        ? `Write at least ${minBullets} accomplishments`
+        : filled.length > maxBullets
+          ? `Write at most ${maxBullets} accomplishments`
+          : filled.some((bullet) => bullet.trim().length < 6)
+            ? "Each accomplishment must be more than 6 characters"
+            : filled.some((bullet) => bullet.length > maxBulletLength)
+              ? `Each accomplishment must be less than ${maxBulletLength} characters`
+              : null
+
+    if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue })
+  })
+
 export const insertExperienceSchema = z.object({
   experience: createInsertSchema(work, {
     id: (schema) => schema.id.optional(),
-    profileId: (schema) => schema.profileId.optional(),
     name: (schema) =>
       schema.name
         .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters"),
-    description: (schema) =>
-      schema.description
-        .min(6, "Must be more than 6 characters")
-        .max(1000, "Must be less than 1000 characters")
-        .refine(
-          (arg) => arg.split(".").length > 3,
-          "Must be at least 3 sentences"
-        ),
+    bullets: bulletsSchema,
     endDate: (schema) =>
       schema.endDate.min(3, "Must be at least 3 characters").max(50),
     startDate: (schema) =>
@@ -98,6 +130,7 @@ export const insertExperienceSchema = z.object({
         .min(3, "Must be at least 3 characters")
         .max(255, "Must be less than 255 characters")
   })
+    .omit({ userId: true, resumeId: true })
     .array()
     .min(1)
     .max(5)
@@ -110,6 +143,7 @@ export const maxSkills = 4
 export const insertSkillsSchema = z.object({
   skills: z
     .object({
+      id: z.string().optional(),
       category: z.string().min(3),
       all: z.string(),
       position: z.number()
@@ -121,43 +155,67 @@ export const insertSkillsSchema = z.object({
 
 export type InsertSkillsSchema = z.infer<typeof insertSkillsSchema>
 
-export const insertResumeSchema = createInsertSchema(resume, {
-  id: (schema) => schema.id.optional(),
-  profession: (schema) =>
-    schema.profession
+/**
+ * The contact details a **resume** owns, snapshotted from the account when it
+ * was created. Nested under `contact` rather than spread across the top level
+ * so every one of them has an address of its own — `contact.email` is editable,
+ * where a bare `email` would be indistinguishable from the account's.
+ */
+export const resumeContactSchema = z.object({
+  fullName: z.string(),
+  email: z.string().email(),
+  location: z.string(),
+  phone: z.string().optional(),
+  linkedIn: z.string().optional(),
+  portfolio: z.string().optional()
+})
+
+export type ResumeContactSchema = z.infer<typeof resumeContactSchema>
+
+/**
+ * A resume's skill groups. Keyed `skill`, singular, because a path addresses
+ * one row of the table — `skill.<row>.category`, the way `contact.<column>` and
+ * `experience.<row>.<column>` do.
+ */
+export const resumeSkillsSchema = z.object({
+  skill: z
+    .object({
+      id: z.string().optional(),
+      category: z.string(),
+      all: z.string()
+    })
+    .array()
+    .max(maxSkills)
+})
+
+export type ResumeSkillsSchema = z.infer<typeof resumeSkillsSchema>
+
+/**
+ * A whole resume, shaped exactly as the document renders it.
+ *
+ * The draft preview drives a form off this schema and addresses its fields with
+ * the same paths the template does, so the two cannot disagree about where a
+ * value lives.
+ */
+export const insertResumeSchema = z
+  .object({
+    profession: z
+      .string()
       .min(3, "Must be at least 3 characters")
       .max(255, "Must be less than 255 characters"),
-  profileId: (schema) => schema.profileId.cuid2().optional()
-})
-  .merge(
-    z.object({
-      phone: z.string(),
-      linkedIn: z.string(),
-      portfolio: z.string(),
-      location: z.string().min(3, "Must be at least 3 characters")
-    })
-  )
+    /** The posting this was drafted against, kept on the resume. */
+    jobDescription: z.string().max(20_000),
+    contact: resumeContactSchema
+  })
+  .merge(resumeSkillsSchema)
   .merge(insertEducationSchema)
   .merge(insertExperienceSchema)
-  .merge(insertSkillsSchema)
-  .merge(z.object({ email: z.string().email() }))
 
 export type InsertResumeSchema = z.infer<typeof insertResumeSchema>
 
-export const downloadPdfSchema = z
-  .object({
-    fullName: z.string(),
-    email: z.string().email(),
-    profession: z.string()
-  })
-  .merge(contactSchema)
-  .merge(
-    updateProfileSchema.pick({
-      interests: true
-    })
-  )
-  .merge(insertEducationSchema)
-  .merge(insertExperienceSchema)
-  .merge(insertSkillsSchema)
+/** The document as the PDF route receives it — the resume without the posting. */
+export const downloadPdfSchema = insertResumeSchema.omit({
+  jobDescription: true
+})
 
 export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>

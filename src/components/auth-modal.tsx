@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { Button } from "./ui/button"
 import {
@@ -9,9 +11,8 @@ import {
   DialogTitle,
   DialogTrigger
 } from "./ui/dialog"
-import { useRouter } from "next/router"
-import { api } from "~/utils/api"
-import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { signIn, signUp } from "~/lib/auth-client"
 import { Form, FormField } from "./ui/form"
 import { MyInput } from "./my-input"
 import { z } from "zod"
@@ -69,31 +70,26 @@ function AuthSwitch({ initialModal }: { initialModal: Modal }) {
 function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   const router = useRouter()
 
-  const form = useAppForm(signUpSchema)
-
-  const { mutate, isLoading } = api.user.create.useMutation({
-    onSuccess: async (_, { password, email }) => {
-      const response = await signIn("credentials", {
-        email,
-        password,
-        redirect: false
-      })
-
-      if (response?.ok) {
-        await router.push(appPath.import)
-      }
-    },
-    onError: (error) => {
-      console.log(error)
-      form.setError("email", {
-        message: error.message
-      })
-    }
+  const form = useAppForm(signUpSchema, {
+    defaultValues: { email: "", password: "", confirm: "" }
   })
+  const [isPending, setIsPending] = useState(false)
 
-  const onSubmit = (data: SignUpFormValues) => {
-    console.log(data)
-    mutate(data)
+  // better-auth signs the new user straight in, so there is no second call and
+  // no window where an account exists but the browser has no session.
+  const onSubmit = async ({ email, password }: SignUpFormValues) => {
+    setIsPending(true)
+
+    const { error } = await signUp.email({ email, password, name: "" })
+
+    setIsPending(false)
+
+    if (error) {
+      form.setError("email", { message: error.message ?? "Sign up failed" })
+      return
+    }
+
+    router.push(appPath.import)
   }
 
   return (
@@ -135,8 +131,8 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
               Log In
             </Button>
 
-            <Button loading={isLoading} type="submit">
-              {isLoading ? "Creating Account" : "Create Account"}
+            <Button loading={isPending} type="submit">
+              {isPending ? "Creating Account" : "Create Account"}
             </Button>
           </DialogFooter>
         </form>
@@ -155,39 +151,26 @@ type LoginFormValues = z.infer<typeof loginFormSchema>
 function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   const router = useRouter()
 
-  const form = useAppForm(loginFormSchema)
-
-  const { isLoading } = api.user.create.useMutation({
-    onSuccess: async (_, { password, email }) => {
-      const response = await signIn("credentials", {
-        email,
-        password,
-        redirect: false
-      })
-
-      if (response?.ok) {
-        await router.push("/dashboard")
-      }
-    },
-    onError: (error) => {
-      console.log(error)
-      form.setError("email", {
-        message: error.message
-      })
-    }
+  const form = useAppForm(loginFormSchema, {
+    defaultValues: { email: "", password: "" }
   })
+  const [isPending, setIsPending] = useState(false)
 
-  const onSubmit = async (data: LoginFormValues) => {
-    const { email, password } = data
-    const response = await signIn("credentials", {
-      email,
-      password,
-      redirect: false
-    })
+  const onSubmit = async ({ email, password }: LoginFormValues) => {
+    setIsPending(true)
 
-    if (response?.ok) {
-      await router.push("/dashboard")
+    const { error } = await signIn.email({ email, password })
+
+    setIsPending(false)
+
+    if (error) {
+      form.setError("email", {
+        message: error.message ?? "Those details didn't match an account"
+      })
+      return
     }
+
+    router.push(appPath.dashboard)
   }
 
   return (
@@ -221,8 +204,8 @@ function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
               Sign Up
             </Button>
 
-            <Button loading={isLoading} type="submit">
-              {isLoading ? "Logging In" : "Log In"}
+            <Button loading={isPending} type="submit">
+              {isPending ? "Logging In" : "Log In"}
             </Button>
           </DialogFooter>
         </form>

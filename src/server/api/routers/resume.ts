@@ -1,128 +1,66 @@
-import { createId } from "@paralleldrive/cuid2"
-import { eq } from "drizzle-orm"
-import { z } from "zod"
-import { assertOwnsProfile, assertOwnsResume } from "~/server/api/ownership"
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
-import { insertSkillsSchema } from "~/server/db/crud-schema"
-import { resume, school, work } from "~/server/db/schema"
+import {
+  generateResume,
+  generateResumeInput
+} from "~/server/modules/profile/generate-resume"
+import * as resumeService from "~/server/modules/resume/resume.service"
+import {
+  createResumeSchema,
+  readResumeSchema,
+  refreshFromAccountSchema,
+  reorderRowsSchema,
+  updateFieldSchema
+} from "~/server/modules/resume/resume.schema"
 
 export const resumeRouter = createTRPCRouter({
-  list: protectedProcedure
-    .input(z.object({ profileId: z.string().cuid2() }))
-    .query(async ({ ctx, input }) => {
-      await assertOwnsProfile(ctx.db, ctx.session.user.id, input.profileId)
+  /**
+   * Drafts a resume against a job description.
+   *
+   * An ordinary mutation rather than a streaming API route: the dashboard shows
+   * a loading state and needs the whole object before it can render anything,
+   * so the stream was overhead with a `JSON.parse` on the end of it.
+   */
+  generate: protectedProcedure
+    .input(generateResumeInput)
+    .mutation(({ input }) => generateResume(input)),
 
-      const resumes = await ctx.db
-        .select({ createdAt: resume.createdAt, id: resume.id })
-        .from(resume)
-        .where(eq(resume.profileId, input.profileId))
-
-      return resumes
-    }),
+  list: protectedProcedure.query(({ ctx }) =>
+    resumeService.list(ctx.db, ctx.session.user.id)
+  ),
 
   readById: protectedProcedure
-    .input(
-      z.object({
-        resumeId: z.string().cuid2()
-      })
-    )
-    .query(async ({ input, ctx }) => {
-      await assertOwnsResume(ctx.db, ctx.session.user.id, input.resumeId)
+    .input(readResumeSchema)
+    .query(({ ctx, input }) =>
+      resumeService.readById(ctx.db, ctx.session.user.id, input.resumeId)
+    ),
 
-      const usersResume = await ctx.db
-        .select()
-        .from(resume)
-        .where(eq(resume.id, input.resumeId))
-
-      if (!usersResume?.length) throw new Error("Resume not found")
-
-      const foundResume = usersResume[0]!
-
-      const experience = await ctx.db
-        .select()
-        .from(work)
-        .where(eq(work.resumeId, input.resumeId))
-
-      const education = await ctx.db
-        .select()
-        .from(school)
-        .where(eq(school.resumeId, input.resumeId))
-
-      return { ...foundResume, experience, education }
-    }),
+  updateField: protectedProcedure
+    .input(updateFieldSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.updateField(ctx.db, ctx.session.user.id, input)
+    ),
 
   create: protectedProcedure
-    .input(
-      z
-        .object({
-          profileId: z.string().cuid2(),
-          profession: z.string(),
-          interests: z.string(),
-          education: z.array(
-            z.object({
-              name: z.string(),
-              startDate: z.string(),
-              endDate: z.string(),
-              degree: z.string(),
-              description: z.string().optional().nullable(),
-              gpa: z.string().optional().nullable(),
-              location: z.string().optional().nullable()
-              // keyAchievements: z.string().array()
-            })
-          ),
-          experience: z.array(
-            z.object({
-              name: z.string(),
-              startDate: z.string(),
-              endDate: z.string(),
-              title: z.string(),
-              description: z.string()
-              // keyAchievements: z.string().array()
-            })
-          )
-        })
-        .merge(insertSkillsSchema)
+    .input(createResumeSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.create(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /** Reorders the jobs, schools or skill groups inside one section. */
+  reorderRows: protectedProcedure
+    .input(reorderRowsSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.reorderRows(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /** Pulls the account's current details back into this resume, on request. */
+  refreshFromAccount: protectedProcedure
+    .input(refreshFromAccountSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.refreshFromAccount(
+        ctx.db,
+        ctx.session.user.id,
+        input.resumeId
+      )
     )
-    .mutation(async ({ ctx, input }) => {
-      const { profession, interests, education, experience, profileId } = input
-
-      await assertOwnsProfile(ctx.db, ctx.session.user.id, profileId)
-
-      // The resume and its snapshotted work/school rows are one unit — a
-      // partial write leaves a resume that renders with missing sections.
-      const resumeId = await ctx.db.transaction(async (tx) => {
-        const newResume = await tx
-          .insert(resume)
-          .values({
-            id: createId(),
-            profession,
-            interests: interests,
-            profileId
-          })
-          .returning()
-
-        if (!newResume?.length) throw new Error("Resume not created")
-
-        const id = newResume[0]!.id
-
-        await tx
-          .insert(work)
-          .values(
-            experience.map((e) => ({ ...e, id: createId(), resumeId: id }))
-          )
-
-        await tx.insert(school).values(
-          education.map((e) => ({
-            ...e,
-            id: createId(),
-            name: e.name,
-            resumeId: id
-          }))
-        )
-
-        return id
-      })
-
-      return { resumeId }
-    })
 })

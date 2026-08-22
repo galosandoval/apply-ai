@@ -5,5 +5,6 @@ export const appPath = {
   experience: "/onboarding/experience",
   skills: "/onboarding/skills",
   dashboard: "/dashboard",
-  resume: "/resume"
+  resume: "/resume",
+  resumeById: (resumeId: string) => `/resume/${resumeId}`
 } as const

@@ -14,65 +14,34 @@ import {
   extractPdfText,
   extractResumeFields,
   type ParsedResume
-} from "./resume-pdf"
+} from "./parse-resume-pdf"
 
-/**
- * Business rules for the profile aggregate.
- *
- * Services take a `userId` rather than a session, own every ownership check and
- * transaction boundary, and are the only layer that raises `TRPCError`.
- */
+// Business rules for the profile aggregate.
+//
+// Services take a `userId` rather than a session, own every transaction
+// boundary, and are the only layer that raises `TRPCError`.
+//
+// There are no ownership checks left here. Every row the profile owns is keyed
+// by `userId`, and `userId` comes from the session — so a client cannot name a
+// row it doesn't own, rather than naming one and being told no.
 
 const notFound = (message: string) =>
   new TRPCError({ code: "NOT_FOUND", message })
 
-/**
- * Being signed in doesn't imply owning the row the client named, so every id
- * that arrives from input has to be checked before it reaches a `WHERE`.
- *
- * Throws NOT_FOUND rather than FORBIDDEN so callers can't probe which ids exist.
- */
-async function assertOwnsProfile(
-  db: DbOrTx,
-  userId: string,
-  profileId: string
-) {
-  const owned = await repo.findOwnedById(db, profileId, userId)
-
-  if (!owned) throw notFound("Profile not found")
-}
-
-/**
- * Ids arrive both at the top level of an input and on each nested row. Every
- * one of them ends up in a `WHERE`, so all of them need checking.
- */
-async function assertOwnsEveryProfile(
-  db: DbOrTx,
-  userId: string,
-  ids: (string | null | undefined)[]
-) {
-  const unique = new Set(ids.filter((id): id is string => !!id))
-
-  for (const id of unique) {
-    await assertOwnsProfile(db, userId, id)
-  }
-}
-
-/** The profile aggregate: profile row plus contact, education, experience, skills. */
+/** The profile aggregate: the user's row plus contact, education, experience, skills. */
 export async function read(db: Database, userId: string) {
   const found = await repo.findByUserId(db, userId)
 
-  if (!found) throw notFound("Profile not found")
+  if (!found) throw notFound("User not found")
 
-  const [email, contact, education, experience, skills] = await Promise.all([
-    repo.findEmailByUserId(db, userId),
-    repo.findContact(db, found.id),
-    repo.findEducation(db, found.id),
-    repo.findExperience(db, found.id),
-    repo.findSkills(db, found.id)
+  const [contact, education, experience, skills] = await Promise.all([
+    repo.findContact(db, userId),
+    repo.findEducation(db, userId),
+    repo.findExperience(db, userId),
+    repo.findSkills(db, userId)
   ])
 
-  return { ...found, email, contact, education, experience, skills }
+  return { ...found, contact, education, experience, skills }
 }
 
 export async function upsertNameAndContact(
@@ -80,30 +49,13 @@ export async function upsertNameAndContact(
   userId: string,
   input: UpsertNameAndContactInput
 ) {
-  const {
-    id: profileId,
-    firstName,
-    lastName,
-    profession,
-    linkedIn,
-    location,
-    phone,
-    portfolio
-  } = input
+  const { firstName, lastName, profession, linkedIn, location, phone, portfolio } =
+    input
 
-  if (!profileId) {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Profile ID not found"
-    })
-  }
-
-  await assertOwnsProfile(db, userId, profileId)
-
-  // The name lives on `profile` and the rest on `contact`; a half-applied save
+  // The name lives on `user` and the rest on `contact`; a half-applied save
   // would show the user a form that disagrees with itself.
   return db.transaction(async (tx) => {
-    const updated = await repo.updateNameAndProfession(tx, profileId, {
+    const updated = await repo.updateNameAndProfession(tx, userId, {
       firstName,
       lastName,
       profession
@@ -117,14 +69,14 @@ export async function upsertNameAndContact(
     }
 
     const contactValues = { linkedIn, location, phone, portfolio }
-    const existing = await repo.findContact(tx, profileId)
+    const existing = await repo.findContact(tx, userId)
 
     const saved = existing
-      ? await repo.updateContact(tx, profileId, contactValues)
+      ? await repo.updateContact(tx, userId, contactValues)
       : await repo.insertContact(tx, {
           ...contactValues,
           id: createId(),
-          profileId
+          userId
         })
 
     if (!saved) {
@@ -143,9 +95,7 @@ export async function updateDetails(
   userId: string,
   input: UpdateDetailsInput
 ) {
-  const { profession, interests, introduction } = input
-
-  return repo.updateDetails(db, userId, { profession, interests, introduction })
+  return repo.updateDetails(db, userId, { profession: input.profession })
 }
 
 /** Replaces the profile's education with `input.education`. */
@@ -154,21 +104,15 @@ export async function replaceEducation(
   userId: string,
   input: AddEducationInput
 ) {
-  const { education, profileId } = input
-
-  await assertOwnsEveryProfile(db, userId, [
-    profileId,
-    ...education.map((e) => e.profileId)
-  ])
-
-  const schoolsToInsert = education.map((e) => ({
+  const schoolsToInsert = input.education.map((e, position) => ({
     ...e,
-    id: e?.id ? e.id : createId(),
-    keyAchievements: []
+    id: e.id ?? createId(),
+    position,
+    userId
   }))
 
   return db.transaction(async (tx) => {
-    if (profileId) await repo.deleteEducation(tx, profileId)
+    await repo.deleteEducation(tx, userId)
 
     return repo.upsertEducation(tx, schoolsToInsert)
   })
@@ -180,25 +124,19 @@ export async function replaceExperience(
   userId: string,
   input: AddExperienceInput
 ) {
-  const { experience, profileId } = input
-
-  await assertOwnsEveryProfile(db, userId, [
-    profileId,
-    ...experience.map((e) => e.profileId)
-  ])
-
-  const workToInsert = experience.map((e) => ({
-    id: e?.id ? e.id : createId(),
+  const workToInsert = input.experience.map((e, position) => ({
+    id: e.id ?? createId(),
+    position,
     name: e.name,
-    description: e.description,
+    bullets: e.bullets,
     endDate: e.endDate,
     startDate: e.startDate,
     title: e.title,
-    profileId: e.profileId
+    userId
   }))
 
   return db.transaction(async (tx) => {
-    if (profileId) await repo.deleteExperience(tx, profileId)
+    await repo.deleteExperience(tx, userId)
 
     return repo.upsertExperience(tx, workToInsert)
   })
@@ -215,10 +153,6 @@ export async function importFromPdf(
   userId: string,
   input: ImportFromPdfInput
 ) {
-  const found = await repo.findByUserId(db, userId)
-
-  if (!found) throw notFound("Profile not found")
-
   // A PDF we can't read is the user's problem to fix (wrong file, a scan); a
   // failed extraction is ours. They need different messages.
   const text = await extractPdfText(
@@ -240,7 +174,7 @@ export async function importFromPdf(
     })
   })
 
-  await db.transaction((tx) => writeParsedResume(tx, userId, found.id, parsed))
+  await db.transaction((tx) => writeParsedResume(tx, userId, parsed))
 
   return {
     experience: parsed.experience.length,
@@ -252,18 +186,12 @@ export async function importFromPdf(
 async function writeParsedResume(
   tx: DbOrTx,
   userId: string,
-  profileId: string,
   parsed: ParsedResume
 ) {
-  await repo.updateNameAndProfession(tx, profileId, {
+  await repo.updateNameAndProfession(tx, userId, {
     firstName: parsed.firstName,
     lastName: parsed.lastName,
     profession: parsed.profession
-  })
-
-  await repo.updateDetails(tx, userId, {
-    profession: parsed.profession,
-    introduction: parsed.introduction
   })
 
   const contactValues = {
@@ -273,33 +201,43 @@ async function writeParsedResume(
     portfolio: parsed.portfolio
   }
 
-  const existingContact = await repo.findContact(tx, profileId)
+  const existingContact = await repo.findContact(tx, userId)
 
   if (existingContact) {
-    await repo.updateContact(tx, profileId, contactValues)
+    await repo.updateContact(tx, userId, contactValues)
   } else {
     await repo.insertContact(tx, {
       ...contactValues,
       id: createId(),
-      profileId
+      userId
     })
   }
 
-  await repo.deleteExperience(tx, profileId)
-  await repo.deleteEducation(tx, profileId)
-  await repo.deleteSkills(tx, profileId)
+  await repo.deleteExperience(tx, userId)
+  await repo.deleteEducation(tx, userId)
+  await repo.deleteSkills(tx, userId)
 
   if (parsed.experience.length) {
     await repo.upsertExperience(
       tx,
-      parsed.experience.map((e) => ({ ...e, id: createId(), profileId }))
+      parsed.experience.map((e, position) => ({
+        ...e,
+        id: createId(),
+        position,
+        userId
+      }))
     )
   }
 
   if (parsed.education.length) {
     await repo.upsertEducation(
       tx,
-      parsed.education.map((e) => ({ ...e, id: createId(), profileId }))
+      parsed.education.map((e, position) => ({
+        ...e,
+        id: createId(),
+        position,
+        userId
+      }))
     )
   }
 
@@ -310,7 +248,7 @@ async function writeParsedResume(
         ...s,
         position,
         id: createId(),
-        profileId
+        userId
       }))
     )
   }
@@ -322,15 +260,13 @@ export async function replaceSkills(
   userId: string,
   input: ReplaceSkillsInput
 ) {
-  const { skills, profileId } = input
-
-  await assertOwnsProfile(db, userId, profileId)
-
   await db.transaction(async (tx) => {
-    await repo.deleteSkills(tx, profileId)
+    await repo.deleteSkills(tx, userId)
     await repo.insertSkills(
       tx,
-      skills.map((s) => ({ ...s, profileId, id: createId() }))
+      // Reuse the id the form sent back so a skill keeps its identity across
+      // saves; this delete-and-reinsert would otherwise mint a new one each time.
+      input.skills.map((s) => ({ ...s, userId, id: s.id ?? createId() }))
     )
   })
 
