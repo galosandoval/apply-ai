@@ -7,6 +7,7 @@ import {
   type ResumeDocumentData
 } from "~/components/resume-document"
 import { Button } from "~/components/ui/button"
+import { useResumeRenderMode } from "~/components/use-resume-render-mode"
 import { useAppForm } from "~/components/use-app-form"
 import {
   type DownloadPdfSchema,
@@ -35,6 +36,8 @@ export function GeneratedResumeView({
 }) {
   const [savedResumeId, setSavedResumeId] = useState("")
   const [isDownloading, setIsDownloading] = useState(false)
+
+  const renderMode = useResumeRenderMode()
 
   const { mutate, isPending } = api.resume.create.useMutation({
     onSuccess: (data) => {
@@ -105,7 +108,11 @@ export function GeneratedResumeView({
       onSubmit={handleSubmit(onSubmitSaveResume)}
       className="flex flex-col items-center gap-4 overflow-y-auto pt-16"
     >
-      <ResumeDocument data={resumeData} onEdit={handleEditField} />
+      <ResumeDocument
+        data={resumeData}
+        mode={renderMode}
+        onEdit={handleEditField}
+      />
 
       <div className="flex gap-2 pb-12">
         <Button loading={isPending} type="submit">

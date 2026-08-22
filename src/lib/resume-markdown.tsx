@@ -122,9 +122,7 @@ function renderInline(text: string): ReactNode[] {
 
   if (cursor < text.length) nodes.push(text.slice(cursor))
 
-  return nodes.map((node, index) => (
-    <Fragment key={index}>{node}</Fragment>
-  ))
+  return nodes.map((node, index) => <Fragment key={index}>{node}</Fragment>)
 }
 
 /**

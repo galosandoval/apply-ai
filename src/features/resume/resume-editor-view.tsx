@@ -8,6 +8,7 @@ import {
   type ResumeDocumentData,
   type ResumeFieldPath
 } from "~/components/resume-document"
+import { useResumeRenderMode } from "~/components/use-resume-render-mode"
 import {
   formatResumeFieldPath,
   isEditableResumePath,
@@ -35,6 +36,7 @@ export function ResumeEditorView() {
 
 function Editor({ resumeId }: { resumeId: string }) {
   const { resume, errorMessage, isSaving, onEdit } = useEditableResume(resumeId)
+  const mode = useResumeRenderMode()
 
   if (errorMessage) {
     return (
@@ -53,9 +55,10 @@ function Editor({ resumeId }: { resumeId: string }) {
       </p>
 
       <ResumeDocument
-        data={toDocumentData(resume)}
-        onEdit={onEdit}
         canEditPath={isEditableResumePath}
+        data={toDocumentData(resume)}
+        mode={mode}
+        onEdit={onEdit}
       />
     </main>
   )
@@ -303,6 +306,8 @@ function toDocumentData(resume: SavedResume): ResumeDocumentData {
     contact: resume.contact,
     skill: resume.skill,
     experience: resume.experience,
-    education: resume.education
+    education: resume.education,
+    // What is drawn and in what order is data now, not JSX order.
+    sections: resume.sections
   }
 }

@@ -27,7 +27,10 @@ const config = {
         component names a size, a spacing step or a rule weight directly.
       */
       fontSize: {
-        "resume-name": ["var(--resume-text-name)", "var(--resume-leading-name)"],
+        "resume-name": [
+          "var(--resume-text-name)",
+          "var(--resume-leading-name)"
+        ],
         "resume-title": [
           "var(--resume-text-title)",
           "var(--resume-leading-title)"
@@ -59,6 +62,9 @@ const config = {
         sans: ["var(--font-geist-sans)"]
       },
       colors: {
+        "resume-muted": "var(--resume-ink-muted)",
+        "resume-link": "var(--resume-ink-link)",
+        "resume-tag-surface": "var(--resume-tag-surface)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

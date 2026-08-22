@@ -86,7 +86,7 @@ export function ResumeSection({
       </div>
 
       {isEmpty ? (
-        <p className={`${marker.placeholder} text-neutral-400`}>
+        <p className={`${marker.placeholder} text-resume-muted`}>
           Nothing here yet
         </p>
       ) : (
@@ -112,7 +112,13 @@ function isEmptyShape(shape: SectionShape) {
   }
 }
 
-function SectionBody({ shape, mode }: { shape: SectionShape; mode: RenderMode }) {
+function SectionBody({
+  shape,
+  mode
+}: {
+  shape: SectionShape
+  mode: RenderMode
+}) {
   switch (shape.componentType) {
     case "richText":
       return <RichText markdown={shape.markdown} />
@@ -130,7 +136,9 @@ function SectionBody({ shape, mode }: { shape: SectionShape; mode: RenderMode })
 /** Bold, links and bullet lists. Everything else is text — see the parser. */
 function RichText({ markdown }: { markdown: string }) {
   return (
-    <div className="space-y-resume-inline">{renderResumeMarkdown(markdown)}</div>
+    <div className="space-y-resume-inline">
+      {renderResumeMarkdown(markdown)}
+    </div>
   )
 }
 
@@ -224,7 +232,7 @@ function TagList({ tags }: { tags: { key: string; label: ReactNode }[] }) {
     <ul className="flex flex-wrap gap-resume-inline">
       {tags.map((tag) => (
         <li
-          className={`${marker.tag} rounded-resume-tag bg-neutral-200 px-resume-tag-x py-resume-tag-y`}
+          className={`${marker.tag} rounded-resume-tag bg-resume-tag-surface px-resume-tag-x py-resume-tag-y`}
           key={tag.key}
         >
           {tag.label}

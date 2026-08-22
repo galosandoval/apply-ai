@@ -9,6 +9,7 @@ import {
   type ResumeDocumentData,
   type ResumeFieldPath
 } from "~/components/resume-document"
+import { type RenderMode } from "~/components/resume-section"
 
 /**
  * The resume template, wired for editing.
@@ -23,10 +24,13 @@ import {
  */
 export function ResumeDocument({
   data,
+  mode = "page",
   onEdit = null,
   canEditPath = () => true
 }: {
   data: ResumeDocumentData
+  /** The A4 page, or the phone. Same data either way. */
+  mode?: RenderMode
   onEdit?: OnEditField | null
   canEditPath?: (path: ResumeFieldPath) => boolean
 }) {
@@ -36,6 +40,8 @@ export function ResumeDocument({
     <BaseResumeDocument
       data={data}
       canEditPath={isEditable}
+      isEditor={!!onEdit}
+      mode={mode}
       renderField={(props) =>
         onEdit && isEditable(props.path) ? (
           <Editable key={props.path} {...props} onEdit={onEdit} />

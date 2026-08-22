@@ -1,7 +1,37 @@
 import { Fragment, type ReactNode } from "react"
 import { type FieldPath, type FieldPathValue } from "react-hook-form"
 import { PlainField } from "~/components/plain-field"
+import {
+  type ListGroup,
+  type RenderMode,
+  ResumeSection,
+  type SectionShape,
+  type TwoColumnRow
+} from "~/components/resume-section"
+import { customSectionShape } from "~/lib/custom-section-shape"
+import {
+  type CoreSectionKind,
+  coreSectionDefaults,
+  isCoreSectionKind
+} from "~/lib/section-content"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
+
+/**
+ * One section of the document as it is drawn.
+ *
+ * `kind` and `componentType` are `string` rather than their unions because that
+ * is what the column holds: the renderer is what a row with junk in it reaches,
+ * so it narrows rather than assumes.
+ */
+export type ResumeDocumentSection = {
+  id: string
+  kind: string
+  label: string
+  componentType: string
+  position: number
+  /** Custom sections only — a core section's content is its typed rows. */
+  content?: unknown
+}
 
 /**
  * Everything the resume template renders. Deliberately not a Zod-derived type:
@@ -15,7 +45,22 @@ export type ResumeDocumentData = {
   skill: InsertResumeSchema["skill"]
   experience: InsertResumeSchema["experience"]
   education: InsertResumeSchema["education"]
+  /**
+   * The sections to draw, in `position` order. Optional because the draft
+   * preview is editing a resume that does not exist yet and the PDF payload
+   * carries none — both fall back to the order a new resume is created with.
+   */
+  sections?: ResumeDocumentSection[]
 }
+
+/**
+ * The document minus its sections.
+ *
+ * A section is addressed by id through its own grammar (`section.<id>.label`),
+ * not by array index, so admitting `sections.0.kind` into the path type would
+ * offer click targets no writer accepts.
+ */
+type ResumeDocumentFields = Omit<ResumeDocumentData, "sections">
 
 /**
  * The address of a single editable string, e.g. `experience.0.bullets.2`.
@@ -32,12 +77,12 @@ export type ResumeDocumentData = {
  * document is what a path addresses.
  */
 export type ResumeFieldPath = {
-  [Path in FieldPath<ResumeDocumentData>]: NonNullable<
-    FieldPathValue<ResumeDocumentData, Path>
+  [Path in FieldPath<ResumeDocumentFields>]: NonNullable<
+    FieldPathValue<ResumeDocumentFields, Path>
   > extends string
     ? Path
     : never
-}[FieldPath<ResumeDocumentData>]
+}[FieldPath<ResumeDocumentFields>]
 
 export type OnEditField = (path: ResumeFieldPath, value: string) => void
 
@@ -75,11 +120,24 @@ export function readTextAtPath(data: ResumeDocumentData, path: string) {
 }
 
 /**
+ * The sections a resume is drawn with before it has any of its own — an unsaved
+ * draft, or a PDF payload.
+ *
+ * Derived from the same list the server creates a resume's rows from, so a
+ * draft and the resume it becomes render the same document.
+ */
+const defaultSections: ResumeDocumentSection[] = coreSectionDefaults.map(
+  (section, position) => ({ ...section, id: section.kind, position })
+)
+
+/**
  * Everything the sections need, passed as one prop rather than through context
  * — context is a client-only API, and this tree renders on the server too.
  */
 type Doc = {
   data: ResumeDocumentData
+  mode: RenderMode
+  isEditor: boolean
   renderField: FieldRenderer
   canEditPath: (path: ResumeFieldPath) => boolean
 }
@@ -90,36 +148,62 @@ type Doc = {
  * PDF so all three stay in agreement.
  *
  * Read-only by default. `renderField` and `canEditPath` together are what make
- * it an editor.
+ * it an editor; `isEditor` is the document-level half of the same question, for
+ * the sections that have no field of their own to ask about.
  */
 export function ResumeDocument({
   data,
+  mode = "page",
+  isEditor = false,
   renderField = PlainField,
   canEditPath = () => false
 }: {
   data: ResumeDocumentData
+  mode?: RenderMode
+  isEditor?: boolean
   renderField?: FieldRenderer
   canEditPath?: (path: ResumeFieldPath) => boolean
 }) {
-  const doc: Doc = { data, renderField, canEditPath }
+  const doc: Doc = { data, mode, isEditor, renderField, canEditPath }
+
+  // Sorted here rather than trusted from the caller: render order is data, and
+  // this is the one place that decides what the data means.
+  const sections = [...(data.sections ?? defaultSections)].sort(
+    (left, right) => left.position - right.position
+  )
 
   return (
     /*
       Normal flow, not a fixed `h-[29.7cm]` with `overflow-hidden`: content past
       the first page used to be silently deleted from the document. The page
-      still has a printable width; height is whatever the content needs, and
-      `break-inside: avoid` keeps a job off a page boundary.
+      still has a printable width in page mode; height is whatever the content
+      needs, and `break-inside: avoid` on each entry keeps a job off a page
+      boundary.
     */
-    <div className="w-[21cm] rounded-md bg-white px-10 py-8 text-10pt">
+    <div className={documentClassName(mode)}>
       <Header doc={doc} />
 
-      <Skills doc={doc} />
-
-      <Experience doc={doc} />
-
-      <Education doc={doc} />
+      {sections.map((section) => (
+        <DocumentSection doc={doc} key={section.id} section={section} />
+      ))}
     </div>
   )
+}
+
+/**
+ * The page, or the phone.
+ *
+ * Reflow only swaps the width and turns the token overrides on — everything
+ * below it reads the same tokens, which is why the two modes cannot disagree
+ * about what the document says.
+ */
+function documentClassName(mode: RenderMode) {
+  const shared =
+    "resume-page bg-white px-resume-page-x py-resume-page-y text-resume-body"
+
+  return mode === "page"
+    ? `${shared} w-resume-page rounded-md`
+    : `${shared} resume-reflow w-full`
 }
 
 /** Draws one field, reading its text out of the document data by path. */
@@ -137,6 +221,161 @@ function Field({
       })}
     </Fragment>
   )
+}
+
+/**
+ * One section, drawn as whichever shape it configures.
+ *
+ * A core section is dispatched on its `kind` and fed by its typed rows; a
+ * custom one is dispatched on its `componentType` and fed by its own content.
+ * Neither gets a renderer of its own — that is the whole point.
+ */
+function DocumentSection({
+  doc,
+  section
+}: {
+  doc: Doc
+  section: ResumeDocumentSection
+}) {
+  const shape = isCoreSectionKind(section.kind)
+    ? coreShape(doc, section.kind)
+    : customSectionShape(section.componentType, section.content)
+
+  if (!shape) return null
+
+  return (
+    <ResumeSection
+      isEditor={doc.isEditor}
+      label={section.label}
+      mode={doc.mode}
+      shape={shape}
+    />
+  )
+}
+
+/**
+ * A core section as a pre-configured instance of a base shape.
+ *
+ * Its structure is fixed and its content comes from its typed rows — a user
+ * cannot restructure Experience through the renderer, which is what keeps it
+ * machine-readable for the scoring work.
+ */
+function coreShape(doc: Doc, kind: CoreSectionKind): SectionShape {
+  switch (kind) {
+    case "experience":
+      return { componentType: "twoColumn", rows: experienceRows(doc) }
+    case "education":
+      return { componentType: "twoColumn", rows: educationRows(doc) }
+    case "skills":
+      return { componentType: "list", groups: skillGroups(doc) }
+  }
+}
+
+function experienceRows(doc: Doc): TwoColumnRow[] {
+  return doc.data.experience.map((job, index) =>
+    entryRow(doc, {
+      key: job.id ?? String(index),
+      startPath: `experience.${index}.startDate`,
+      endPath: `experience.${index}.endDate`,
+      namePath: `experience.${index}.name`,
+      detailPath: `experience.${index}.title`,
+      body: (
+        <ul className="list-disc pl-resume-bullet">
+          {job.bullets.map((_, bulletIndex) => (
+            <Field
+              as="li"
+              doc={doc}
+              key={bulletIndex}
+              multiline
+              path={`experience.${index}.bullets.${bulletIndex}`}
+            />
+          ))}
+        </ul>
+      )
+    })
+  )
+}
+
+function educationRows(doc: Doc): TwoColumnRow[] {
+  return doc.data.education.map((school, index) =>
+    entryRow(doc, {
+      key: school.id ?? String(index),
+      startPath: `education.${index}.startDate`,
+      endPath: `education.${index}.endDate`,
+      namePath: `education.${index}.name`,
+      detailPath: `education.${index}.degree`,
+      body: (
+        <Field
+          as="p"
+          doc={doc}
+          multiline
+          path={`education.${index}.description`}
+        />
+      )
+    })
+  )
+}
+
+/**
+ * One chronology entry: dates on the left, and on the right a bold name, the
+ * role or degree beside it, then the entry's body.
+ *
+ * Experience and Education differ only in what the second heading field is
+ * called and what the body is, so they share the shape rather than each holding
+ * a copy that a style change would have to find twice.
+ *
+ * Paths arrive built rather than assembled from a stem here: `ResumeFieldPath`
+ * only checks a template literal at the site that writes it, and that check is
+ * the whole reason a path is typed.
+ */
+function entryRow(
+  doc: Doc,
+  {
+    key,
+    startPath,
+    endPath,
+    namePath,
+    detailPath,
+    body
+  }: {
+    key: string
+    startPath: ResumeFieldPath
+    endPath: ResumeFieldPath
+    namePath: ResumeFieldPath
+    detailPath: ResumeFieldPath
+    body: ReactNode
+  }
+): TwoColumnRow {
+  return {
+    key,
+    left: <DateRange doc={doc} endPath={endPath} startPath={startPath} />,
+    right: (
+      <>
+        <div className="font-semibold">
+          <Field doc={doc} path={namePath} />,{" "}
+          <Field className="font-normal italic" doc={doc} path={detailPath} />
+        </div>
+
+        {body}
+      </>
+    )
+  }
+}
+
+/**
+ * Skills as labelled groups — the category is the label, and the group's line
+ * is its one entry.
+ *
+ * One entry rather than one per skill because `skill.<row>.all` is a single
+ * editable string: splitting it here would give the same content two
+ * representations, which is the thing the component set exists to avoid.
+ */
+function skillGroups(doc: Doc): ListGroup[] {
+  return doc.data.skill.map((group, index) => ({
+    key: group.id ?? String(index),
+    label: <Field doc={doc} path={`skill.${index}.category`} />,
+    items: [<Field doc={doc} key="all" multiline path={`skill.${index}.all`} />]
+  }))
 }
 
 function Header({ doc }: { doc: Doc }) {
@@ -157,147 +396,29 @@ function Header({ doc }: { doc: Doc }) {
   )
 
   return (
-    <div className="flex flex-col items-center pb-2">
+    <div className="flex flex-col items-center pb-resume-inline">
       <div className="justify-self-center">
         <Field
+          as="h1"
+          className="text-resume-name font-bold"
           doc={doc}
           path="contact.fullName"
-          as="h1"
-          className="text-24pt font-bold"
         />
       </div>
 
       <Field
+        as="h2"
+        className="text-resume-title font-bold tracking-wide"
         doc={doc}
         path="profession"
-        as="h2"
-        className="text-14pt font-bold tracking-wide"
       />
 
-      <div className="mx-auto flex gap-1 text-center">
+      <div className="mx-auto flex flex-wrap justify-center gap-resume-inline text-center">
         {contactFields.map((field, index) => (
           <Fragment key={field.path}>
             <ContactLine doc={doc} path={field.path} value={field.value} />
             {index !== contactFields.length - 1 && <span>&bull;</span>}
           </Fragment>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <>
-      <h2 className="text-11pt font-semibold uppercase">{title}</h2>
-      <div className="pb-2 pt-1">
-        <hr className="h-[2px] rounded border-0 bg-black" />
-      </div>
-    </>
-  )
-}
-
-function Skills({ doc }: { doc: Doc }) {
-  return (
-    <div className="pb-4">
-      <SectionTitle title="Skills" />
-
-      <div>
-        {doc.data.skill.map((group, index) => (
-          <div className="flex gap-1" key={group.id ?? index}>
-            <Field
-              doc={doc}
-              path={`skill.${index}.category`}
-              as="h3"
-              className="whitespace-nowrap font-semibold"
-            />
-            <Field
-              doc={doc}
-              path={`skill.${index}.all`}
-              as="p"
-              multiline
-              className="flex-1"
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Experience({ doc }: { doc: Doc }) {
-  return (
-    <div className="pb-4">
-      <SectionTitle title="Experience" />
-
-      <div className="space-y-4">
-        {doc.data.experience.map((job, index) => (
-          <div className="break-inside-avoid" key={job.id ?? index}>
-            <div className="flex justify-between">
-              <div className="font-semibold">
-                <Field doc={doc} path={`experience.${index}.name`} />,{" "}
-                <Field
-                  doc={doc}
-                  path={`experience.${index}.title`}
-                  className="font-normal italic"
-                />
-              </div>
-
-              <DateRange
-                doc={doc}
-                startPath={`experience.${index}.startDate`}
-                endPath={`experience.${index}.endDate`}
-              />
-            </div>
-            <ul className="list-disc pl-10">
-              {job.bullets.map((_, bulletIndex) => (
-                <Field
-                  doc={doc}
-                  key={bulletIndex}
-                  path={`experience.${index}.bullets.${bulletIndex}`}
-                  as="li"
-                  multiline
-                />
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Education({ doc }: { doc: Doc }) {
-  return (
-    <div>
-      <SectionTitle title="Education" />
-
-      <div className="space-y-2">
-        {doc.data.education.map((school, index) => (
-          <div className="break-inside-avoid" key={school.id ?? index}>
-            <div className="flex justify-between">
-              <div className="font-semibold">
-                <Field doc={doc} path={`education.${index}.name`} />,{" "}
-                <Field
-                  doc={doc}
-                  path={`education.${index}.degree`}
-                  className="font-normal italic"
-                />
-              </div>
-
-              <DateRange
-                doc={doc}
-                startPath={`education.${index}.startDate`}
-                endPath={`education.${index}.endDate`}
-              />
-            </div>
-            <Field
-              doc={doc}
-              path={`education.${index}.description`}
-              as="p"
-              multiline
-            />
-          </div>
         ))}
       </div>
     </div>
@@ -360,10 +481,10 @@ function toHref(value: string) {
 function ContactLink({ href, label }: { href: string; label: string }) {
   return (
     <a
-      className="text-blue-600 underline"
+      className="text-resume-link underline"
       href={href}
-      target="_blank"
       rel="noreferrer"
+      target="_blank"
     >
       {label}
     </a>

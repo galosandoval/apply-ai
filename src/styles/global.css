@@ -72,6 +72,10 @@
     --resume-rule-weight: 2px;
     --resume-rule-gap: 0.25rem;
 
+    --resume-ink-muted: #a3a3a3;
+    --resume-ink-link: #2563eb;
+    --resume-tag-surface: #e5e5e5;
+
     --resume-tag-space-x: 0.5rem;
     --resume-tag-space-y: 0.125rem;
     --resume-tag-radius: 0.25rem;

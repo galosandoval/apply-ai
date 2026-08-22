@@ -3,6 +3,7 @@ import {
   type ResumeDocumentData,
   type ResumeDocumentSection
 } from "~/components/resume-document"
+import { coreSectionDefaults } from "~/lib/section-content"
 import { renderResumeHtml } from "./resume-html"
 
 /**
@@ -63,7 +64,9 @@ const baseData: Omit<ResumeDocumentData, "sections"> = {
   ]
 }
 
-const withSections = (sections: ResumeDocumentSection[]): ResumeDocumentData => ({
+const withSections = (
+  sections: ResumeDocumentSection[]
+): ResumeDocumentData => ({
   ...baseData,
   sections
 })
@@ -72,9 +75,30 @@ describe("core sections", () => {
   it("renders each core kind from its own typed rows", async () => {
     const html = await renderResumeHtml(
       withSections([
-        section({ id: "a", kind: "skills", label: "Skills", componentType: "list", position: 0, content: null }),
-        section({ id: "b", kind: "experience", label: "Experience", componentType: "twoColumn", position: 1, content: null }),
-        section({ id: "c", kind: "education", label: "Education", componentType: "twoColumn", position: 2, content: null })
+        section({
+          id: "a",
+          kind: "skills",
+          label: "Skills",
+          componentType: "list",
+          position: 0,
+          content: null
+        }),
+        section({
+          id: "b",
+          kind: "experience",
+          label: "Experience",
+          componentType: "twoColumn",
+          position: 1,
+          content: null
+        }),
+        section({
+          id: "c",
+          kind: "education",
+          label: "Education",
+          componentType: "twoColumn",
+          position: 2,
+          content: null
+        })
       ])
     )
 
@@ -86,7 +110,14 @@ describe("core sections", () => {
   it("renders Experience as the same two-column shape a custom section gets", async () => {
     const core = await renderResumeHtml(
       withSections([
-        section({ id: "b", kind: "experience", label: "Experience", componentType: "twoColumn", position: 0, content: null })
+        section({
+          id: "b",
+          kind: "experience",
+          label: "Experience",
+          componentType: "twoColumn",
+          position: 0,
+          content: null
+        })
       ])
     )
 
@@ -111,7 +142,14 @@ describe("core sections", () => {
   it("renders Skills as labelled groups", async () => {
     const html = await renderResumeHtml(
       withSections([
-        section({ id: "a", kind: "skills", label: "Skills", componentType: "list", position: 0, content: null })
+        section({
+          id: "a",
+          kind: "skills",
+          label: "Skills",
+          componentType: "list",
+          position: 0,
+          content: null
+        })
       ])
     )
 
@@ -139,13 +177,79 @@ describe("core sections", () => {
   })
 })
 
+describe("a document with no sections of its own", () => {
+  it("falls back to exactly the sections a new resume is created with", async () => {
+    // An unsaved draft and a PDF payload carry none. They must render what the
+    // resume will render once it is saved, or the two drift — which is the
+    // whole reason both sides read one list.
+    const html = await renderResumeHtml(baseData)
+
+    const positions = coreSectionDefaults.map((core) =>
+      html.indexOf(`>${core.label}<`)
+    )
+
+    expect(positions.every((at) => at > -1)).toBe(true)
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+  })
+})
+
+describe("a section whose content disagrees with its component", () => {
+  it("draws nothing rather than half a section", async () => {
+    const html = await renderResumeHtml(
+      withSections([
+        section({
+          id: "g",
+          label: "Strengths",
+          componentType: "tagList",
+          // A rich-text payload on a tag-list section.
+          content: { markdown: "not a tag list" }
+        })
+      ])
+    )
+
+    expect(html).not.toContain("Strengths")
+    expect(html).not.toContain("not a tag list")
+  })
+
+  it("draws nothing for a component type that does not exist", async () => {
+    const html = await renderResumeHtml(
+      withSections([
+        section({ id: "z", label: "Mystery", componentType: "carousel" })
+      ])
+    )
+
+    expect(html).not.toContain("Mystery")
+  })
+})
+
 describe("section order and labels", () => {
   it("draws sections in position order, not in the order of the array", async () => {
     const html = await renderResumeHtml(
       withSections([
-        section({ id: "c", kind: "education", label: "Education", componentType: "twoColumn", position: 2, content: null }),
-        section({ id: "a", kind: "skills", label: "Skills", componentType: "list", position: 1, content: null }),
-        section({ id: "b", kind: "experience", label: "Experience", componentType: "twoColumn", position: 0, content: null })
+        section({
+          id: "c",
+          kind: "education",
+          label: "Education",
+          componentType: "twoColumn",
+          position: 2,
+          content: null
+        }),
+        section({
+          id: "a",
+          kind: "skills",
+          label: "Skills",
+          componentType: "list",
+          position: 1,
+          content: null
+        }),
+        section({
+          id: "b",
+          kind: "experience",
+          label: "Experience",
+          componentType: "twoColumn",
+          position: 0,
+          content: null
+        })
       ])
     )
 
@@ -156,7 +260,13 @@ describe("section order and labels", () => {
   it("shows the name the user gave a section, not its kind", async () => {
     const html = await renderResumeHtml(
       withSections([
-        section({ id: "b", kind: "experience", label: "Work History", componentType: "twoColumn", content: null })
+        section({
+          id: "b",
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn",
+          content: null
+        })
       ])
     )
 
@@ -168,7 +278,12 @@ describe("rich text", () => {
   const render = (markdown: string) =>
     renderResumeHtml(
       withSections([
-        section({ id: "r", label: "Summary", componentType: "richText", content: { markdown } })
+        section({
+          id: "r",
+          label: "Summary",
+          componentType: "richText",
+          content: { markdown }
+        })
       ])
     )
 
@@ -284,7 +399,12 @@ describe("the other component shapes", () => {
 
 describe("empty sections", () => {
   const empty = withSections([
-    section({ id: "r", label: "Summary", componentType: "richText", content: { markdown: "" } })
+    section({
+      id: "r",
+      label: "Summary",
+      componentType: "richText",
+      content: { markdown: "" }
+    })
   ])
 
   it("renders nothing in the document", async () => {
@@ -303,8 +423,22 @@ describe("empty sections", () => {
 
 describe("page mode and reflow mode", () => {
   const data = withSections([
-    section({ id: "a", kind: "skills", label: "Skills", componentType: "list", position: 0, content: null }),
-    section({ id: "b", kind: "experience", label: "Experience", componentType: "twoColumn", position: 1, content: null }),
+    section({
+      id: "a",
+      kind: "skills",
+      label: "Skills",
+      componentType: "list",
+      position: 0,
+      content: null
+    }),
+    section({
+      id: "b",
+      kind: "experience",
+      label: "Experience",
+      componentType: "twoColumn",
+      position: 1,
+      content: null
+    }),
     section({
       id: "g",
       label: "Strengths",
@@ -344,8 +478,22 @@ describe("page mode and reflow mode", () => {
 
 describe("structural invariants", () => {
   const data = withSections([
-    section({ id: "a", kind: "skills", label: "Skills", componentType: "list", position: 0, content: null }),
-    section({ id: "b", kind: "experience", label: "Experience", componentType: "twoColumn", position: 1, content: null }),
+    section({
+      id: "a",
+      kind: "skills",
+      label: "Skills",
+      componentType: "list",
+      position: 0,
+      content: null
+    }),
+    section({
+      id: "b",
+      kind: "experience",
+      label: "Experience",
+      componentType: "twoColumn",
+      position: 1,
+      content: null
+    }),
     section({
       id: "i",
       label: "Hobbies",
