@@ -40,9 +40,7 @@ export const auth = betterAuth({
     additionalFields: {
       firstName: { type: "string", required: false, input: false },
       lastName: { type: "string", required: false, input: false },
-      profession: { type: "string", required: false, input: false },
-      introduction: { type: "string", required: false, input: false },
-      interests: { type: "string", required: false, input: false }
+      profession: { type: "string", required: false, input: false }
     }
   },
 

@@ -11,7 +11,15 @@ import {
   testDatabaseUrl,
   type TestDatabase
 } from "~/server/db/test-database"
-import { contact, resume, school, section, skill, user, work } from "~/server/db/schema"
+import {
+  contact,
+  resume,
+  school,
+  section,
+  skill,
+  user,
+  work
+} from "~/server/db/schema"
 
 /**
  * The 17 assertions recorded in `docs/editable-resume.md`, ported verbatim.
@@ -525,6 +533,29 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       ).toBe("ada@example.com")
     })
 
+    it("files the fallback contact row under the resume's owner", async () => {
+      const caller = callerFor(fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      // A resume created before contact was snapshotted: the edit has to land
+      // somewhere, and that somewhere must still belong to the owner.
+      await db.delete(contact).where(eq(contact.resumeId, resumeId))
+
+      await caller.resume.updateField({
+        resumeId,
+        path: "contact.email",
+        value: "recovered@example.com"
+      })
+
+      const [row] = await db
+        .select()
+        .from(contact)
+        .where(eq(contact.resumeId, resumeId))
+
+      expect(row?.email).toBe("recovered@example.com")
+      expect(row?.userId).toBe(fixture.owner.userId)
+    })
+
     it("writes a skill group, splitting the line back into entries", async () => {
       const caller = callerFor(fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
@@ -564,7 +595,8 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       const caller = callerFor(fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const { resumeId: otherId } = await caller.resume.create(draft())
-      const [theirs] = (await caller.resume.readById({ resumeId: otherId })).skill
+      const [theirs] = (await caller.resume.readById({ resumeId: otherId }))
+        .skill
 
       await expect(
         caller.resume.updateField({
@@ -766,7 +798,8 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("renames a section through the path grammar", async () => {
       const { caller, resumeId } = await withResume()
-      const experience = (await caller.resume.readById({ resumeId })).sections[1]
+      const experience = (await caller.resume.readById({ resumeId }))
+        .sections[1]
 
       await caller.resume.updateField({
         resumeId,
@@ -909,7 +942,8 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("refuses a content payload on a core section", async () => {
       const { caller, resumeId } = await withResume()
-      const experience = (await caller.resume.readById({ resumeId })).sections[1]
+      const experience = (await caller.resume.readById({ resumeId }))
+        .sections[1]
 
       await expect(
         caller.section.setContent({
@@ -939,7 +973,8 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("refuses content on a core section", async () => {
       const { caller, resumeId } = await withResume()
-      const experience = (await caller.resume.readById({ resumeId })).sections[1]
+      const experience = (await caller.resume.readById({ resumeId }))
+        .sections[1]
 
       await expect(
         caller.resume.updateField({
