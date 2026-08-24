@@ -213,9 +213,36 @@ export const insertResumeSchema = z
 
 export type InsertResumeSchema = z.infer<typeof insertResumeSchema>
 
-/** The document as the PDF route receives it — the resume without the posting. */
-export const downloadPdfSchema = insertResumeSchema.omit({
-  jobDescription: true
+/**
+ * One section of the document as the PDF route receives it.
+ *
+ * `content` is unvalidated here on purpose: the renderer re-parses it against
+ * the component that has to draw it, so a payload that disagrees with its
+ * `componentType` draws nothing rather than being rejected at the door.
+ */
+const downloadPdfSectionSchema = z.object({
+  id: z.string(),
+  kind: z.string(),
+  label: z.string(),
+  componentType: z.string(),
+  position: z.number(),
+  content: z.unknown().optional()
 })
+
+/**
+ * The document as the PDF route receives it — the resume without the posting.
+ *
+ * Sections travel with it so the print is the document the user was looking at:
+ * their order, their names and the custom ones among them. Optional, because a
+ * draft that has never been saved has none and falls back to the sections a new
+ * resume is created with — the same fallback the preview uses.
+ */
+export const downloadPdfSchema = insertResumeSchema
+  .omit({
+    jobDescription: true
+  })
+  .extend({
+    sections: downloadPdfSectionSchema.array().optional()
+  })
 
 export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>

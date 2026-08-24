@@ -1,14 +1,16 @@
+import { ClassValue } from "clsx"
 import { Fragment, type ReactNode } from "react"
 import { type FieldPath, type FieldPathValue } from "react-hook-form"
 import { PlainField } from "~/components/plain-field"
 import {
+  customSectionShape,
   type ListGroup,
   type RenderMode,
+  type RenderOptions,
   ResumeSection,
   type SectionShape,
   type TwoColumnRow
 } from "~/components/resume-section"
-import { customSectionShape } from "~/lib/custom-section-shape"
 import {
   type CoreSectionKind,
   coreSectionDefaults,
@@ -47,8 +49,10 @@ export type ResumeDocumentData = {
   education: InsertResumeSchema["education"]
   /**
    * The sections to draw, in `position` order. Optional because the draft
-   * preview is editing a resume that does not exist yet and the PDF payload
-   * carries none — both fall back to the order a new resume is created with.
+   * preview is editing a resume that does not exist yet and so has none of its
+   * own — it falls back to the order a new resume is created with. A saved
+   * resume carries its sections everywhere it is drawn, the PDF included, or
+   * the print would not be the document the user was looking at.
    */
   sections?: ResumeDocumentSection[]
 }
@@ -121,7 +125,7 @@ export function readTextAtPath(data: ResumeDocumentData, path: string) {
 
 /**
  * The sections a resume is drawn with before it has any of its own — an unsaved
- * draft, or a PDF payload.
+ * draft, or the PDF of one.
  *
  * Derived from the same list the server creates a resume's rows from, so a
  * draft and the resume it becomes render the same document.
@@ -136,8 +140,7 @@ const defaultSections: ResumeDocumentSection[] = coreSectionDefaults.map(
  */
 type Doc = {
   data: ResumeDocumentData
-  mode: RenderMode
-  isEditor: boolean
+  render: RenderOptions
   renderField: FieldRenderer
   canEditPath: (path: ResumeFieldPath) => boolean
 }
@@ -164,7 +167,12 @@ export function ResumeDocument({
   renderField?: FieldRenderer
   canEditPath?: (path: ResumeFieldPath) => boolean
 }) {
-  const doc: Doc = { data, mode, isEditor, renderField, canEditPath }
+  const doc: Doc = {
+    data,
+    render: { mode, isEditor },
+    renderField,
+    canEditPath
+  }
 
   // Sorted here rather than trusted from the caller: render order is data, and
   // this is the one place that decides what the data means.
@@ -196,13 +204,15 @@ export function ResumeDocument({
  * Reflow only swaps the width and turns the token overrides on — everything
  * below it reads the same tokens, which is why the two modes cannot disagree
  * about what the document says.
+ *
+ * Each mode carries its own marker class. `resume-page` names the A4 page and
+ * nothing else, so an assertion about the page is not also an assertion about
+ * the phone.
  */
 function documentClassName(mode: RenderMode) {
-  const shared =
-    "resume-page bg-white px-resume-page-x py-resume-page-y text-resume-body"
-
+  const shared = "bg-white px-resume-page-x py-resume-page-y text-resume-body"
   return mode === "page"
-    ? `${shared} w-resume-page rounded-md`
+    ? `${shared} resume-page w-resume-page rounded-md`
     : `${shared} resume-reflow w-full`
 }
 
@@ -244,12 +254,7 @@ function DocumentSection({
   if (!shape) return null
 
   return (
-    <ResumeSection
-      isEditor={doc.isEditor}
-      label={section.label}
-      mode={doc.mode}
-      shape={shape}
-    />
+    <ResumeSection label={section.label} render={doc.render} shape={shape} />
   )
 }
 
@@ -363,19 +368,38 @@ function entryRow(
 }
 
 /**
- * Skills as labelled groups — the category is the label, and the group's line
- * is its one entry.
+ * Skills as labelled groups — the category is the label, and each skill in the
+ * group is one entry.
  *
- * One entry rather than one per skill because `skill.<row>.all` is a single
- * editable string: splitting it here would give the same content two
- * representations, which is the thing the component set exists to avoid.
+ * `skill.<row>.all` is a single editable string, so where it is editable it
+ * stays one field: two representations of the same content is exactly what the
+ * component set exists to avoid, and a click target per comma-separated word is
+ * not a thing the user can write to. Where it is only read — the document, the
+ * PDF, the parseability check — it is split into one item per skill, which is
+ * what makes a long list scannable rather than a run of commas.
  */
 function skillGroups(doc: Doc): ListGroup[] {
-  return doc.data.skill.map((group, index) => ({
-    key: group.id ?? String(index),
-    label: <Field doc={doc} path={`skill.${index}.category`} />,
-    items: [<Field doc={doc} key="all" multiline path={`skill.${index}.all`} />]
-  }))
+  return doc.data.skill.map((group, index) => {
+    const path = `skill.${index}.all` as const
+
+    return {
+      key: group.id ?? String(index),
+      label: <Field doc={doc} path={`skill.${index}.category`} />,
+      items: doc.canEditPath(path)
+        ? [<Field doc={doc} key="all" multiline path={path} />]
+        : splitSkills(group.all).map((skill, at) => (
+            <Fragment key={at}>{skill}</Fragment>
+          ))
+    }
+  })
+}
+
+/** The stored line as the skills it lists. A trailing comma names nothing. */
+function splitSkills(all: string) {
+  return all
+    .split(",")
+    .map((skill) => skill.trim())
+    .filter(Boolean)
 }
 
 function Header({ doc }: { doc: Doc }) {

@@ -88,7 +88,8 @@ describe("renderResumeHtml", async () => {
     expect(html).toContain("Software Engineer")
     expect(html).toContain("Analytical Engines")
     expect(html).toContain("Home Tuition")
-    expect(html).toContain("TypeScript, Go")
+    expect(html).toContain("TypeScript")
+    expect(html).toContain("Go")
   })
 })
 

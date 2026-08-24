@@ -7,7 +7,10 @@ import {
   type ResumeDocumentData
 } from "~/components/resume-document"
 import { Button } from "~/components/ui/button"
-import { useResumeRenderMode } from "~/components/use-resume-render-mode"
+import {
+  ResumePageToggle,
+  useResumeRenderMode
+} from "~/components/use-resume-render-mode"
 import { useAppForm } from "~/components/use-app-form"
 import {
   type DownloadPdfSchema,
@@ -37,7 +40,7 @@ export function GeneratedResumeView({
   const [savedResumeId, setSavedResumeId] = useState("")
   const [isDownloading, setIsDownloading] = useState(false)
 
-  const renderMode = useResumeRenderMode()
+  const { mode, isPageOffered, showsPage, setShowsPage } = useResumeRenderMode()
 
   const { mutate, isPending } = api.resume.create.useMutation({
     onSuccess: (data) => {
@@ -108,11 +111,18 @@ export function GeneratedResumeView({
       onSubmit={handleSubmit(onSubmitSaveResume)}
       className="flex flex-col items-center gap-4 overflow-y-auto pt-16"
     >
-      <ResumeDocument
-        data={resumeData}
-        mode={renderMode}
-        onEdit={handleEditField}
-      />
+      {isPageOffered && (
+        <ResumePageToggle setShowsPage={setShowsPage} showsPage={showsPage} />
+      )}
+
+      {/* The A4 page is wider than the phone showing it — so it scrolls. */}
+      <div className="max-w-full overflow-x-auto">
+        <ResumeDocument
+          data={resumeData}
+          mode={mode}
+          onEdit={handleEditField}
+        />
+      </div>
 
       <div className="flex gap-2 pb-12">
         <Button loading={isPending} type="submit">

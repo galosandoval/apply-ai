@@ -8,7 +8,10 @@ import {
   type ResumeDocumentData,
   type ResumeFieldPath
 } from "~/components/resume-document"
-import { useResumeRenderMode } from "~/components/use-resume-render-mode"
+import {
+  ResumePageToggle,
+  useResumeRenderMode
+} from "~/components/use-resume-render-mode"
 import {
   formatResumeFieldPath,
   isEditableResumePath,
@@ -36,7 +39,7 @@ export function ResumeEditorView() {
 
 function Editor({ resumeId }: { resumeId: string }) {
   const { resume, errorMessage, isSaving, onEdit } = useEditableResume(resumeId)
-  const mode = useResumeRenderMode()
+  const { mode, isPageOffered, showsPage, setShowsPage } = useResumeRenderMode()
 
   if (errorMessage) {
     return (
@@ -54,12 +57,19 @@ function Editor({ resumeId }: { resumeId: string }) {
         {isSaving ? "Saving…" : "Changes save automatically"}
       </p>
 
-      <ResumeDocument
-        canEditPath={isEditableResumePath}
-        data={toDocumentData(resume)}
-        mode={mode}
-        onEdit={onEdit}
-      />
+      {isPageOffered && (
+        <ResumePageToggle setShowsPage={setShowsPage} showsPage={showsPage} />
+      )}
+
+      {/* The A4 page is wider than the phone showing it — so it scrolls. */}
+      <div className="max-w-full overflow-x-auto">
+        <ResumeDocument
+          canEditPath={isEditableResumePath}
+          data={toDocumentData(resume)}
+          mode={mode}
+          onEdit={onEdit}
+        />
+      </div>
     </main>
   )
 }

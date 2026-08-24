@@ -102,7 +102,7 @@ describe("core sections", () => {
       ])
     )
 
-    expect(html).toContain("TypeScript, Go")
+    expect(html).toContain("TypeScript")
     expect(html).toContain("Analytical Engines")
     expect(html).toContain("Home Tuition")
   })
@@ -139,7 +139,7 @@ describe("core sections", () => {
     expect(rowClass.exec(core)?.[1]).toBe(rowClass.exec(custom)?.[1])
   })
 
-  it("renders Skills as labelled groups", async () => {
+  it("renders Skills as labelled groups, one list item per skill", async () => {
     const html = await renderResumeHtml(
       withSections([
         section({
@@ -154,9 +154,14 @@ describe("core sections", () => {
     )
 
     expect(html).toContain("Languages")
-    expect(html).toContain("TypeScript, Go")
     expect(html).toContain("Tools")
-    expect(html).toContain("Docker, Postgres")
+
+    // The stored line is one editable string, but a read-only document draws
+    // each skill in it as its own mark — a long list has to be scannable, not a
+    // run of commas.
+    for (const skill of ["TypeScript", "Go", "Docker", "Postgres"]) {
+      expect(html).toContain(`<li>${skill}</li>`)
+    }
   })
 
   it("ignores content stored against a core section — its rows are its content", async () => {
@@ -528,6 +533,30 @@ describe("structural invariants", () => {
 
   it("keeps an entry off a page boundary", async () => {
     expect(await renderResumeHtml(data)).toContain("break-inside-avoid")
+  })
+
+  it("keeps a section heading with the content it introduces", async () => {
+    // A heading that strands at the foot of a page introduces nothing. The
+    // heading and its rule are one unbreakable block that the following content
+    // may not be separated from.
+    const html = await renderResumeHtml(data)
+
+    expect(html).toMatch(
+      /class="[^"]*break-inside-avoid break-after-avoid[^"]*"/
+    )
+  })
+
+  it("names the page only in page mode", async () => {
+    // `resume-page` is the marker an assertion about the A4 document hangs off.
+    // Reflow is not that document, so it does not answer to that name.
+    // The whole class, not the token utilities that share its prefix —
+    // `px-resume-page-x` is a spacing step and says nothing about the mode.
+    const pageMarker = /resume-page(?![-\w])/
+
+    expect(await renderResumeHtml(data, { mode: "reflow" })).not.toMatch(
+      pageMarker
+    )
+    expect(await renderResumeHtml(data, { mode: "page" })).toMatch(pageMarker)
   })
 
   it("renders read-only markup — no inputs anywhere", async () => {
