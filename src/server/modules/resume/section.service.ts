@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import {
-  type CoreSectionKind,
+  coreSectionDefaults,
   emptySectionContent,
   isCoreSectionKind,
   parseSectionContent,
@@ -29,26 +29,18 @@ const sectionNotFound = () =>
   new TRPCError({ code: "NOT_FOUND", message: "Section not found" })
 
 /**
- * The sections every new resume starts with, in the order the template drew
- * them before order was data. Core sections carry no content: they are a label,
- * an order and a pointer to their own typed rows.
+ * A new resume's rows for the core sections.
+ *
+ * What they are and what order they come in is `coreSectionDefaults`, shared
+ * with the renderer's fallback — core and custom sections cannot drift if there
+ * is only one list. Core sections carry no content: they are a label, an order
+ * and a pointer to their own typed rows.
  */
 export function coreSections(resumeId: string) {
-  const core: { kind: CoreSectionKind; label: string }[] = [
-    { kind: "skills", label: "Skills" },
-    { kind: "experience", label: "Experience" },
-    { kind: "education", label: "Education" }
-  ]
-
-  return core.map(({ kind, label }, position) => ({
-    kind,
-    label,
+  return coreSectionDefaults.map((section, position) => ({
+    ...section,
     id: createId(),
     resumeId,
-    // Every section carries one, and all three core sections draw the same
-    // shape: a heading on the left, dates or entries on the right. Spec C
-    // dispatches a core section on its `kind` regardless.
-    componentType: "twoColumn",
     position,
     content: null
   }))

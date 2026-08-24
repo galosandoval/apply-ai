@@ -46,6 +46,25 @@ export function isSectionComponentType(
 }
 
 /**
+ * The sections every resume starts with: what each is called, which shape it
+ * draws as, and the order they are drawn in.
+ *
+ * One definition because two would drift. The server inserts a new resume's
+ * rows from this, and the renderer falls back to it for a document that has no
+ * rows yet — an unsaved draft, or a PDF payload. A resume that has its own
+ * sections is drawn from those and never reads this.
+ */
+export const coreSectionDefaults: {
+  kind: CoreSectionKind
+  label: string
+  componentType: SectionComponentType
+}[] = [
+  { kind: "skills", label: "Skills", componentType: "list" },
+  { kind: "experience", label: "Experience", componentType: "twoColumn" },
+  { kind: "education", label: "Education", componentType: "twoColumn" }
+]
+
+/**
  * Rich text is a **markdown string** in the constrained subset spec D defines —
  * bold, links, bullet lists. Not HTML: there is no sanitizer to get wrong, and
  * the value strips to clean text for a parser for free.

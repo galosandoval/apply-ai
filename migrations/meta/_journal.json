@@ -57,6 +57,13 @@
       "when": 1787250152330,
       "tag": "0007_drop_introduction_interests",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787250153330,
+      "tag": "0008_skills_section_component_type",
+      "breakpoints": true
     }
   ]
 }

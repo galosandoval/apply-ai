@@ -229,12 +229,13 @@ shape — so treat the numbers here as the origin, not the current total.
   — a section has no meaning without its resume — but `work`, `school`, `skill`
   and `contact` do not, which is the convention those tables already had. There
   is no delete-a-resume path yet; whoever adds one owns cleaning those up.
-- **Sections exist but are not drawn from.** `resume.readById` returns them in
-  order and `section.add` / `remove` / `reorder` and `section.<id>.label` all
-  work, but `ResumeDocument` still hardcodes Skills → Experience → Education and
-  hardcodes their headings. Rendering a section — including the five component
-  types a custom section can be — is spec C; the editing affordances around them
-  are spec D.
+- ~~**Sections exist but are not drawn from.**~~ Done in spec C (#49):
+  `ResumeDocument` draws `data.sections` in `position` order through five base
+  components, and the bespoke Skills / Experience / Education renderers are
+  gone. Core sections are pre-configured instances of those components fed by
+  their typed rows; a custom section is a user-created instance fed by its own
+  content. Editing a custom section's content is still spec D — this spec
+  renders it read-only.
 - `Editable` keys bullets by array index, so reordering or deleting a bullet
   would carry edit state to the wrong row. Only matters once add/remove exists.
 - No add/remove for bullets, jobs or schools — `updateField` replaces existing
