@@ -11,8 +11,12 @@ import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
 import * as repo from "./resume.repository"
 import {
+  type AddRowInput,
   type CreateResumeInput,
+  type RemoveRowInput,
   type ReorderRowsInput,
+  type RowSectionName,
+  type SetBulletsInput,
   type UpdateFieldInput
 } from "./resume.schema"
 import * as sections from "./section.service"
@@ -218,6 +222,134 @@ const findRows = {
   experience: repo.findExperience,
   education: repo.findEducation,
   skills: repo.findSkills
+}
+
+/** What a blank row of one list looks like, and how it is inserted. */
+type InsertBlankRow = (
+  db: DbOrTx,
+  row: { id: string; resumeId: string; position: number; userId: string }
+) => Promise<unknown>
+
+/**
+ * How a blank row of each list is inserted.
+ *
+ * Blank rather than placeholder text: the row is added because the user is
+ * about to type into it, and "Job title" stored as a job title is worse than an
+ * empty field the panel shows a placeholder for. The columns are `NOT NULL` and
+ * stay so — an empty string is a value, where a half-null row would be a second
+ * empty state for every reader to handle.
+ *
+ * `userId` is carried onto `skill` because that table's rows are filed under
+ * the account as well as the resume; `work` and `school` snapshots are not.
+ */
+const addableRows: Record<RowSectionName, InsertBlankRow> = {
+  experience: (db, row) =>
+    repo.insertExperience(db, [
+      {
+        ...row,
+        userId: null,
+        name: "",
+        title: "",
+        startDate: "",
+        endDate: "",
+        bullets: []
+      }
+    ]),
+
+  education: (db, row) =>
+    repo.insertEducation(db, [
+      {
+        ...row,
+        userId: null,
+        name: "",
+        degree: "",
+        startDate: "",
+        endDate: ""
+      }
+    ]),
+
+  skills: (db, row) =>
+    repo.insertSkills(db, [{ ...row, category: "", all: [] }])
+}
+
+/**
+ * Appends a blank job, school or skill group to one of a resume's lists.
+ *
+ * The position is read from the rows that exist rather than counted, so a list
+ * a row was removed from does not hand the next one a position already taken.
+ */
+export async function addRow(db: Database, userId: string, input: AddRowInput) {
+  await assertOwnsResume(db, userId, input.resumeId)
+
+  const table = orderedTables[input.section]
+  const position = await repo.nextRowPosition(db, table, input.resumeId)
+  const rowId = createId()
+
+  await addableRows[input.section](db, {
+    id: rowId,
+    resumeId: input.resumeId,
+    position,
+    userId
+  })
+
+  return { rowId }
+}
+
+/** Removes one job, school or skill group from a resume. */
+export async function removeRow(
+  db: Database,
+  userId: string,
+  input: RemoveRowInput
+) {
+  await assertOwnsResume(db, userId, input.resumeId)
+
+  const deleted = await repo.deleteSnapshotRow(
+    db,
+    orderedTables[input.section],
+    { resumeId: input.resumeId, rowId: input.rowId }
+  )
+
+  if (!deleted.length) throw fieldNotFound()
+
+  return { rowId: input.rowId }
+}
+
+/**
+ * Replaces a job's whole bullet list — how a bullet is added, removed or moved.
+ *
+ * `updateField` rewrites one bullet that already exists and cannot change how
+ * many there are; taking the array wholesale also means a reorder never leaves
+ * an index pointing at a different bullet than the one the user moved.
+ */
+export async function setBullets(
+  db: Database,
+  userId: string,
+  input: SetBulletsInput
+) {
+  await assertOwnsResume(db, userId, input.resumeId)
+
+  await writeRow(db, work, input.resumeId, input.rowId, {
+    bullets: input.bullets
+  })
+
+  return { rowId: input.rowId }
+}
+
+/**
+ * Deletes a resume and everything snapshotted onto it.
+ *
+ * Generation creates a resume rather than previewing one, so a draft the user
+ * dislikes has to be removable — and the rows it owns go with it, in one
+ * transaction, rather than being stranded under a resume that no longer exists.
+ */
+export async function remove(db: Database, userId: string, resumeId: string) {
+  await assertOwnsResume(db, userId, resumeId)
+
+  await db.transaction(async (tx) => {
+    await repo.deleteResume(tx, resumeId)
+  })
+
+  return { resumeId }
 }
 
 /**

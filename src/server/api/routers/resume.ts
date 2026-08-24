@@ -5,10 +5,14 @@ import {
 } from "~/server/modules/profile/generate-resume"
 import * as resumeService from "~/server/modules/resume/resume.service"
 import {
+  addRowSchema,
   createResumeSchema,
   readResumeSchema,
   refreshFromAccountSchema,
+  removeResumeSchema,
+  removeRowSchema,
   reorderRowsSchema,
+  setBulletsSchema,
   updateFieldSchema
 } from "~/server/modules/resume/resume.schema"
 
@@ -44,6 +48,36 @@ export const resumeRouter = createTRPCRouter({
     .input(createResumeSchema)
     .mutation(({ ctx, input }) =>
       resumeService.create(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /** Deletes a resume and every row snapshotted onto it. */
+  remove: protectedProcedure
+    .input(removeResumeSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.remove(ctx.db, ctx.session.user.id, input.resumeId)
+    ),
+
+  /** Appends a blank job, school or skill group. */
+  addRow: protectedProcedure
+    .input(addRowSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.addRow(ctx.db, ctx.session.user.id, input)
+    ),
+
+  removeRow: protectedProcedure
+    .input(removeRowSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.removeRow(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /**
+   * Replaces a job's whole bullet list — how a bullet is added, removed or
+   * moved, where `updateField` rewrites one that already exists.
+   */
+  setBullets: protectedProcedure
+    .input(setBulletsSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.setBullets(ctx.db, ctx.session.user.id, input)
     ),
 
   /** Reorders the jobs, schools or skill groups inside one section. */

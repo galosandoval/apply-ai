@@ -29,8 +29,9 @@ editor.
 
 | Question | Decision |
 | --- | --- |
-| Edit interaction | **Inline field swap.** Click a text node and that single element becomes a plain input/textarea in place, same font and position. Plain text only — no rich text, no `contentEditable`. |
-| Persistence | **Autosave on blur.** Each field commits via a tRPC mutation when it loses focus. No dirty-state tracking, no unsaved-changes guards. |
+| Edit interaction | ~~Inline field swap.~~ **Selection and panel** since spec D (#50): clicking the document selects something and a panel beside it edits that thing's fields. The document is a read-only live preview. |
+| Persistence | ~~Autosave on blur.~~ **Debounced autosave plus commit on blur** since spec D. A panel holds several inputs and has no natural "done" moment, so a pause is the commit and blur flushes what the pause has not sent. Save state — saving, saved, failed — is on screen. |
+| Rich text | ~~Plain text only.~~ **A constrained markdown subset** since spec D: bold, links and bullet lists, in a plain textarea with a toolbar. The stored value is exactly what was typed, so `stripMarkdown` gives a parser clean text with no sanitizer in the way. See `src/lib/resume-markdown.tsx`. |
 | PDF engine | **Puppeteer + `page.setContent`**, rendering the same React component. `@react-pdf/renderer` has already been dropped from `package.json` — do not reintroduce it; it needs a second template tree and can't use Tailwind. |
 
 ## Step 1 — Addressable data model (done)
@@ -141,6 +142,9 @@ reads the name from the profile.
 
 > **Superseded by spec B (#48).** What follows is why the editor was
 > snapshot-only; the paragraph after it is what is true now.
+>
+> **Also superseded by spec D (#50):** contact and skills are not read-only
+> anywhere. Everything the document draws is edited from the panel.
 
 A saved resume snapshots its own `work` / `school` rows via `resumeId` — but
 **`skill` and `contact` had no `resumeId`, and email lived on `user`.** Those
@@ -220,15 +224,16 @@ shape — so treat the numbers here as the origin, not the current total.
 
 ### Still owed
 
-- **The dashboard chat preview still can't persist.** Its `onEdit` writes to
-  react-hook-form state, and `handleSubmit(onSubmitSaveResume)` sits on the
-  `<form>` while the only button is `type="button"` — so `resume.create` never
-  fires. That predates this work. The editor is the path that persists; the
-  preview is still save-less.
-- **Deleting a resume would strand its snapshot.** `section.resume_id` cascades
-  — a section has no meaning without its resume — but `work`, `school`, `skill`
-  and `contact` do not, which is the convention those tables already had. There
-  is no delete-a-resume path yet; whoever adds one owns cleaning those up.
+- ~~**The dashboard chat preview still can't persist.**~~ Resolved by deletion
+  in spec D (#50): generation now creates the resume and redirects to the
+  editor, so there is one editing surface instead of one and a half. The
+  posting is written with the resume, and `resume.remove` deletes a draft the
+  user dislikes.
+- ~~**Deleting a resume would strand its snapshot.**~~ `resume.remove` (spec D)
+  deletes `work`, `school`, `skill` and `contact` rows scoped to the resume in
+  one transaction before the resume itself. `section.resume_id` still cascades;
+  the others cannot, because a nullable `resumeId` is also how a master copy is
+  spelled.
 - ~~**Sections exist but are not drawn from.**~~ Done in spec C (#49):
   `ResumeDocument` draws `data.sections` in `position` order through five base
   components, and the bespoke Skills / Experience / Education renderers are
@@ -236,10 +241,15 @@ shape — so treat the numbers here as the origin, not the current total.
   their typed rows; a custom section is a user-created instance fed by its own
   content. Editing a custom section's content is still spec D — this spec
   renders it read-only.
-- `Editable` keys bullets by array index, so reordering or deleting a bullet
-  would carry edit state to the wrong row. Only matters once add/remove exists.
-- No add/remove for bullets, jobs or schools — `updateField` replaces existing
-  strings only.
+- ~~`Editable` keys bullets by array index~~ — `Editable` is gone. The panel
+  keys every input by its field path, which is keyed by row id, so reordering
+  cannot carry an edit to the row that took a position.
+- ~~No add/remove for bullets, jobs or schools.~~ Spec D adds
+  `resume.setBullets` (a job's whole bullet list, so add, remove and reorder are
+  one write), `resume.addRow` / `resume.removeRow` for jobs, schools and skill
+  groups, and `section.setContent` for a custom section's elements.
+  `updateField` still replaces existing strings only, which is the split: one
+  write edits a string, another changes the set of them.
 
 ## Step 5 — PDF via `setContent` (done)
 
@@ -278,6 +288,50 @@ was not in the document.
 - The fixed height and `overflow-hidden` are gone; the page is normal flow.
 - Each job and school carries `break-inside-avoid`, so neither splits across a
   page boundary.
-- **Still owed:** a visible page-boundary rule in the editor, so overflow is
-  something the user can see rather than only something that no longer eats
-  their work. That belongs to the editor rework, not here.
+- ~~**Still owed:** a visible page-boundary rule in the editor.~~ Spec D draws
+  it: the editor overlays a rule at each A4 page boundary, so spilling onto a
+  second page is something the user sees before sending rather than after.
+
+## Step 7 — Selection and panel (spec D, #50)
+
+Inline editing is gone. `Editable`, `PlainField`, `resume.tsx`, the `onEdit`
+prop threaded through the template, the `canEditPath` click gate and the
+`ResumeFieldPath` template-literal type all went with it. `ResumeDocument` is a
+read-only render that takes an optional `selection` prop; without it — the PDF,
+the parseability check — it emits no click target, no outline and no attributes,
+and a test at seam 3 asserts exactly that.
+
+What replaced them:
+
+- `src/lib/resume-selection.ts` — what can be selected (`header`, a section, or
+  one row of a core section), keyed by row id, and the class and attributes that
+  make an element selectable.
+- `src/features/resume/use-resume-editor.ts` — the query, the debounced field
+  autosave with per-field rollback, and every structural mutation.
+- `src/features/resume/resume-panel-model.ts` — pure: a resume, a selection and
+  the operations available in, a description of a panel out.
+- `src/features/resume/resume-field-lens.ts` — pure: how one addressed field is
+  read out of a cached resume and written back, for the optimistic update and
+  its rollback. Moved out of the editor route unchanged.
+- `src/features/resume/resume-panel.tsx` — renders a `PanelModel` and nothing
+  else, so a sixth section shape is a registry entry rather than a sixth panel.
+- `src/lib/resume-markdown.tsx` — the markdown subset: render, strip, and the
+  three toolbar operations, all pure and all tested at seam 1.
+
+The shape registry in `src/lib/section-content.ts` gained the panel's half of
+each component type: `read`, `fields` and a `collection` describing how its
+elements are added, removed and moved. That is what makes the panel generated
+rather than written.
+
+Three details worth keeping:
+
+- **The refetch waits for pending keystrokes, not only sent writes.** A write
+  still waiting out its debounce counts as outstanding; otherwise typing,
+  waiting for that save, and typing again during the refetch it triggered loses
+  the second keystroke.
+- **Structural writes patch the cache too**, except adding — a new row's id is
+  the server's to mint, and a locally invented one is a row the panel could
+  select and then lose.
+- **Selection clears** by clicking past the document or through the panel's
+  back control. Without it the resume-level panel — the only place a section is
+  added — would be unreachable after the first click.

@@ -1,9 +1,11 @@
-import { Fragment, type ReactNode } from "react"
+import { type ReactNode } from "react"
 import {
   isResumeIconName,
   ResumeIcon,
   type ResumeIconName
 } from "~/components/resume-icon"
+import { renderResumeMarkdown } from "~/lib/resume-markdown"
+import { selectable, type SelectHandle } from "~/lib/resume-selection"
 import {
   isSectionComponentType,
   parseSectionContent,
@@ -58,10 +60,26 @@ export type SectionShape =
   | { componentType: "tagList"; tags: { key: string; label: ReactNode }[] }
   | { componentType: "iconList"; icons: IconEntry[] }
 
-export type TwoColumnRow = { key: string; left: ReactNode; right: ReactNode }
+export type TwoColumnRow = {
+  key: string
+  left: ReactNode
+  right: ReactNode
+  /**
+   * What clicking this row selects, when the document is being edited.
+   *
+   * Absent everywhere else, which is what keeps selection out of the PDF: a
+   * shape drawn without a handle emits no click target and no outline.
+   */
+  select?: SelectHandle | null
+}
 
 /** A flat list is one group with no label. */
-export type ListGroup = { key: string; label?: ReactNode; items: ReactNode[] }
+export type ListGroup = {
+  key: string
+  label?: ReactNode
+  items: ReactNode[]
+  select?: SelectHandle | null
+}
 
 /**
  * `icon` is narrowed on the way in rather than carried as a `string`: an
@@ -232,14 +250,18 @@ export function customSectionShape(
 export function ResumeSection({
   label,
   shape,
-  render
+  render,
+  select
 }: {
   label: ReactNode
   shape: SectionShape
   render: RenderOptions
+  /** Selecting the section itself — its name, its place, its entries. */
+  select?: SelectHandle | null
 }) {
   const { isEmpty, Body } = specFor(shape.componentType)
   const empty = isEmpty(shape)
+  const heading = selectable(select)
 
   if (empty && !render.isEditor) return null
 
@@ -249,8 +271,15 @@ export function ResumeSection({
         The heading and its rule stay with the content that follows them:
         `break-after: avoid` is what stops a section title stranding alone at
         the foot of a page with its first entry overleaf.
+
+        The heading is also the section's own click target: clicking a job
+        selects the job, so selecting the section it sits in needs somewhere of
+        its own to click.
       */}
-      <div className="break-inside-avoid break-after-avoid">
+      <div
+        className={`break-inside-avoid break-after-avoid ${heading.className}`}
+        {...heading.attributes}
+      >
         <h2 className="text-resume-heading font-semibold uppercase">{label}</h2>
 
         <div className="pb-resume-rule-gap pt-resume-rule-gap">
@@ -291,23 +320,35 @@ function TwoColumn({ rows, mode }: { rows: TwoColumnRow[]; mode: RenderMode }) {
   return (
     <div className="space-y-resume-entry">
       {rows.map((row) => (
-        <div
-          className={`${marker.row} break-inside-avoid ${
-            isPage ? "flex gap-resume-entry" : "flex flex-col gap-resume-inline"
-          }`}
-          key={row.key}
-        >
-          <div
-            className={
-              isPage ? "w-resume-left-column shrink-0" : "font-semibold"
-            }
-          >
-            {row.left}
-          </div>
-
-          <div className="min-w-0 flex-1">{row.right}</div>
-        </div>
+        <TwoColumnEntry isPage={isPage} key={row.key} row={row} />
       ))}
+    </div>
+  )
+}
+
+function TwoColumnEntry({
+  row,
+  isPage
+}: {
+  row: TwoColumnRow
+  isPage: boolean
+}) {
+  const select = selectable(row.select)
+
+  return (
+    <div
+      className={`${marker.row} break-inside-avoid ${
+        isPage ? "flex gap-resume-entry" : "flex flex-col gap-resume-inline"
+      } ${select.className}`}
+      {...select.attributes}
+    >
+      <div
+        className={isPage ? "w-resume-left-column shrink-0" : "font-semibold"}
+      >
+        {row.left}
+      </div>
+
+      <div className="min-w-0 flex-1">{row.right}</div>
     </div>
   )
 }
@@ -331,11 +372,18 @@ function List({ groups, mode }: { groups: ListGroup[]; mode: RenderMode }) {
 }
 
 function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
-  if (!group.items.length) return null
+  const select = selectable(group.select)
+
+  // An empty group is nothing in the document — but where it can be selected
+  // it stays on the page, or a group added a moment ago has nothing to click.
+  if (!group.items.length && !group.select) return null
 
   if (!group.label) {
     return (
-      <ul className="list-disc break-inside-avoid pl-resume-bullet">
+      <ul
+        className={`list-disc break-inside-avoid pl-resume-bullet ${select.className}`}
+        {...select.attributes}
+      >
         {group.items.map((item, index) => (
           <li key={index}>{item}</li>
         ))}
@@ -349,7 +397,8 @@ function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
         mode === "page"
           ? "flex gap-resume-inline"
           : "flex flex-col gap-resume-inline"
-      }`}
+      } ${select.className}`}
+      {...select.attributes}
     >
       <h3 className="whitespace-nowrap font-semibold">{group.label}</h3>
 
@@ -396,147 +445,5 @@ function IconList({ icons }: { icons: IconEntry[] }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-/**
- * The constrained markdown subset a rich-text section may contain.
- *
- * Markdown rather than HTML: there is no sanitizer to get wrong, and the value
- * strips to clean text for a parser for free. Only three things are markup —
- * bold, links and bullet lists — and everything else is literal text, escaped
- * by React because it is rendered as text and never as HTML.
- *
- * A bullet list *inside* rich text exists because markdown has one, but the app
- * never offers it as a rich-text action: a list of things gets one home, the
- * list component. See the section-content module for that tie-break.
- */
-
-/** A line that opens a bullet list item. */
-const bulletLine = /^\s*[-*]\s+(.*)$/
-
-/**
- * `**bold**` or `[label](href)`. Non-greedy so two bold runs on one line stay
- * two runs rather than one that swallows the text between them.
- */
-const inlineMarkup = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g
-
-/** Schemes a link may carry. Anything else renders as plain text. */
-const safeScheme = /^(https?:\/\/|mailto:)/i
-
-/**
- * Renders the subset to React nodes.
- *
- * Blocks are paragraphs and bullet lists, separated by blank lines or by the
- * first bullet. The caller owns the surrounding element, so this returns the
- * blocks rather than a wrapper.
- */
-function renderResumeMarkdown(markdown: string): ReactNode[] {
-  const blocks: ReactNode[] = []
-
-  let paragraph: string[] = []
-  let items: string[] = []
-
-  const flushParagraph = () => {
-    if (!paragraph.length) return
-
-    blocks.push(
-      <p key={`p${blocks.length}`}>{renderInline(paragraph.join(" "))}</p>
-    )
-
-    paragraph = []
-  }
-
-  const flushList = () => {
-    if (!items.length) return
-
-    blocks.push(
-      <ul className="list-disc pl-resume-bullet" key={`l${blocks.length}`}>
-        {items.map((item, index) => (
-          <li key={index}>{renderInline(item)}</li>
-        ))}
-      </ul>
-    )
-
-    items = []
-  }
-
-  for (const line of markdown.split("\n")) {
-    const bullet = bulletLine.exec(line)
-
-    if (bullet) {
-      flushParagraph()
-      items.push(bullet[1] ?? "")
-      continue
-    }
-
-    if (!line.trim()) {
-      flushParagraph()
-      flushList()
-      continue
-    }
-
-    flushList()
-    paragraph.push(line.trim())
-  }
-
-  flushParagraph()
-  flushList()
-
-  return blocks
-}
-
-/** Bold runs and links inside one line; everything between them is text. */
-function renderInline(text: string): ReactNode[] {
-  const nodes: ReactNode[] = []
-
-  let cursor = 0
-
-  // `exec` in a loop rather than `matchAll`, so the text between two matches is
-  // as easy to emit as the matches themselves.
-  inlineMarkup.lastIndex = 0
-
-  for (
-    let match = inlineMarkup.exec(text);
-    match;
-    match = inlineMarkup.exec(text)
-  ) {
-    if (match.index > cursor) nodes.push(text.slice(cursor, match.index))
-
-    const [, bold, label, href] = match
-
-    if (bold !== undefined) {
-      nodes.push(<strong key={nodes.length}>{bold}</strong>)
-    } else if (label !== undefined && href !== undefined) {
-      nodes.push(renderLink(label, href, nodes.length))
-    }
-
-    cursor = match.index + match[0].length
-  }
-
-  if (cursor < text.length) nodes.push(text.slice(cursor))
-
-  return nodes.map((node, index) => <Fragment key={index}>{node}</Fragment>)
-}
-
-/**
- * A link, or its label as plain text when the target is not a link.
- *
- * `javascript:` and friends are refused rather than dropped: a refused link
- * should cost the user the link, not the sentence it was in.
- */
-function renderLink(label: string, href: string, key: number) {
-  if (!safeScheme.test(href)) return label
-
-  return (
-    <a
-      className="underline"
-      href={href}
-      key={key}
-      rel="noreferrer"
-      target="_blank"
-    >
-      {label}
-    </a>
   )
 }

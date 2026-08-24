@@ -565,4 +565,27 @@ describe("structural invariants", () => {
     expect(html).not.toContain("<input")
     expect(html).not.toContain("<textarea")
   })
+
+  /**
+   * Selection is an editor concern. The editor draws the same component, so
+   * nothing about what is selected — or that anything *can* be — may reach a
+   * render made without it. A selection outline in a finished PDF is not a
+   * cosmetic bug; it is the document saying something it does not mean.
+   */
+  describe("selection", () => {
+    it("emits no click targets", async () => {
+      const html = await renderResumeHtml(data, { isEditor: true })
+
+      expect(html).not.toContain('role="button"')
+      expect(html).not.toContain("tabindex")
+      expect(html).not.toContain("aria-pressed")
+    })
+
+    it("emits no selection outline", async () => {
+      const html = await renderResumeHtml(data, { isEditor: true })
+
+      expect(html).not.toMatch(/\boutline(-\w+)?\b/)
+      expect(html).not.toContain("cursor-pointer")
+    })
+  })
 })

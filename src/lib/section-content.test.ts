@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest"
 import {
+  addSectionContentEntry,
   coreSectionKinds,
   emptySectionContent,
   isCoreSectionKind,
+  moveSectionContentEntry,
   parseSectionContent,
-  sectionComponentTypes
+  readSectionContentString,
+  removeSectionContentEntry,
+  replaceSectionContentString,
+  sectionComponentTypes,
+  sectionContentEntries,
+  sectionContentFields,
+  sectionContentNoun
 } from "./section-content"
 
 /**
@@ -42,11 +50,14 @@ describe("component types", () => {
     ])
   })
 
-  it.each(sectionComponentTypes)("has empty content for %s", (componentType) => {
-    const empty = emptySectionContent(componentType)
+  it.each(sectionComponentTypes)(
+    "has empty content for %s",
+    (componentType) => {
+      const empty = emptySectionContent(componentType)
 
-    expect(parseSectionContent(componentType, empty)).toEqual(empty)
-  })
+      expect(parseSectionContent(componentType, empty)).toEqual(empty)
+    }
+  )
 })
 
 describe("parseSectionContent — accepted payloads", () => {
@@ -100,5 +111,128 @@ describe("parseSectionContent — rejected payloads", () => {
 
   it("rejects an unknown component type", () => {
     expect(parseSectionContent("carousel", { markdown: "" })).toBeNull()
+  })
+})
+
+/**
+ * The panel is generated from a section's shape rather than written per
+ * component type, so these are what make adding a shape one registry entry
+ * instead of a new editor.
+ */
+describe("the panel's view of a shape", () => {
+  it("gives rich text one markdown field and no collection", () => {
+    expect(sectionContentFields("richText", { markdown: "**Hi**" })).toEqual([
+      {
+        label: "Text",
+        target: { componentType: "richText", field: "markdown" },
+        value: "**Hi**",
+        input: "markdown"
+      }
+    ])
+
+    expect(sectionContentNoun("richText")).toBeNull()
+    expect(sectionContentEntries("richText", { markdown: "**Hi**" })).toEqual(
+      []
+    )
+  })
+
+  it("names what one element of each collection is called", () => {
+    expect(sectionContentNoun("list")).toBe("item")
+    expect(sectionContentNoun("tagList")).toBe("tag")
+    expect(sectionContentNoun("twoColumn")).toBe("row")
+    expect(sectionContentNoun("iconList")).toBe("entry")
+  })
+
+  it("addresses every element by the path that writes it", () => {
+    const entries = sectionContentEntries("twoColumn", {
+      rows: [{ left: "2020", right: "Something" }]
+    })
+
+    expect(entries).toEqual([
+      {
+        index: 0,
+        fields: [
+          {
+            label: "Left",
+            target: { componentType: "twoColumn", index: 0, side: "left" },
+            value: "2020",
+            input: "text"
+          },
+          {
+            label: "Right",
+            target: { componentType: "twoColumn", index: 0, side: "right" },
+            value: "Something",
+            input: "text"
+          }
+        ]
+      }
+    ])
+  })
+
+  it("reads back exactly what a field write put there", () => {
+    const target = { componentType: "list", index: 1 } as const
+    const next = replaceSectionContentString(
+      target,
+      { items: ["one", "two"] },
+      "changed"
+    )
+
+    expect(readSectionContentString(target, next)).toBe("changed")
+  })
+
+  it("reads nothing for an element that is not there", () => {
+    expect(
+      readSectionContentString(
+        { componentType: "list", index: 4 },
+        { items: ["one"] }
+      )
+    ).toBeNull()
+  })
+
+  it("appends a blank element", () => {
+    expect(addSectionContentEntry("tagList", { tags: ["one"] })).toEqual({
+      tags: ["one", ""]
+    })
+
+    expect(addSectionContentEntry("iconList", { icons: [] })).toEqual({
+      icons: [{ icon: "", text: "" }]
+    })
+  })
+
+  it("removes one element and leaves the rest in order", () => {
+    expect(
+      removeSectionContentEntry("list", { items: ["one", "two", "three"] }, 1)
+    ).toEqual({ items: ["one", "three"] })
+  })
+
+  it("moves an element", () => {
+    expect(
+      moveSectionContentEntry("list", { items: ["one", "two", "three"] }, 2, 0)
+    ).toEqual({ items: ["three", "one", "two"] })
+  })
+
+  /** "Move the first one up" is offered rather than hidden; nothing happens. */
+  it("leaves the list alone when a move runs off the end", () => {
+    const content = { items: ["one", "two"] }
+
+    expect(moveSectionContentEntry("list", content, 0, -1)).toEqual(content)
+    expect(moveSectionContentEntry("list", content, 1, 2)).toEqual(content)
+  })
+
+  it("refuses a payload the component could not render", () => {
+    expect(addSectionContentEntry("list", { tags: ["one"] })).toBeNull()
+    expect(removeSectionContentEntry("list", { tags: ["one"] }, 0)).toBeNull()
+    expect(moveSectionContentEntry("list", { tags: ["one"] }, 0, 1)).toBeNull()
+  })
+
+  /** Rich text has no elements, so there is nothing to add one to. */
+  it("refuses to add an element to a shape that has no collection", () => {
+    expect(addSectionContentEntry("richText", { markdown: "" })).toBeNull()
+  })
+
+  it("refuses a component type that does not exist", () => {
+    expect(sectionContentNoun("carousel")).toBeNull()
+    expect(sectionContentEntries("carousel", {})).toEqual([])
+    expect(sectionContentFields("carousel", {})).toEqual([])
   })
 })

@@ -1,7 +1,4 @@
-import { ClassValue } from "clsx"
 import { Fragment, type ReactNode } from "react"
-import { type FieldPath, type FieldPathValue } from "react-hook-form"
-import { PlainField } from "~/components/plain-field"
 import {
   customSectionShape,
   type ListGroup,
@@ -11,6 +8,13 @@ import {
   type SectionShape,
   type TwoColumnRow
 } from "~/components/resume-section"
+import {
+  isSameSelection,
+  type ResumeSelection,
+  rowListFor,
+  selectable,
+  type SelectHandle
+} from "~/lib/resume-selection"
 import {
   type CoreSectionKind,
   coreSectionDefaults,
@@ -37,8 +41,8 @@ export type ResumeDocumentSection = {
 
 /**
  * Everything the resume template renders. Deliberately not a Zod-derived type:
- * the editor, the draft preview and the PDF each assemble it from a different
- * source, and this is the contract they agree on.
+ * the editor and the PDF each assemble it from a different source, and this is
+ * the contract they agree on.
  */
 export type ResumeDocumentData = {
   profession: string
@@ -48,87 +52,32 @@ export type ResumeDocumentData = {
   experience: InsertResumeSchema["experience"]
   education: InsertResumeSchema["education"]
   /**
-   * The sections to draw, in `position` order. Optional because the draft
-   * preview is editing a resume that does not exist yet and so has none of its
-   * own — it falls back to the order a new resume is created with. A saved
-   * resume carries its sections everywhere it is drawn, the PDF included, or
-   * the print would not be the document the user was looking at.
+   * The sections to draw, in `position` order. Optional because a payload may
+   * arrive without any — the PDF of a document that predates them — and falls
+   * back to the order a new resume is created with. A saved resume carries its
+   * sections everywhere it is drawn, the PDF included, or the print would not
+   * be the document the user was looking at.
    */
   sections?: ResumeDocumentSection[]
 }
 
 /**
- * The document minus its sections.
+ * What the editor selects with, and what it has selected.
  *
- * A section is addressed by id through its own grammar (`section.<id>.label`),
- * not by array index, so admitting `sections.0.kind` into the path type would
- * offer click targets no writer accepts.
+ * Optional everywhere: without it this is a pure read-only render — no click
+ * targets, no outline, no attributes — which is exactly what the PDF and the
+ * parseability check want, and what keeps an editor concern out of a print.
  */
-type ResumeDocumentFields = Omit<ResumeDocumentData, "sections">
-
-/**
- * The address of a single editable string, e.g. `experience.0.bullets.2`.
- *
- * Borrowed from react-hook-form so the same string is simultaneously the click
- * target's identity, a `setValue` key, and (later) the scope handed to a
- * "rewrite this section" call.
- *
- * Narrowed to paths whose value is actually a string: bare `FieldPath` also
- * admits `experience.0` and `experience.0.bullets`, which would render as an
- * empty click target and let `setValue` write a string over an array.
- *
- * Taken from the document rather than from an insert schema, because the
- * document is what a path addresses.
- */
-export type ResumeFieldPath = {
-  [Path in FieldPath<ResumeDocumentFields>]: NonNullable<
-    FieldPathValue<ResumeDocumentFields, Path>
-  > extends string
-    ? Path
-    : never
-}[FieldPath<ResumeDocumentFields>]
-
-export type OnEditField = (path: ResumeFieldPath, value: string) => void
-
-export type EditableTag = "span" | "p" | "li" | "h1" | "h2" | "h3" | "div"
-
-export type FieldProps = {
-  path: ResumeFieldPath
-  value: string
-  as?: EditableTag
-  multiline?: boolean
-  className?: string
+export type DocumentSelection = {
+  selected: ResumeSelection | null
+  onSelect: (selection: ResumeSelection) => void
 }
 
 /**
- * How one string is drawn. The read-only default is plain tags; the editor
- * swaps in a click-to-edit field.
- *
- * This is the whole reason the template has no state of its own: a component
- * that calls `useState` cannot be rendered from a route handler, and the PDF
- * is rendered from a route handler.
- */
-export type FieldRenderer = (props: FieldProps) => ReactNode
-
-/** Walks a dotted path down the document data. Array indices are just keys. */
-export function readTextAtPath(data: ResumeDocumentData, path: string) {
-  const value = path
-    .split(".")
-    .reduce<unknown>(
-      (current, key) =>
-        current == null ? undefined : (current as Record<string, unknown>)[key],
-      data
-    )
-
-  return typeof value === "string" ? value : ""
-}
-
-/**
- * The sections a resume is drawn with before it has any of its own — an unsaved
- * draft, or the PDF of one.
+ * The sections a resume is drawn with before it has any of its own.
  *
  * Derived from the same list the server creates a resume's rows from, so a
- * draft and the resume it becomes render the same document.
+ * document without sections and the resume it becomes render the same way.
  */
 const defaultSections: ResumeDocumentSection[] = coreSectionDefaults.map(
   (section, position) => ({ ...section, id: section.kind, position })
@@ -141,38 +90,31 @@ const defaultSections: ResumeDocumentSection[] = coreSectionDefaults.map(
 type Doc = {
   data: ResumeDocumentData
   render: RenderOptions
-  renderField: FieldRenderer
-  canEditPath: (path: ResumeFieldPath) => boolean
+  selection?: DocumentSelection
 }
 
 /**
  * The one resume template. Props in, markup out — no form state, no ids for a
- * browser to inject into. Rendered by the editor, the draft preview and the
- * PDF so all three stay in agreement.
+ * browser to inject into. Rendered by the editor and by the PDF so the two stay
+ * in agreement.
  *
- * Read-only by default. `renderField` and `canEditPath` together are what make
- * it an editor; `isEditor` is the document-level half of the same question, for
- * the sections that have no field of their own to ask about.
+ * Read-only, always: editing is a panel beside the document, not an input
+ * inside it. `selection` adds click targets and an outline for the editor, and
+ * `isEditor` makes an empty section and an empty field visible rather than
+ * absent — a blank the user cannot see is a blank they cannot fill in.
  */
 export function ResumeDocument({
   data,
   mode = "page",
   isEditor = false,
-  renderField = PlainField,
-  canEditPath = () => false
+  selection
 }: {
   data: ResumeDocumentData
   mode?: RenderMode
   isEditor?: boolean
-  renderField?: FieldRenderer
-  canEditPath?: (path: ResumeFieldPath) => boolean
+  selection?: DocumentSelection
 }) {
-  const doc: Doc = {
-    data,
-    render: { mode, isEditor },
-    renderField,
-    canEditPath
-  }
+  const doc: Doc = { data, render: { mode, isEditor }, selection }
 
   // Sorted here rather than trusted from the caller: render order is data, and
   // this is the one place that decides what the data means.
@@ -216,21 +158,54 @@ function documentClassName(mode: RenderMode) {
     : `${shared} resume-reflow w-full`
 }
 
-/** Draws one field, reading its text out of the document data by path. */
-function Field({
+/**
+ * How one selectable thing asks whether it is selected.
+ *
+ * `null` when the document is not being edited, which is what makes the
+ * read-only render emit no selection markup at all.
+ */
+function handleFor(doc: Doc, selection: ResumeSelection): SelectHandle | null {
+  const { selection: state } = doc
+
+  if (!state) return null
+
+  return {
+    isSelected: isSameSelection(state.selected, selection),
+    onSelect: () => state.onSelect(selection)
+  }
+}
+
+/**
+ * One string as the document draws it.
+ *
+ * Empty is nothing in the document and a visible stand-in in the editor: a job
+ * added a moment ago is all empty strings, and a row with no height is a row
+ * with nothing to click.
+ */
+function Text({
   doc,
-  path,
-  ...rest
-}: { doc: Doc } & Omit<FieldProps, "value">) {
-  return (
-    <Fragment>
-      {doc.renderField({
-        ...rest,
-        path,
-        value: readTextAtPath(doc.data, path)
-      })}
-    </Fragment>
-  )
+  value,
+  className = "",
+  multiline = false
+}: {
+  doc: Doc
+  value: string | null | undefined
+  className?: string
+  multiline?: boolean
+}) {
+  // Multiline text keeps the newlines it was typed with instead of collapsing
+  // them to a space.
+  const textClassName = multiline
+    ? `${className} whitespace-pre-line`
+    : className
+
+  if (!value) {
+    return doc.render.isEditor ? (
+      <span className={`${className} text-resume-muted`}>&mdash;</span>
+    ) : null
+  }
+
+  return <span className={textClassName}>{value}</span>
 }
 
 /**
@@ -254,7 +229,12 @@ function DocumentSection({
   if (!shape) return null
 
   return (
-    <ResumeSection label={section.label} render={doc.render} shape={shape} />
+    <ResumeSection
+      label={section.label}
+      render={doc.render}
+      select={handleFor(doc, { kind: "section", sectionId: section.id })}
+      shape={shape}
+    />
   )
 }
 
@@ -276,49 +256,49 @@ function coreShape(doc: Doc, kind: CoreSectionKind): SectionShape {
   }
 }
 
+/** The selection a row of a core section carries, by the row's own id. */
+function rowHandle(doc: Doc, kind: CoreSectionKind, rowId: string | undefined) {
+  const list = rowListFor(kind)
+
+  if (!list || !rowId) return null
+
+  return handleFor(doc, { kind: "row", list: list.key, rowId })
+}
+
 function experienceRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.experience.map((job, index) =>
-    entryRow(doc, {
+  return doc.data.experience.map((job, index) => ({
+    ...entryRow(doc, {
       key: job.id ?? String(index),
-      startPath: `experience.${index}.startDate`,
-      endPath: `experience.${index}.endDate`,
-      namePath: `experience.${index}.name`,
-      detailPath: `experience.${index}.title`,
+      start: job.startDate,
+      end: job.endDate,
+      name: job.name,
+      detail: job.title,
       body: (
         <ul className="list-disc pl-resume-bullet">
-          {job.bullets.map((_, bulletIndex) => (
-            <Field
-              as="li"
-              doc={doc}
-              key={bulletIndex}
-              multiline
-              path={`experience.${index}.bullets.${bulletIndex}`}
-            />
+          {job.bullets.map((bullet, bulletIndex) => (
+            <li className="whitespace-pre-line" key={bulletIndex}>
+              {bullet}
+            </li>
           ))}
         </ul>
       )
-    })
-  )
+    }),
+    select: rowHandle(doc, "experience", job.id)
+  }))
 }
 
 function educationRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.education.map((school, index) =>
-    entryRow(doc, {
+  return doc.data.education.map((school, index) => ({
+    ...entryRow(doc, {
       key: school.id ?? String(index),
-      startPath: `education.${index}.startDate`,
-      endPath: `education.${index}.endDate`,
-      namePath: `education.${index}.name`,
-      detailPath: `education.${index}.degree`,
-      body: (
-        <Field
-          as="p"
-          doc={doc}
-          multiline
-          path={`education.${index}.description`}
-        />
-      )
-    })
-  )
+      start: school.startDate,
+      end: school.endDate,
+      name: school.name,
+      detail: school.degree,
+      body: <Text doc={doc} multiline value={school.description} />
+    }),
+    select: rowHandle(doc, "education", school.id)
+  }))
 }
 
 /**
@@ -328,37 +308,37 @@ function educationRows(doc: Doc): TwoColumnRow[] {
  * Experience and Education differ only in what the second heading field is
  * called and what the body is, so they share the shape rather than each holding
  * a copy that a style change would have to find twice.
- *
- * Paths arrive built rather than assembled from a stem here: `ResumeFieldPath`
- * only checks a template literal at the site that writes it, and that check is
- * the whole reason a path is typed.
  */
 function entryRow(
   doc: Doc,
   {
     key,
-    startPath,
-    endPath,
-    namePath,
-    detailPath,
+    start,
+    end,
+    name,
+    detail,
     body
   }: {
     key: string
-    startPath: ResumeFieldPath
-    endPath: ResumeFieldPath
-    namePath: ResumeFieldPath
-    detailPath: ResumeFieldPath
+    start: string
+    end: string
+    name: string
+    detail: string
     body: ReactNode
   }
 ): TwoColumnRow {
   return {
     key,
-    left: <DateRange doc={doc} endPath={endPath} startPath={startPath} />,
+    left: (
+      <p className="whitespace-nowrap">
+        <Text doc={doc} value={start} /> - <Text doc={doc} value={end} />
+      </p>
+    ),
     right: (
       <>
         <div className="font-semibold">
-          <Field doc={doc} path={namePath} />,{" "}
-          <Field className="font-normal italic" doc={doc} path={detailPath} />
+          <Text doc={doc} value={name} />,{" "}
+          <Text className="font-normal italic" doc={doc} value={detail} />
         </div>
 
         {body}
@@ -371,27 +351,20 @@ function entryRow(
  * Skills as labelled groups — the category is the label, and each skill in the
  * group is one entry.
  *
- * `skill.<row>.all` is a single editable string, so where it is editable it
- * stays one field: two representations of the same content is exactly what the
- * component set exists to avoid, and a click target per comma-separated word is
- * not a thing the user can write to. Where it is only read — the document, the
- * PDF, the parseability check — it is split into one item per skill, which is
- * what makes a long list scannable rather than a run of commas.
+ * `skill.<row>.all` is one string in the database and in the panel, and one
+ * item per skill on the page: a long list reads as things rather than as a run
+ * of commas, and the split lives here because the document is where it means
+ * something.
  */
 function skillGroups(doc: Doc): ListGroup[] {
-  return doc.data.skill.map((group, index) => {
-    const path = `skill.${index}.all` as const
-
-    return {
-      key: group.id ?? String(index),
-      label: <Field doc={doc} path={`skill.${index}.category`} />,
-      items: doc.canEditPath(path)
-        ? [<Field doc={doc} key="all" multiline path={path} />]
-        : splitSkills(group.all).map((skill, at) => (
-            <Fragment key={at}>{skill}</Fragment>
-          ))
-    }
-  })
+  return doc.data.skill.map((group, index) => ({
+    key: group.id ?? String(index),
+    label: <Text doc={doc} value={group.category} />,
+    items: splitSkills(group.all).map((skill, at) => (
+      <Fragment key={at}>{skill}</Fragment>
+    )),
+    select: rowHandle(doc, "skills", group.id)
+  }))
 }
 
 /** The stored line as the skills it lists. A trailing comma names nothing. */
@@ -403,44 +376,36 @@ function splitSkills(all: string) {
 }
 
 function Header({ doc }: { doc: Doc }) {
-  const { data, canEditPath } = doc
+  const { data } = doc
+  const select = selectable(handleFor(doc, { kind: "header" }))
 
-  const allContactFields: { path: ResumeFieldPath; value: string }[] = [
-    { path: "contact.location", value: data.contact.location },
-    { path: "contact.email", value: data.contact.email },
-    { path: "contact.linkedIn", value: data.contact.linkedIn ?? "" },
-    { path: "contact.portfolio", value: data.contact.portfolio ?? "" },
-    { path: "contact.phone", value: data.contact.phone ?? "" }
-  ]
-
-  // A blank contact is dropped from the rendered document, but kept as an empty
-  // placeholder where it's editable — otherwise there's no way to fill it in.
-  const contactFields = allContactFields.filter(
-    (field) => field.value || canEditPath(field.path)
-  )
+  const contactFields = [
+    data.contact.location,
+    data.contact.email,
+    data.contact.linkedIn ?? "",
+    data.contact.portfolio ?? "",
+    data.contact.phone ?? ""
+  ].filter(Boolean)
 
   return (
-    <div className="flex flex-col items-center pb-resume-inline">
+    <div
+      className={`flex flex-col items-center pb-resume-inline ${select.className}`}
+      {...select.attributes}
+    >
       <div className="justify-self-center">
-        <Field
-          as="h1"
-          className="text-resume-name font-bold"
-          doc={doc}
-          path="contact.fullName"
-        />
+        <h1 className="text-resume-name font-bold">
+          <Text doc={doc} value={data.contact.fullName} />
+        </h1>
       </div>
 
-      <Field
-        as="h2"
-        className="text-resume-title font-bold tracking-wide"
-        doc={doc}
-        path="profession"
-      />
+      <h2 className="text-resume-title font-bold tracking-wide">
+        <Text doc={doc} value={data.profession} />
+      </h2>
 
       <div className="mx-auto flex flex-wrap justify-center gap-resume-inline text-center">
-        {contactFields.map((field, index) => (
-          <Fragment key={field.path}>
-            <ContactLine doc={doc} path={field.path} value={field.value} />
+        {contactFields.map((value, index) => (
+          <Fragment key={value}>
+            <ContactLine value={value} />
             {index !== contactFields.length - 1 && <span>&bull;</span>}
           </Fragment>
         ))}
@@ -449,43 +414,15 @@ function Header({ doc }: { doc: Doc }) {
   )
 }
 
-function DateRange({
-  doc,
-  startPath,
-  endPath
-}: {
-  doc: Doc
-  startPath: ResumeFieldPath
-  endPath: ResumeFieldPath
-}) {
-  return (
-    <p className="whitespace-nowrap">
-      <Field doc={doc} path={startPath} /> - <Field doc={doc} path={endPath} />
-    </p>
-  )
-}
-
 /**
  * Contact details render as links so they stay clickable in the preview and the
- * PDF — but a link that opens on click can't also be a click-to-edit target,
- * so the editor gets the plain field instead.
+ * PDF.
+ *
+ * The URL is the label. Rendering "LinkedIn" over an `href` puts the address in
+ * the link target only, where the PDF's text layer — and anything parsing it —
+ * cannot see it.
  */
-function ContactLine({
-  doc,
-  path,
-  value
-}: {
-  doc: Doc
-  path: ResumeFieldPath
-  value: string
-}) {
-  if (doc.canEditPath(path)) {
-    return <Field doc={doc} path={path} />
-  }
-
-  // The URL is the label. Rendering "LinkedIn" over an `href` puts the address
-  // in the link target only, where the PDF's text layer — and anything parsing
-  // it — cannot see it.
+function ContactLine({ value }: { value: string }) {
   if (value.includes("@")) {
     return <ContactLink href={`mailto:${value}`} label={value} />
   }
