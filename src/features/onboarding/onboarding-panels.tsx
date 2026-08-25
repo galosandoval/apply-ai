@@ -10,6 +10,9 @@ import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 /**
  * Only the open step is mounted, so each one still loads its profile data and
  * resets its form the way it did when it was a page of its own.
+ *
+ * This is also where the reading column is set. The steps below it lay out
+ * fields and nothing else — none of them decides how wide the page is.
  */
 export function OnboardingPanels() {
   const { activeStep } = useOnboardingStep()
@@ -19,6 +22,7 @@ export function OnboardingPanels() {
       role="tabpanel"
       id={`onboarding-panel-${activeStep}`}
       aria-labelledby={`onboarding-tab-${activeStep}`}
+      className="m-auto w-full max-w-3xl py-12 max-sm:py-8"
     >
       <ActivePanel />
     </div>

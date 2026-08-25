@@ -25,7 +25,7 @@ export default function OnboardingFormLayout<T extends FieldValues>({
     <Form {...form}>
       <form
         onSubmit={handleSubmit}
-        className="flex max-w-3xl flex-col gap-2 py-16"
+        className="flex flex-col gap-2"
       >
         <h1 className="text-3xl">{title}</h1>
 

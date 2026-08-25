@@ -49,7 +49,7 @@ export function ImportStep() {
   const failure = rejection.length ? rejection : (error?.message ?? "")
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4 py-16">
+    <div className="flex flex-col gap-4">
       <h1 className="text-3xl">Start with your current resume</h1>
 
       <p className="max-w-md text-sm text-muted-foreground">

@@ -99,7 +99,7 @@ function NameAndContactForm() {
       handleSubmit={handleSubmit(onSubmit)}
       title="How can employers get in touch with you?"
     >
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={form.control}
           name="firstName"
@@ -146,7 +146,7 @@ function NameAndContactForm() {
         render={({ field }) => <MyInput field={field} label="Phone" />}
       />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={form.control}
           name="linkedIn"

@@ -22,6 +22,10 @@ const showOnboarding = process.env.NODE_ENV === "development"
  *
  * `children` is the slot the onboarding layout fills with its step tabs, which
  * used to be a `pathname.includes("onboarding")` branch in here.
+ *
+ * Sticky rather than fixed: it stays pinned either way, but sticky keeps the
+ * bar in flow so it reserves its own height. Fixed took it out of flow and
+ * every page under it had to know the bar's height to pad around it.
  */
 export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
   const router = useRouter()
@@ -33,7 +37,7 @@ export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
   }
 
   return (
-    <div className="fixed z-50 flex w-full items-center justify-between bg-background px-4 py-2 shadow-md">
+    <div className="sticky top-0 z-50 flex w-full shrink-0 items-center justify-between gap-4 bg-background px-4 py-2 shadow-md">
       <Logo />
 
       {children ?? (

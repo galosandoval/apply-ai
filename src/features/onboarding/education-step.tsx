@@ -222,7 +222,7 @@ function EducationForm({
         )}
       />
 
-      <div className="flex justify-around gap-2">
+      <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={control}
           name={`education.${index}.startDate`}

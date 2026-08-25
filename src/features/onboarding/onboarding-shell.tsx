@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ProtectedNavbar } from "~/components/navbar/protected-navbar"
 import { cn } from "~/lib/utils"
 import {
@@ -24,7 +24,14 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
         <OnboardingTabs />
       </ProtectedNavbar>
 
-      <main className="h-full overflow-y-auto px-4 md:grid md:place-items-center">
+      {/*
+        The scroll lives here, not on the body: the navbar is a flex sibling
+        above, so this takes the height that is left. Centering is the panel's
+        `m-auto` rather than `place-items-center` — auto margins collapse to
+        zero once the form is taller than the viewport, where centering would
+        push its first fields above the scroll origin and out of reach.
+      */}
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
         {children}
       </main>
     </OnboardingStepProvider>
@@ -33,16 +40,27 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
 
 function OnboardingTabs() {
   const { activeStep, goToStep } = useOnboardingStep()
+  const activeTabRef = useRef<HTMLButtonElement>(null)
+
+  /*
+    Steps advance on submit as well as on click, and the strip scrolls sideways
+    once the window is too narrow to hold all five — so the step you just moved
+    to can land off-screen with nothing to say it changed.
+  */
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView({ block: "nearest", inline: "center" })
+  }, [activeStep])
 
   return (
     <div
       role="tablist"
       aria-label="Onboarding steps"
-      className="flex flex-1 justify-start gap-1 overflow-x-auto md:justify-center"
+      className="flex flex-1 justify-center gap-1 overflow-x-auto max-md:justify-start"
     >
       {onboardingSteps.map((step) => (
         <button
           key={step.id}
+          ref={step.id === activeStep ? activeTabRef : null}
           role="tab"
           type="button"
           id={`onboarding-tab-${step.id}`}
@@ -50,7 +68,7 @@ function OnboardingTabs() {
           aria-controls={`onboarding-panel-${step.id}`}
           onClick={() => goToStep(step.id)}
           className={cn(
-            "min-h-11 whitespace-nowrap border-b-2 border-transparent px-3 text-sm text-muted-foreground",
+            "min-h-11 whitespace-nowrap border-b-2 border-transparent px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             step.id === activeStep && "border-primary text-foreground"
           )}
         >

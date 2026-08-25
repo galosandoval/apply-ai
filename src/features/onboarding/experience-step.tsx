@@ -234,7 +234,7 @@ function ExperienceForm({
         )}
       />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={control}
           name={`experience.${index}.startDate`}
@@ -261,7 +261,7 @@ function ExperienceForm({
         />
       </div>
 
-      <div className="mx-auto max-w-md">
+      <div>
         {index === 0 && (
           <div className="mt-4">
             <MyAlert
