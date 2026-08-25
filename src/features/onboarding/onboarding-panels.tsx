@@ -19,9 +19,8 @@ export function OnboardingPanels() {
 
   return (
     <div
-      role="tabpanel"
-      id={`onboarding-panel-${activeStep}`}
-      aria-labelledby={`onboarding-tab-${activeStep}`}
+      role="region"
+      aria-labelledby={`onboarding-step-${activeStep}`}
       className="m-auto w-full max-w-3xl py-12 max-sm:py-8"
     >
       <ActivePanel />

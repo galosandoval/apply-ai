@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react"
 
-/** In step order. `OnboardingTabs` owns which one is showing. */
+/** In step order. `OnboardingShell` owns which one is showing. */
 export const onboardingSteps = [
   { id: "import", label: "Import" },
   { id: "contact", label: "Contact" },
@@ -42,7 +42,7 @@ export function useOnboardingStep() {
   const context = useContext(OnboardingStepContext)
 
   if (!context) {
-    throw new Error("useOnboardingStep must be used inside OnboardingTabs")
+    throw new Error("useOnboardingStep must be used inside OnboardingShell")
   }
 
   return context

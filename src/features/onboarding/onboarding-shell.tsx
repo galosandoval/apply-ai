@@ -1,8 +1,15 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { ProtectedNavbar } from "~/components/navbar/protected-navbar"
-import { cn } from "~/lib/utils"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from "~/components/ui/breadcrumb"
 import {
   OnboardingStepProvider,
   onboardingSteps,
@@ -11,7 +18,7 @@ import {
 } from "~/features/onboarding/use-onboarding-step"
 
 /**
- * Onboarding is one route with five tabs, and the tabs sit in the app header —
+ * Onboarding is one route with five steps, and the trail sits in the app header —
  * so which step is open has to be state above the page, not inside it. This
  * shell owns it and hands it to the header and the panel alike.
  */
@@ -21,7 +28,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
   return (
     <OnboardingStepProvider activeStep={activeStep} goToStep={setActiveStep}>
       <ProtectedNavbar>
-        <OnboardingTabs />
+        <OnboardingBreadcrumbs />
       </ProtectedNavbar>
 
       {/*
@@ -38,43 +45,58 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function OnboardingTabs() {
+function OnboardingBreadcrumbs() {
   const { activeStep, goToStep } = useOnboardingStep()
-  const activeTabRef = useRef<HTMLButtonElement>(null)
+  const activeStepRef = useRef<HTMLSpanElement>(null)
 
   /*
-    Steps advance on submit as well as on click, and the strip scrolls sideways
+    Steps advance on submit as well as on click, and the trail scrolls sideways
     once the window is too narrow to hold all five — so the step you just moved
     to can land off-screen with nothing to say it changed.
   */
   useEffect(() => {
-    activeTabRef.current?.scrollIntoView({ block: "nearest", inline: "center" })
+    activeStepRef.current?.scrollIntoView({
+      block: "nearest",
+      inline: "center"
+    })
   }, [activeStep])
 
+  /*
+    A trail rather than tabs: the five steps are one ordered path through the
+    profile, and the crumb you are on is the one page of it that is open. Every
+    other crumb stays clickable — the order is a suggestion, not a lock.
+  */
   return (
-    <div
-      role="tablist"
-      aria-label="Onboarding steps"
-      className="flex flex-1 justify-center gap-1 overflow-x-auto max-md:justify-start"
-    >
-      {onboardingSteps.map((step) => (
-        <button
-          key={step.id}
-          ref={step.id === activeStep ? activeTabRef : null}
-          role="tab"
-          type="button"
-          id={`onboarding-tab-${step.id}`}
-          aria-selected={step.id === activeStep}
-          aria-controls={`onboarding-panel-${step.id}`}
-          onClick={() => goToStep(step.id)}
-          className={cn(
-            "min-h-11 whitespace-nowrap border-b-2 border-transparent px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-            step.id === activeStep && "border-primary text-foreground"
-          )}
-        >
-          {step.label}
-        </button>
-      ))}
-    </div>
+    <Breadcrumb className="flex min-w-0 flex-1 justify-center">
+      <BreadcrumbList className="flex-nowrap overflow-x-auto whitespace-nowrap py-2 max-md:justify-start">
+        {onboardingSteps.map((step, index) => (
+          <Fragment key={step.id}>
+            {index > 0 && <BreadcrumbSeparator />}
+
+            <BreadcrumbItem>
+              {step.id === activeStep ? (
+                <BreadcrumbPage
+                  ref={activeStepRef}
+                  id={`onboarding-step-${step.id}`}
+                >
+                  {step.label}
+                </BreadcrumbPage>
+              ) : (
+                <BreadcrumbLink asChild>
+                  <button
+                    type="button"
+                    id={`onboarding-step-${step.id}`}
+                    onClick={() => goToStep(step.id)}
+                    className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {step.label}
+                  </button>
+                </BreadcrumbLink>
+              )}
+            </BreadcrumbItem>
+          </Fragment>
+        ))}
+      </BreadcrumbList>
+    </Breadcrumb>
   )
 }
