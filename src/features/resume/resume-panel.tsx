@@ -127,30 +127,58 @@ function Field({
     <div className="flex flex-col gap-1">
       <Label htmlFor={id}>{field.label}</Label>
 
-      {field.input === "markdown" ? (
-        <MarkdownField
-          id={id}
-          onChange={(value) => onChange(field.path, value)}
-          onCommit={onCommit}
-          value={field.value}
-        />
-      ) : field.input === "textarea" ? (
-        <Textarea
-          id={id}
-          onBlur={onCommit}
-          onChange={(event) => onChange(field.path, event.target.value)}
-          rows={3}
-          value={field.value}
-        />
-      ) : (
-        <Input
-          id={id}
-          onBlur={onCommit}
-          onChange={(event) => onChange(field.path, event.target.value)}
-          value={field.value}
-        />
-      )}
+      <FieldControl
+        field={field}
+        id={id}
+        onChange={(value) => onChange(field.path, value)}
+        onCommit={onCommit}
+      />
     </div>
+  )
+}
+
+/** The input the field's shape asks for: a line, a paragraph, or markdown. */
+function FieldControl({
+  field,
+  id,
+  onChange,
+  onCommit
+}: {
+  field: PanelField
+  id: string
+  onChange: (value: string) => void
+  onCommit: () => void
+}) {
+  if (field.input === "markdown") {
+    return (
+      <MarkdownField
+        id={id}
+        onChange={onChange}
+        onCommit={onCommit}
+        value={field.value}
+      />
+    )
+  }
+
+  if (field.input === "textarea") {
+    return (
+      <Textarea
+        id={id}
+        onBlur={onCommit}
+        onChange={(event) => onChange(event.target.value)}
+        rows={3}
+        value={field.value}
+      />
+    )
+  }
+
+  return (
+    <Input
+      id={id}
+      onBlur={onCommit}
+      onChange={(event) => onChange(event.target.value)}
+      value={field.value}
+    />
   )
 }
 

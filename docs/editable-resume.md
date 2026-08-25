@@ -9,7 +9,7 @@ App Router modernization (issue #47), which also gave the repo a test runner.
 There are two divergent resume templates today, and the one the PDF uses cannot
 be edited:
 
-- **`Resume`** (`src/components/resume.tsx:9`) renders an *empty skeleton*.
+- **`Resume`** (`src/components/resume.tsx:9`) renders an _empty skeleton_.
   Every element is `<p id="email">` with no children. It takes **counts**, not
   data: `skillsCount`, `educationCount`, `expDescCount`.
 - **`src/pages/api/resume/pdf.ts`** launches Puppeteer, navigates to
@@ -27,12 +27,12 @@ editor.
 
 ## Decisions already made
 
-| Question | Decision |
-| --- | --- |
-| Edit interaction | ~~Inline field swap.~~ **Selection and panel** since spec D (#50): clicking the document selects something and a panel beside it edits that thing's fields. The document is a read-only live preview. |
-| Persistence | ~~Autosave on blur.~~ **Debounced autosave plus commit on blur** since spec D. A panel holds several inputs and has no natural "done" moment, so a pause is the commit and blur flushes what the pause has not sent. Save state — saving, saved, failed — is on screen. |
-| Rich text | ~~Plain text only.~~ **A constrained markdown subset** since spec D: bold, links and bullet lists, in a plain textarea with a toolbar. The stored value is exactly what was typed, so `stripMarkdown` gives a parser clean text with no sanitizer in the way. See `src/lib/resume-markdown.tsx`. |
-| PDF engine | **Puppeteer + `page.setContent`**, rendering the same React component. `@react-pdf/renderer` has already been dropped from `package.json` — do not reintroduce it; it needs a second template tree and can't use Tailwind. |
+| Question         | Decision                                                                                                                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Edit interaction | ~~Inline field swap.~~ **Selection and panel** since spec D (#50): clicking the document selects something and a panel beside it edits that thing's fields. The document is a read-only live preview.                                                                                            |
+| Persistence      | ~~Autosave on blur.~~ **Debounced autosave plus commit on blur** since spec D. A panel holds several inputs and has no natural "done" moment, so a pause is the commit and blur flushes what the pause has not sent. Save state — saving, saved, failed — is on screen.                          |
+| Rich text        | ~~Plain text only.~~ **A constrained markdown subset** since spec D: bold, links and bullet lists, in a plain textarea with a toolbar. The stored value is exactly what was typed, so `stripMarkdown` gives a parser clean text with no sanitizer in the way. See `src/lib/resume-markdown.tsx`. |
+| PDF engine       | **Puppeteer + `page.setContent`**, rendering the same React component. `@react-pdf/renderer` has already been dropped from `package.json` — do not reintroduce it; it needs a second template tree and can't use Tailwind.                                                                       |
 
 ## Step 1 — Addressable data model (done)
 
@@ -101,7 +101,7 @@ is a newline and plain Enter still commits — and multiline display carries
 `whitespace-pre-line` so those newlines survive the round trip.
 
 An empty value renders as a grey em-dash placeholder wherever the field is
-*editable* — a blank bullet would otherwise collapse to a zero-height element
+_editable_ — a blank bullet would otherwise collapse to a zero-height element
 with nothing to click. Read-only renders show nothing, since a placeholder in a
 finished document (or the PDF) would be worse than a gap.
 
@@ -323,7 +323,7 @@ each component type: `read`, `fields` and a `collection` describing how its
 elements are added, removed and moved. That is what makes the panel generated
 rather than written.
 
-Three details worth keeping:
+Six details worth keeping:
 
 - **The refetch waits for pending keystrokes, not only sent writes.** A write
   still waiting out its debounce counts as outstanding; otherwise typing,
@@ -335,3 +335,18 @@ Three details worth keeping:
 - **Selection clears** by clicking past the document or through the panel's
   back control. Without it the resume-level panel — the only place a section is
   added — would be unreachable after the first click.
+- **A refused write rolls back the document, not the input.** The document is
+  the preview and has to show what is stored, but the sentence the user typed
+  stays in the panel until it saves or is typed over — a network error must not
+  eat it. That text is remembered by path, so a success elsewhere cannot report
+  the resume as saved while it is still only on screen, and leaving the page
+  while any of it is outstanding warns first.
+- **A structural write supersedes the pending writes inside what it rewrites.**
+  `setBullets` and `setContent` carry every keystroke already, because the cache
+  they are built from is patched as the user types; sending the debounced field
+  write too would land it _after_ the reorder, at an index that by then names a
+  different bullet. Removing a row drops writes to it for the same reason. Every
+  other structural write flushes first instead.
+- **Both exits flush.** Unmount and `beforeunload` send what is pending rather
+  than only cancelling its timer: a debounce that throws away its last keystroke
+  on the way out is a debounce that eats sentences.

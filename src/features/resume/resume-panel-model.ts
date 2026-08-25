@@ -1,5 +1,5 @@
 import toast from "react-hot-toast"
-import { formatResumeFieldPath } from "~/lib/resume-field-path"
+import { formatResumeFieldPath, rowColumnTarget } from "~/lib/resume-field-path"
 import { moveItem } from "~/lib/move-item"
 import {
   type ResumeSelection,
@@ -18,13 +18,6 @@ import {
   type SectionContentTarget
 } from "~/lib/section-content"
 import { type SavedResume } from "./resume-field-lens"
-
-// What the panel draws, for whatever is selected.
-//
-// Pure: a resume, a selection and the operations available, in — a description
-// of a panel, out. Which fields exist and what can be added to them is decided
-// by the selected thing's shape, so a sixth section shape is a registry entry
-// in `section-content` rather than a sixth panel.
 
 /** One editable string, as the panel draws it. */
 export type PanelField = {
@@ -97,12 +90,65 @@ export type StructureActions = {
   setContent: (sectionId: string, content: AnySectionContent) => void
 }
 
+type Select = (selection: ResumeSelection) => void
+
+type SavedSection = SavedResume["sections"][number]
+
+/** One row of a core section: a job, a school, or a skill group. */
+type CoreRow = SavedResume[RowListName][number]
+
+/**
+ * A selection with the thing it points at, or `null` when that thing is no
+ * longer on the resume.
+ *
+ * One resolution rather than a switch on `kind` at every question about a
+ * selection: whether it still exists and what the panel should draw for it are
+ * the same lookup asked twice.
+ */
+export type ResolvedSelection =
+  | { kind: "header" }
+  | { kind: "section"; index: number; section: SavedSection }
+  | { kind: "row"; list: RowListName; index: number; row: CoreRow }
+
+/** What `selection` points at, or `null` when the resume no longer holds it. */
+export function resolveSelection(
+  resume: SavedResume,
+  selection: ResumeSelection
+): ResolvedSelection | null {
+  switch (selection.kind) {
+    case "header":
+      return { kind: "header" }
+
+    case "section": {
+      const index = resume.sections.findIndex(
+        (row) => row.id === selection.sectionId
+      )
+      const section = resume.sections[index]
+
+      return section ? { kind: "section", index, section } : null
+    }
+
+    case "row": {
+      const rows: CoreRow[] = resume[selection.list]
+      const index = rows.findIndex((row) => row.id === selection.rowId)
+      const row = rows[index]
+
+      return row ? { kind: "row", list: selection.list, index, row } : null
+    }
+  }
+}
+
 /**
  * The panel for whatever is selected.
  *
- * One function rather than one component per selectable thing: the panel is
- * generated from the shape of what was selected, so a new section type does not
- * mean a new panel.
+ * Pure: a resume, a selection and the operations available, in — a description
+ * of a panel, out. One function rather than one component per selectable thing,
+ * because which fields exist and what can be added to them is decided by the
+ * selected thing's shape — so a sixth section shape is a registry entry in
+ * `section-content` rather than a sixth panel.
+ *
+ * A selection the resume no longer holds falls back to the resume itself, which
+ * is the same thing the editor derives when a selected row is deleted.
  */
 export function buildPanel({
   resume,
@@ -112,25 +158,54 @@ export function buildPanel({
 }: {
   resume: SavedResume
   selected: ResumeSelection | null
-  select: (selection: ResumeSelection) => void
+  select: Select
   structure: StructureActions
 }): PanelModel {
-  if (!selected) return resumePanel(resume, select, structure)
+  const resolved = selected && resolveSelection(resume, selected)
 
-  switch (selected.kind) {
+  if (!resolved) return resumePanel(resume, select, structure)
+
+  switch (resolved.kind) {
     case "header":
       return headerPanel(resume)
     case "row":
-      return rowPanel(resume, selected.list, selected.rowId, structure)
+      return rowPanel(resume, resolved, structure)
     case "section":
-      return sectionPanel(resume, selected.sectionId, select, structure)
+      return sectionPanel(resume, resolved, select, structure)
+  }
+}
+
+/**
+ * The remove and move handlers for a list of rows addressed by id.
+ *
+ * Four lists want exactly this — the resume's sections, a core section's
+ * entries, and the row and section panels' own actions — so turning the index
+ * the panel clicked back into an id happens here rather than at each of them.
+ */
+function byRowId(
+  ids: string[],
+  {
+    onRemove,
+    onReorder
+  }: {
+    onRemove: (id: string) => void
+    onReorder: (ids: string[]) => void
+  }
+) {
+  return {
+    onRemove: (index: number) => {
+      const id = ids[index]
+
+      if (id) onRemove(id)
+    },
+    onMove: (index: number, to: number) => onReorder(moveItem(ids, index, to))
   }
 }
 
 /** Nothing selected: the resume itself, which owns its sections. */
 function resumePanel(
   resume: SavedResume,
-  select: (selection: ResumeSelection) => void,
+  select: Select,
   structure: StructureActions
 ): PanelModel {
   const ids = resume.sections.map((row) => row.id)
@@ -148,13 +223,10 @@ function resumePanel(
           fields: [],
           onSelect: () => select({ kind: "section", sectionId: row.id })
         })),
-        onRemove: (index) => {
-          const id = ids[index]
-
-          if (id) structure.removeSection(id)
-        },
-        onMove: (index, to) =>
-          structure.reorderSections(moveItem(ids, index, to))
+        ...byRowId(ids, {
+          onRemove: structure.removeSection,
+          onReorder: structure.reorderSections
+        })
       }
     ],
     actions: []
@@ -199,7 +271,18 @@ function headerPanel(resume: SavedResume): PanelModel {
   }
 }
 
-/** The columns of one row of a core section, by row list. */
+type ColumnOf<List extends RowListName> = Extract<
+  keyof SavedResume[List][number],
+  string
+>
+
+/**
+ * The columns of one row of a core section, by row list.
+ *
+ * Checked against the row types rather than trusted: a column this table names
+ * but the row does not have is a compile error here, which is what lets the
+ * panel read one by name without asking whether it is there.
+ */
 const rowColumns = {
   experience: [
     ["name", "Company"],
@@ -218,54 +301,87 @@ const rowColumns = {
     ["category", "Category"],
     ["all", "Skills"]
   ]
-} as const satisfies Record<RowListName, readonly (readonly [string, string])[]>
+} as const satisfies {
+  [List in RowListName]: readonly (readonly [ColumnOf<List>, string])[]
+}
+
+/** A column some core row has — the ones `rowColumns` names, and only those. */
+type CoreColumn = (typeof rowColumns)[RowListName][number][0]
 
 /** Which of those columns is a paragraph rather than a line. */
-const multilineColumns = new Set(["description", "all"])
+const multilineColumns: ReadonlySet<CoreColumn> = new Set([
+  "description",
+  "all"
+])
+
+/**
+ * One column of a core row, as the panel shows it.
+ *
+ * The row is only *some* of the lists' rows, so a column another list owns is
+ * absent rather than wrong — and an absent or null column reads as empty, which
+ * is what an input needs anyway.
+ */
+function stringAt(
+  row: Partial<Record<CoreColumn, string | null>>,
+  column: CoreColumn
+) {
+  const value = row[column]
+
+  return typeof value === "string" ? value : ""
+}
+
+/** What a core row is called in a list of them, or "" when it has no name. */
+function entryLabel(list: RowListName, row: CoreRow) {
+  return stringAt(row, list === "skill" ? "category" : "name")
+}
 
 /** One job, school or skill group: its own fields, and what it owns. */
 function rowPanel(
   resume: SavedResume,
-  list: RowListName,
-  rowId: string,
+  selected: Extract<ResolvedSelection, { kind: "row" }>,
   structure: StructureActions
 ): PanelModel {
-  const rows: { id: string }[] = resume[list]
-  const index = rows.findIndex((row) => row.id === rowId)
-  const row = resume[list].find((current) => current.id === rowId)
+  const { list, row, index } = selected
+  const ids = resume[list].map((current) => current.id)
 
-  if (!row)
-    return { title: "Nothing selected", fields: [], lists: [], actions: [] }
+  const fields = rowColumns[list].flatMap(([column, label]) => {
+    const target = rowColumnTarget(list, row.id, column)
 
-  const fields: PanelField[] = rowColumns[list].map(([column, label]) => ({
-    path: `${list}.${rowId}.${column}`,
-    label,
-    value: readColumn(row, column),
-    input: multilineColumns.has(column) ? "textarea" : "text"
-  }))
+    if (!target) return []
+
+    return [
+      {
+        path: formatResumeFieldPath(target),
+        label,
+        value: stringAt(row, column),
+        input: multilineColumns.has(column) ? "textarea" : "text"
+      } satisfies PanelField
+    ]
+  })
+
+  // Only a job owns a list the panel edits in place; a school's description is
+  // one field, and a skill group's line is one field. Read back off the typed
+  // array rather than off the selection, which holds the union of all three.
+  const bullets =
+    list === "experience"
+      ? (resume.experience.find((job) => job.id === row.id)?.bullets ?? [])
+      : []
+
+  const ops = byRowId(ids, {
+    onRemove: (id) => structure.removeRow(list, id),
+    onReorder: (rowIds) => structure.reorderRows(list, rowIds)
+  })
 
   return {
-    title: rowTitle(list, row),
+    title: entryLabel(list, row) || "Entry",
     fields,
-    // Only a job owns a list the panel edits in place; a school's description
-    // is one field, and a skill group's line is one field.
     lists:
-      list === "experience"
-        ? [bulletList(bulletsOf(row), rowId, structure)]
-        : [],
+      list === "experience" ? [bulletList(bullets, row.id, structure)] : [],
     actions: moveAndRemove({
       index,
-      count: rows.length,
-      onMove: (to) =>
-        structure.reorderRows(
-          list,
-          moveItem(
-            rows.map((current) => current.id),
-            index,
-            to
-          )
-        ),
-      onRemove: () => structure.removeRow(list, rowId)
+      count: ids.length,
+      onMove: (to) => ops.onMove(index, to),
+      onRemove: () => ops.onRemove(index)
     })
   }
 }
@@ -285,7 +401,12 @@ function bulletList(
       key: `${rowId}.${index}`,
       fields: [
         {
-          path: `experience.${rowId}.bullets.${index}`,
+          path: formatResumeFieldPath({
+            section: "experience",
+            kind: "bullet",
+            row: rowId,
+            bulletIndex: index
+          }),
           label: `Bullet ${index + 1}`,
           value: bullet,
           input: "textarea"
@@ -312,18 +433,18 @@ function bulletList(
  */
 function sectionPanel(
   resume: SavedResume,
-  sectionId: string,
-  select: (selection: ResumeSelection) => void,
+  selected: Extract<ResolvedSelection, { kind: "section" }>,
+  select: Select,
   structure: StructureActions
 ): PanelModel {
-  const index = resume.sections.findIndex((row) => row.id === sectionId)
-  const section = resume.sections[index]
-
-  if (!section)
-    return { title: "Nothing selected", fields: [], lists: [], actions: [] }
+  const { section, index } = selected
 
   const labelField: PanelField = {
-    path: `section.${sectionId}.label`,
+    path: formatResumeFieldPath({
+      section: "section",
+      kind: "label",
+      row: section.id
+    }),
     label: "Name",
     value: section.label,
     input: "text"
@@ -335,12 +456,20 @@ function sectionPanel(
     ? []
     : sectionContentFields(section.componentType, section.content).map(
         (field) => ({
-          path: contentPath(sectionId, field.target),
+          path: contentPath(section.id, field.target),
           label: field.label,
           value: field.value,
           input: field.input
         })
       )
+
+  const ops = byRowId(
+    resume.sections.map((row) => row.id),
+    {
+      onRemove: structure.removeSection,
+      onReorder: structure.reorderSections
+    }
+  )
 
   return {
     title: section.label || "Section",
@@ -351,15 +480,8 @@ function sectionPanel(
     actions: moveAndRemove({
       index,
       count: resume.sections.length,
-      onMove: (to) =>
-        structure.reorderSections(
-          moveItem(
-            resume.sections.map((row) => row.id),
-            index,
-            to
-          )
-        ),
-      onRemove: () => structure.removeSection(sectionId)
+      onMove: (to) => ops.onMove(index, to),
+      onRemove: () => ops.onRemove(index)
     })
   }
 }
@@ -374,35 +496,34 @@ function sectionPanel(
 function coreEntryList(
   resume: SavedResume,
   core: { key: RowListName; noun: string },
-  select: (selection: ResumeSelection) => void,
+  select: Select,
   structure: StructureActions
 ): PanelList {
-  const rows: { id: string }[] = resume[core.key]
-  const ids = rows.map((row) => row.id)
+  const rows: CoreRow[] = resume[core.key]
 
   return {
     title: "Entries",
     noun: core.noun,
-    items: resume[core.key].map((row) => ({
+    items: rows.map((row) => ({
       key: row.id,
       label: entryLabel(core.key, row) || `Untitled ${core.noun}`,
       fields: [],
       onSelect: () => select({ kind: "row", list: core.key, rowId: row.id })
     })),
     onAdd: () => structure.addRow(core.key),
-    onRemove: (index) => {
-      const id = ids[index]
-
-      if (id) structure.removeRow(core.key, id)
-    },
-    onMove: (index, to) =>
-      structure.reorderRows(core.key, moveItem(ids, index, to))
+    ...byRowId(
+      rows.map((row) => row.id),
+      {
+        onRemove: (id) => structure.removeRow(core.key, id),
+        onReorder: (rowIds) => structure.reorderRows(core.key, rowIds)
+      }
+    )
   }
 }
 
 /** A custom section's content, as the shape registry describes it. */
 function contentList(
-  section: SavedResume["sections"][number],
+  section: SavedSection,
   structure: StructureActions
 ): PanelList[] {
   const noun = sectionContentNoun(section.componentType)
@@ -499,25 +620,4 @@ function contentPath(sectionId: string, content: SectionContentTarget) {
     row: sectionId,
     content
   })
-}
-
-/** A job's bullets. The other row lists have none, and read as empty. */
-function bulletsOf(row: object) {
-  const bullets = (row as { bullets?: unknown }).bullets
-
-  return Array.isArray(bullets) ? (bullets as string[]) : []
-}
-
-function readColumn(row: Record<string, unknown>, column: string) {
-  const value = row[column]
-
-  return typeof value === "string" ? value : ""
-}
-
-function rowTitle(list: RowListName, row: Record<string, unknown>) {
-  return entryLabel(list, row) || "Entry"
-}
-
-function entryLabel(list: RowListName, row: Record<string, unknown>) {
-  return readColumn(row, list === "skill" ? "category" : "name")
 }

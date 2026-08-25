@@ -1,3 +1,11 @@
+/**
+ * Reading one addressed field out of a cached resume, and writing one back.
+ *
+ * The optimistic update, its rollback and the document data all come from here:
+ * a path is the address, and this is what it addresses. Pure, so nothing about
+ * how a write is sent leaks into what a write means.
+ */
+
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { type ResumeFieldTarget } from "~/lib/resume-field-path"
 import {
@@ -5,12 +13,6 @@ import {
   replaceSectionContentString
 } from "~/lib/section-content"
 import { type RouterOutputs } from "~/utils/api"
-
-// Reading one addressed field out of a cached resume, and writing one back.
-//
-// The optimistic update, its rollback and the document data all come from here:
-// a path is the address, and this is what it addresses. Pure, so nothing about
-// how a write is sent leaks into what a write means.
 
 export type SavedResume = RouterOutputs["resume"]["readById"]
 

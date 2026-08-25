@@ -1,16 +1,18 @@
+/**
+ * What a section is and what it may hold.
+ *
+ * Shared by the client and the server: the same discriminator decides which
+ * component draws a section, which paths can address its content, and which
+ * payloads a write will accept.
+ *
+ * Everything that varies per component type lives in one entry of
+ * `sectionComponents` — its schema, its empty value, its slice of the path
+ * grammar, and how one string inside it is replaced. Adding a component type is
+ * one tuple entry and one registry entry, not a hunt for every switch on it.
+ */
+
 import { z } from "zod"
 import { moveItem } from "./move-item"
-
-// What a section is and what it may hold.
-//
-// Shared by the client and the server: the same discriminator decides which
-// component draws a section, which paths can address its content, and which
-// payloads a write will accept.
-//
-// Everything that varies per component type lives in one entry of
-// `sectionComponents` — its schema, its empty value, its slice of the path
-// grammar, and how one string inside it is replaced. Adding a component type is
-// one tuple entry and one registry entry, not a hunt for every switch on it.
 
 /**
  * Core kinds keep their typed rows — a `work` row's company, dates and bullets
@@ -536,11 +538,11 @@ export function sectionContentFields(
   componentType: string,
   stored: unknown
 ): SectionContentField[] {
+  if (!isSectionComponentType(componentType)) return []
+
   const content = parseSectionContent(componentType, stored)
 
-  return content && isSectionComponentType(componentType)
-    ? specFor(componentType).fields(content)
-    : []
+  return content ? specFor(componentType).fields(content) : []
 }
 
 /** The repeated elements of a section's content, in order. */
