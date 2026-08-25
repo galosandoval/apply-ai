@@ -14,10 +14,10 @@ export function ImportStep() {
   const utils = api.useContext()
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState("")
+  /** A file this page turned away, before the server ever saw it. */
+  const [rejection, setRejection] = useState("")
 
-  const { mutate, isPending } = api.profile.importFromPdf.useMutation({
-    onError: (error) => toast.error(error.message),
-
+  const { mutate, isPending, error } = api.profile.importFromPdf.useMutation({
     onSuccess: async (counts) => {
       await utils.profile.read.invalidate()
 
@@ -31,18 +31,23 @@ export function ImportStep() {
 
   const handleFile = async (file: File) => {
     if (file.type !== "application/pdf") {
-      toast.error("That file isn't a PDF.")
+      setRejection("That file isn't a PDF.")
       return
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      toast.error("That PDF is too large. Keep it under 8MB.")
+      setRejection("That PDF is too large. Keep it under 8MB.")
       return
     }
+
+    setRejection("")
 
     setFileName(file.name)
     mutate({ fileBase64: await readAsBase64(file) })
   }
+
+  // Whichever refused the file: this page, or the server that tried to read it.
+  const failure = rejection.length ? rejection : (error?.message ?? "")
 
   return (
     <main className="h-full overflow-y-auto md:grid md:place-items-center">
@@ -93,6 +98,25 @@ export function ImportStep() {
           <p className="text-sm text-muted-foreground">
             {fileName} — this takes a few seconds.
           </p>
+        ) : null}
+
+        {/*
+          A PDF that won't parse is a detour, not a dead end: the message says
+          what happened and the next step is right under it, so the user is
+          never left on a page with nothing to press.
+        */}
+        {failure ? (
+          <div role="alert" className="flex flex-col items-start gap-2">
+            <p className="max-w-md text-sm text-destructive">{failure}</p>
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.push(appPath.contact)}
+            >
+              Fill in the forms instead
+            </Button>
+          </div>
         ) : null}
       </div>
     </main>

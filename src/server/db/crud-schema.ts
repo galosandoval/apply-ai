@@ -71,7 +71,8 @@ export const insertEducationSchema = z.object({
     // decide — a client that could name them could write onto someone else's.
     .omit({ userId: true, resumeId: true })
     .array()
-    .min(1)
+    // No minimum: a user with no degree has an empty education history, and
+    // being unable to get past the step is not the same as having one.
     .max(4)
 })
 

@@ -1,12 +1,15 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import {
+  type AnySectionContent,
   coreSectionDefaults,
   emptySectionContent,
   isCoreSectionKind,
   parseSectionContent,
   replaceSectionContentString,
-  type SectionContentTarget
+  type SectionComponentType,
+  type SectionContentTarget,
+  type SectionKind
 } from "~/lib/section-content"
 import { assertOwnsResume } from "~/server/api/ownership"
 import { type Database, type DbOrTx } from "~/server/db/types"
@@ -29,21 +32,135 @@ const sectionNotFound = () =>
   new TRPCError({ code: "NOT_FOUND", message: "Section not found" })
 
 /**
- * A new resume's rows for the core sections.
+ * One section a resume is created with, before it is given a position.
+ *
+ * Core sections carry no content: they are a label, an order and a pointer to
+ * their own typed rows. Generation may add a custom one either side of them.
+ */
+export type NewSection = {
+  kind: SectionKind
+  label: string
+  componentType: SectionComponentType
+  content: AnySectionContent | null
+}
+
+/**
+ * The sections every resume starts with.
  *
  * What they are and what order they come in is `coreSectionDefaults`, shared
  * with the renderer's fallback — core and custom sections cannot drift if there
- * is only one list. Core sections carry no content: they are a label, an order
- * and a pointer to their own typed rows.
+ * is only one list.
  */
-export function coreSections(resumeId: string) {
-  return coreSectionDefaults.map((section, position) => ({
+export const coreSectionList: NewSection[] = coreSectionDefaults.map(
+  (section) => ({ ...section, content: null })
+)
+
+/**
+ * Rows for a new resume's sections, numbered from the order given.
+ *
+ * Positions are assigned here rather than by each caller, so a resume created
+ * with a generated Summary above the core three cannot end up with two sections
+ * claiming the same place.
+ */
+export function newSections(resumeId: string, sections: NewSection[]) {
+  return sections.map((section, position) => ({
     ...section,
     id: createId(),
     resumeId,
-    position,
-    content: null
+    position
   }))
+}
+
+/** Where a generated section sits against the core three. */
+type Placement = "above" | "below"
+
+/**
+ * The extra sections a generation is allowed to add, and how each draws.
+ *
+ * A fixed allowlist rather than free choice: a model picking sections is a
+ * model making layout decisions with no knowledge of what the components can
+ * render. It lives here, beside the section rows it produces, rather than with
+ * the prompt — what a resume may contain is this module's to say.
+ *
+ * A `Map` rather than an object literal because the key is a string the *model*
+ * wrote: `generated["constructor"]` on an object finds `Object.prototype`'s and
+ * walks straight past a truthiness check.
+ *
+ * A summary is the part of a resume most specific to the posting, so it sits
+ * above the core sections; strengths are a footnote to a history, so below.
+ */
+const generatedSectionAllowlist = new Map<
+  string,
+  {
+    componentType: SectionComponentType
+    placement: Placement
+    /** Turns the model's entries into the shape that component renders. */
+    content: (entries: string[]) => AnySectionContent
+  }
+>([
+  [
+    "Summary",
+    {
+      componentType: "richText",
+      placement: "above",
+      // One entry per paragraph, joined the way markdown separates them.
+      content: (entries) => ({ markdown: entries.join("\n\n") })
+    }
+  ],
+  [
+    "Strengths",
+    {
+      componentType: "list",
+      placement: "below",
+      content: (entries) => ({ items: entries })
+    }
+  ]
+])
+
+/** One extra section as the model asked for it, before the allowlist is applied. */
+type RequestedSection = { label: string; entries: string[] }
+
+/**
+ * A generated resume's sections, in render order: the core three with whatever
+ * the generation was allowed to add arranged around them.
+ *
+ * A label outside the allowlist is dropped and the rest of the resume is kept —
+ * one section the components don't know how to draw is not a reason to throw
+ * away a whole generation. A repeated label is dropped for the same reason a
+ * second Summary would be: the resume has one of each.
+ */
+export function sectionsFromGeneration(
+  requested: RequestedSection[]
+): NewSection[] {
+  const taken = new Set<string>()
+
+  const accepted = requested.flatMap((section) => {
+    const allowed = generatedSectionAllowlist.get(section.label)
+    const entries = section.entries.filter((entry) => entry.trim())
+
+    if (!allowed || taken.has(section.label) || !entries.length) return []
+
+    taken.add(section.label)
+
+    return [
+      {
+        placement: allowed.placement,
+        section: {
+          kind: "custom" as const,
+          label: section.label,
+          componentType: allowed.componentType,
+          content: allowed.content(entries)
+        }
+      }
+    ]
+  })
+
+  const at = (placement: Placement) =>
+    accepted
+      .filter((entry) => entry.placement === placement)
+      .map((entry) => entry.section)
+
+  return [...at("above"), ...coreSectionList, ...at("below")]
 }
 
 /** Appends a custom section, empty, at the end of the resume. */

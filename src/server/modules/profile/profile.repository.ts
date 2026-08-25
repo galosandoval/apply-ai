@@ -131,6 +131,10 @@ export async function deleteEducation(db: DbOrTx, userId: string) {
 type SchoolValues = typeof school.$inferInsert
 
 export async function upsertEducation(db: DbOrTx, values: SchoolValues[]) {
+  // Drizzle rejects an empty VALUES list, and a user with no degree saving an
+  // empty education history is a legal save.
+  if (!values.length) return
+
   return db
     .insert(school)
     .values(values)

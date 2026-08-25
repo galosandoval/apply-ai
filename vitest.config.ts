@@ -14,6 +14,14 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     // Playwright owns `e2e/`; vitest would otherwise try to run those specs.
-    exclude: ["e2e/**", "node_modules/**"]
+    exclude: ["e2e/**", "node_modules/**"],
+    /**
+     * One file at a time. Four test files drive the same `TEST_DATABASE_URL`,
+     * and each truncates every table between its own cases — run in parallel
+     * they delete each other's fixtures mid-test. Serialising is a couple of
+     * seconds; a per-file schema would be the alternative, and is not worth it
+     * at this size.
+     */
+    fileParallelism: false
   }
 })

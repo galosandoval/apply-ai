@@ -1,12 +1,9 @@
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
-import {
-  generateResume,
-  generateResumeInput
-} from "~/server/modules/profile/generate-resume"
 import * as resumeService from "~/server/modules/resume/resume.service"
 import {
   addRowSchema,
   createResumeSchema,
+  generateResumeSchema,
   readResumeSchema,
   refreshFromAccountSchema,
   removeResumeSchema,
@@ -18,15 +15,18 @@ import {
 
 export const resumeRouter = createTRPCRouter({
   /**
-   * Drafts a resume against a job description.
+   * Drafts a resume against a job description, saves it, and returns its id for
+   * the client to navigate to.
    *
    * An ordinary mutation rather than a streaming API route: the dashboard shows
    * a loading state and needs the whole object before it can render anything,
    * so the stream was overhead with a `JSON.parse` on the end of it.
    */
   generate: protectedProcedure
-    .input(generateResumeInput)
-    .mutation(({ input }) => generateResume(input)),
+    .input(generateResumeSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.generate(ctx.db, ctx.session.user.id, input)
+    ),
 
   list: protectedProcedure.query(({ ctx }) =>
     resumeService.list(ctx.db, ctx.session.user.id)

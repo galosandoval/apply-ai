@@ -2,7 +2,7 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { asc, eq } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
-import { appRouter } from "~/server/api/root"
+import { callerFor } from "~/server/api/test-caller"
 import { type CreateResumeInput } from "~/server/modules/resume/resume.schema"
 import {
   connectTestDatabase,
@@ -184,39 +184,6 @@ function draft(overrides: Partial<CreateResumeInput> = {}): CreateResumeInput {
 
 type Seed = Awaited<ReturnType<typeof seed>>
 
-/**
- * A caller with the session a better-auth cookie would have produced. Only
- * `user.id` is read by any procedure, so the rest is the minimum the type wants.
- */
-function callerFor(userId: string | null) {
-  if (!userId) return appRouter.createCaller({ db, session: null })
-
-  const now = new Date()
-
-  return appRouter.createCaller({
-    db,
-    session: {
-      user: {
-        id: userId,
-        name: "Test User",
-        email: `${userId}@test.dev`,
-        emailVerified: false,
-        image: null,
-        createdAt: now,
-        updatedAt: now
-      },
-      session: {
-        id: createId(),
-        token: createId(),
-        userId,
-        expiresAt: new Date(now.getTime() + 60_000),
-        createdAt: now,
-        updatedAt: now
-      }
-    }
-  })
-}
-
 describe.skipIf(!hasTestDatabase)("resume router", () => {
   let fixture: Seed
 
@@ -235,7 +202,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
   describe("updateField — writes land on the right column", () => {
     it("writes the resume's own profession", async () => {
-      await callerFor(fixture.owner.userId).resume.updateField({
+      await callerFor(db, fixture.owner.userId).resume.updateField({
         resumeId: fixture.resumeId,
         path: "profession",
         value: "Staff Engineer"
@@ -250,7 +217,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("writes an experience column", async () => {
-      await callerFor(fixture.owner.userId).resume.updateField({
+      await callerFor(db, fixture.owner.userId).resume.updateField({
         resumeId: fixture.resumeId,
         path: `experience.${fixture.jobId}.title`,
         value: "Principal Engineer"
@@ -266,7 +233,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("writes an education column", async () => {
-      await callerFor(fixture.owner.userId).resume.updateField({
+      await callerFor(db, fixture.owner.userId).resume.updateField({
         resumeId: fixture.resumeId,
         path: `education.${fixture.schoolId}.degree`,
         value: "MSc"
@@ -281,7 +248,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("replaces exactly one bullet", async () => {
-      await callerFor(fixture.owner.userId).resume.updateField({
+      await callerFor(db, fixture.owner.userId).resume.updateField({
         resumeId: fixture.resumeId,
         path: `experience.${fixture.jobId}.bullets.1`,
         value: "rewritten"
@@ -316,7 +283,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it.each(Object.keys(rejected))("rejects %s", async (name) => {
       await expect(
-        callerFor(fixture.owner.userId).resume.updateField({
+        callerFor(db, fixture.owner.userId).resume.updateField({
           resumeId: fixture.resumeId,
           path: rejected[name]!(fixture),
           value: "should not land"
@@ -326,7 +293,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("leaves the row untouched when the path is rejected", async () => {
       await expect(
-        callerFor(fixture.owner.userId).resume.updateField({
+        callerFor(db, fixture.owner.userId).resume.updateField({
           resumeId: fixture.resumeId,
           path: `experience.${fixture.jobId}.bullets.9`,
           value: "should not land"
@@ -349,7 +316,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
   describe("updateField — ownership", () => {
     it("rejects a row belonging to another resume", async () => {
       await expect(
-        callerFor(fixture.owner.userId).resume.updateField({
+        callerFor(db, fixture.owner.userId).resume.updateField({
           resumeId: fixture.resumeId,
           path: `experience.${fixture.otherResumesJobId}.title`,
           value: "leaked"
@@ -366,7 +333,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("rejects another user's resume", async () => {
       await expect(
-        callerFor(fixture.stranger.userId).resume.updateField({
+        callerFor(db, fixture.stranger.userId).resume.updateField({
           resumeId: fixture.resumeId,
           path: "profession",
           value: "leaked"
@@ -376,7 +343,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("rejects an unauthenticated caller", async () => {
       await expect(
-        callerFor(null).resume.updateField({
+        callerFor(db, null).resume.updateField({
           resumeId: fixture.resumeId,
           path: "profession",
           value: "leaked"
@@ -387,7 +354,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
   describe("readById", () => {
     it("returns the resume with its snapshotted rows, ordered by id", async () => {
-      const found = await callerFor(fixture.owner.userId).resume.readById({
+      const found = await callerFor(db, fixture.owner.userId).resume.readById({
         resumeId: fixture.resumeId
       })
 
@@ -406,7 +373,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("rejects another user's resume", async () => {
       await expect(
-        callerFor(fixture.stranger.userId).resume.readById({
+        callerFor(db, fixture.stranger.userId).resume.readById({
           resumeId: fixture.resumeId
         })
       ).rejects.toThrow(/resume not found/i)
@@ -415,7 +382,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
   describe("create — the resume owns what it renders", () => {
     it("keeps the job description it was drafted against", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       const found = await caller.resume.readById({ resumeId })
@@ -424,7 +391,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("snapshots skills and contact onto the resume", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       const found = await caller.resume.readById({ resumeId })
@@ -443,7 +410,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
      * no longer rewrite one already sent.
      */
     it("is unchanged when the account is edited afterwards", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       await caller.profile.upsertSkills({
@@ -468,7 +435,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("does not hand a resume's snapshot back as the account's own", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
 
       await caller.resume.create(draft())
 
@@ -480,7 +447,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("orders jobs and schools by the order they were drafted in", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       const found = await caller.resume.readById({ resumeId })
@@ -494,7 +461,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("starts with the three core sections, in order", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       const found = await caller.resume.readById({ resumeId })
@@ -515,7 +482,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
   describe("updateField — the resume's own contact and skills", () => {
     it("writes a contact field on this resume only", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const { resumeId: otherId } = await caller.resume.create(draft())
 
@@ -534,7 +501,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("files the fallback contact row under the resume's owner", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       // A resume created before contact was snapshotted: the edit has to land
@@ -557,7 +524,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("writes a skill group, splitting the line back into entries", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const [group] = (await caller.resume.readById({ resumeId })).skill
 
@@ -576,7 +543,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("leaves the account's master skills alone", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const [group] = (await caller.resume.readById({ resumeId })).skill
 
@@ -592,7 +559,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("rejects a skill row belonging to another resume", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const { resumeId: otherId } = await caller.resume.create(draft())
       const [theirs] = (await caller.resume.readById({ resumeId: otherId }))
@@ -610,7 +577,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
   describe("refreshFromAccount", () => {
     it("pulls the account's current details in, on request", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       await caller.profile.upsertSkills({
@@ -627,7 +594,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("refreshes only the resume it was asked about", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const { resumeId: otherId } = await caller.resume.create(draft())
 
@@ -647,7 +614,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("rejects another user's resume", async () => {
       await expect(
-        callerFor(fixture.stranger.userId).resume.refreshFromAccount({
+        callerFor(db, fixture.stranger.userId).resume.refreshFromAccount({
           resumeId: fixture.resumeId
         })
       ).rejects.toThrow(/resume not found/i)
@@ -656,7 +623,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
   describe("reorderRows", () => {
     it("reorders the jobs within Experience", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const jobs = (await caller.resume.readById({ resumeId })).experience
 
@@ -675,7 +642,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("reorders the entries within Education", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const schools = (await caller.resume.readById({ resumeId })).education
 
@@ -694,7 +661,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("reorders skill groups", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const groups = (await caller.resume.readById({ resumeId })).skill
 
@@ -713,7 +680,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("refuses a row from another resume, and moves nothing", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const { resumeId: otherId } = await caller.resume.create(draft())
       const jobs = (await caller.resume.readById({ resumeId })).experience
@@ -742,7 +709,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
      * position column was added to replace.
      */
     it("refuses a list that does not name every row", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const jobs = (await caller.resume.readById({ resumeId })).experience
 
@@ -771,7 +738,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
   describe("sections", () => {
     /** A resume with its three core sections, ready to add to. */
     async function withResume() {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       return { caller, resumeId }
@@ -1030,7 +997,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     it("refuses a section belonging to another user's resume", async () => {
       const { caller, resumeId } = await withResume()
       const mine = (await caller.resume.readById({ resumeId })).sections[0]
-      const stranger = callerFor(fixture.stranger.userId)
+      const stranger = callerFor(db, fixture.stranger.userId)
 
       await expect(
         stranger.section.remove({ resumeId, sectionId: mine!.id })
@@ -1068,7 +1035,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
   describe("setBullets", () => {
     /** A resume with its drafted rows, ready to add to. */
     async function withResume() {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       return { caller, resumeId }
@@ -1161,7 +1128,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     it("refuses another user's resume", async () => {
       const { caller, resumeId } = await withResume()
       const [job] = (await caller.resume.readById({ resumeId })).experience
-      const stranger = callerFor(fixture.stranger.userId)
+      const stranger = callerFor(db, fixture.stranger.userId)
 
       await expect(
         stranger.resume.setBullets({
@@ -1175,7 +1142,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
   describe("addRow and removeRow", () => {
     async function withResume() {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       return { caller, resumeId }
@@ -1288,7 +1255,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
     it("refuses another user's resume", async () => {
       const { caller, resumeId } = await withResume()
-      const stranger = callerFor(fixture.stranger.userId)
+      const stranger = callerFor(db, fixture.stranger.userId)
 
       await expect(
         stranger.resume.addRow({ resumeId, section: "experience" })
@@ -1339,7 +1306,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
    */
   describe("remove", () => {
     it("deletes the resume and everything it owns", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       await caller.resume.remove({ resumeId })
@@ -1358,7 +1325,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("leaves the account's master copies alone", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
 
       await caller.resume.remove({ resumeId })
@@ -1370,9 +1337,9 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
     })
 
     it("refuses another user's resume", async () => {
-      const caller = callerFor(fixture.owner.userId)
+      const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
-      const stranger = callerFor(fixture.stranger.userId)
+      const stranger = callerFor(db, fixture.stranger.userId)
 
       await expect(stranger.resume.remove({ resumeId })).rejects.toThrow(
         /resume not found/i

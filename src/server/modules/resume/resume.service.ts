@@ -6,6 +6,10 @@ import {
   type ResumeFieldTarget
 } from "~/lib/resume-field-path"
 import { assertOwnsResume } from "~/server/api/ownership"
+import {
+  generatedResumeSchema,
+  generateResume
+} from "~/server/modules/profile/generate-resume"
 import { school, work, skill } from "~/server/db/schema"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
@@ -13,6 +17,7 @@ import * as repo from "./resume.repository"
 import {
   type AddRowInput,
   type CreateResumeInput,
+  type GenerateInput,
   type RemoveRowInput,
   type ReorderRowsInput,
   type RowSectionName,
@@ -98,11 +103,16 @@ export async function readById(db: Database, userId: string, resumeId: string) {
  *
  * One transaction: a resume that saved its jobs but not its skills would render
  * as a document with a section silently missing.
+ *
+ * `resumeSections` is what a generation produced — the core three with its own
+ * arranged around them. A resume created any other way gets the core three,
+ * which is why they are the default rather than the caller's to remember.
  */
 export async function create(
   db: Database,
   userId: string,
-  input: CreateResumeInput
+  input: CreateResumeInput,
+  resumeSections: sections.NewSection[] = sections.coreSectionList
 ) {
   const resumeId = await db.transaction(async (tx) => {
     const created = await repo.insertResume(tx, {
@@ -137,12 +147,151 @@ export async function create(
     )
 
     await writeSnapshot(tx, id, userId, input)
-    await repo.insertSections(tx, sections.coreSections(id))
+
+    await repo.insertSections(tx, sections.newSections(id, resumeSections))
 
     return id
   })
 
   return { resumeId }
+}
+
+/**
+ * The parts of the account's master copy a resume is snapshotted from: the name
+ * and email on `user`, and the contact and skills filed under it.
+ *
+ * Read together because they are written together — a snapshot taken from two
+ * reads a moment apart is a resume that half agrees with the account.
+ */
+async function readAccountSeed(db: Database, userId: string) {
+  const [details, accountContact, skills] = await Promise.all([
+    repo.findAccount(db, userId),
+    repo.findAccountContact(db, userId),
+    repo.findAccountSkills(db, userId)
+  ])
+
+  return { details, contact: accountContact, skills }
+}
+
+type AccountSeed = Awaited<ReturnType<typeof readAccountSeed>>
+
+/**
+ * The contact details and skills a new resume is snapshotted from.
+ *
+ * Every field is present even when the account has nothing for it: a resume
+ * created with a field missing is a field the editor cannot reach, where an
+ * empty one is a field the user can fill in.
+ */
+function seedFrom(
+  account: AccountSeed
+): Pick<CreateResumeInput, "contact" | "skill"> {
+  const { details, contact: accountContact } = account
+
+  return {
+    contact: {
+      fullName: `${details?.firstName ?? ""} ${details?.lastName ?? ""}`.trim(),
+      email: details?.email ?? "",
+      location: accountContact?.location ?? "",
+      phone: accountContact?.phone ?? "",
+      linkedIn: accountContact?.linkedIn ?? "",
+      portfolio: accountContact?.portfolio ?? ""
+    },
+    skill: account.skills.map((group) => ({
+      category: group.category,
+      all: toSkillLine(group.all)
+    }))
+  }
+}
+
+/**
+ * The account's master history, as the prompt takes it: serialized, and only
+ * the columns that describe what the user did. Ids and positions are ours, not
+ * the model's.
+ */
+async function readHistoryFor(db: Database, userId: string) {
+  const [experience, education] = await Promise.all([
+    repo.findAccountExperience(db, userId),
+    repo.findAccountEducation(db, userId)
+  ])
+
+  return {
+    experience: JSON.stringify(
+      experience.map((job) => ({
+        name: job.name,
+        title: job.title,
+        startDate: job.startDate,
+        endDate: job.endDate,
+        bullets: job.bullets
+      }))
+    ),
+    education: JSON.stringify(
+      education.map((entry) => ({
+        name: entry.name,
+        degree: entry.degree,
+        description: entry.description,
+        startDate: entry.startDate,
+        endDate: entry.endDate,
+        gpa: entry.gpa
+      }))
+    )
+  }
+}
+
+/**
+ * Drafts a resume against a posting, saves it, and hands back where it went.
+ *
+ * Generating **creates** rather than previews: a draft the user navigated away
+ * from used to be simply lost, and the editor spec D built is the one place a
+ * resume is edited. The cost is a row for a draft the user dislikes, which is
+ * what deleting is for.
+ *
+ * The history comes off the account here rather than from the client. A
+ * generation the caller supplies its own history for is a generation the caller
+ * can put anything in — and the resume is snapshotted from the same rows in the
+ * same call, so the two cannot disagree about what the user has done.
+ */
+export async function generate(
+  db: Database,
+  userId: string,
+  input: GenerateInput
+) {
+  const [account, history] = await Promise.all([
+    readAccountSeed(db, userId),
+    readHistoryFor(db, userId)
+  ])
+
+  const drafted = await generateResume({
+    profession: account.details?.profession ?? "",
+    ...history,
+    jobDescription: input.jobDescription
+  })
+
+  // Re-validated rather than trusted: a response that isn't the agreed shape is
+  // a typed failure with nothing written, not a half-built resume the user has
+  // to find and delete.
+  const parsed = generatedResumeSchema.safeParse(drafted)
+
+  if (!parsed.success) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "The model returned a resume we couldn't read. Try again."
+    })
+  }
+
+  return create(
+    db,
+    userId,
+    {
+      ...seedFrom(account),
+      profession: parsed.data.profession,
+      // The posting travels with the resume: it is what tells one resume from
+      // another in the list, and what scoring will score against.
+      jobDescription: input.jobDescription,
+      experience: parsed.data.experience,
+      education: parsed.data.education
+    },
+    sections.sectionsFromGeneration(parsed.data.sections)
+  )
 }
 
 /** The resume's own copy of the skills and contact details it renders. */
@@ -186,31 +335,13 @@ export async function refreshFromAccount(
 ) {
   await assertOwnsResume(db, userId, resumeId)
 
-  const [accountSkills, accountContact, account] = await Promise.all([
-    repo.findAccountSkills(db, userId),
-    repo.findAccountContact(db, userId),
-    repo.findAccount(db, userId)
-  ])
+  const account = await readAccountSeed(db, userId)
 
   await db.transaction(async (tx) => {
     await repo.deleteSnapshotSkills(tx, resumeId)
     await repo.deleteSnapshotContact(tx, resumeId)
 
-    await writeSnapshot(tx, resumeId, userId, {
-      skill: accountSkills.map((group) => ({
-        category: group.category,
-        all: toSkillLine(group.all)
-      })),
-      contact: {
-        fullName:
-          `${account?.firstName ?? ""} ${account?.lastName ?? ""}`.trim(),
-        email: account?.email ?? "",
-        location: accountContact?.location ?? "",
-        phone: accountContact?.phone ?? "",
-        linkedIn: accountContact?.linkedIn ?? "",
-        portfolio: accountContact?.portfolio ?? ""
-      }
-    })
+    await writeSnapshot(tx, resumeId, userId, seedFrom(account))
   })
 
   return { resumeId }
