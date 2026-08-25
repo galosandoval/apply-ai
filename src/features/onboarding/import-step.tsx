@@ -28,7 +28,7 @@ export function ImportStep() {
     }
   })
 
-  const handleFile = async (file: File) => {
+  const validateAndUpload = async (file: File) => {
     if (file.type !== "application/pdf") {
       setRejection("That file isn't a PDF.")
       return
@@ -45,77 +45,81 @@ export function ImportStep() {
     mutate({ fileBase64: await readAsBase64(file) })
   }
 
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+
+    // Reset so re-picking the same file after an error still fires.
+    event.target.value = ""
+
+    if (file) void validateAndUpload(file)
+  }
+
   // Whichever refused the file: this page, or the server that tried to read it.
   const failure = rejection.length ? rejection : (error?.message ?? "")
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-3xl">Start with your current resume</h1>
+    <div>
+      <div className="flex flex-col gap-4">
+        <h1 className="text-3xl">Start with your current resume</h1>
 
-      <p className="max-w-md text-sm text-muted-foreground">
-        Upload a PDF and we&apos;ll fill in your contact info, work history,
-        education, and skills. You get to review and edit everything before
-        anything is used.
-      </p>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-
-          // Reset so re-picking the same file after an error still fires.
-          event.target.value = ""
-
-          if (file) void handleFile(file)
-        }}
-      />
-
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          loading={isPending}
-          onClick={() => inputRef.current?.click()}
-        >
-          {isPending ? "Reading your resume..." : "Upload a PDF"}
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={isPending}
-          onClick={() => goToStep("contact")}
-        >
-          I&apos;ll fill it in myself
-        </Button>
-      </div>
-
-      {isPending && fileName ? (
-        <p className="text-sm text-muted-foreground">
-          {fileName} — this takes a few seconds.
+        <p className="max-w-md text-sm text-muted-foreground">
+          Upload a PDF and we&apos;ll fill in your contact info, work history,
+          education, and skills. You get to review and edit everything before
+          anything is used.
         </p>
-      ) : null}
 
-      {/*
+        <input
+          ref={inputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={handleInputChange}
+        />
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            loading={isPending}
+            onClick={() => inputRef.current?.click()}
+          >
+            {isPending ? "Reading your resume..." : "Upload a PDF"}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isPending}
+            onClick={() => goToStep("contact")}
+          >
+            I&apos;ll fill it in myself
+          </Button>
+        </div>
+
+        {isPending && fileName ? (
+          <p className="text-sm text-muted-foreground">
+            {fileName} — this takes a few seconds.
+          </p>
+        ) : null}
+
+        {/*
         A PDF that won't parse is a detour, not a dead end: the message says
         what happened and the next step is right under it, so the user is
         never left on a page with nothing to press.
       */}
-      {failure ? (
-        <div role="alert" className="flex flex-col items-start gap-2">
-          <p className="max-w-md text-sm text-destructive">{failure}</p>
+        {failure ? (
+          <div role="alert" className="flex flex-col items-start gap-2">
+            <p className="max-w-md text-sm text-destructive">{failure}</p>
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => goToStep("contact")}
-          >
-            Fill in the forms instead
-          </Button>
-        </div>
-      ) : null}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => goToStep("contact")}
+            >
+              Fill in the forms instead
+            </Button>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

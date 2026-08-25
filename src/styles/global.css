@@ -360,10 +360,15 @@
 
     --resume-ink-accent: #1b2a41;
 
-    /* Outlined marks rather than filled ones: a grey pill reads as software. */
+    /*
+      Outlined marks rather than filled ones: a grey pill reads as software.
+      The outline is drawn in the text ink, not the accent — the accent is read
+      by the name, the headings and the rules and nothing else, and routing it
+      here through another token would be that rule broken by indirection.
+    */
     --resume-tag-surface: transparent;
     --resume-tag-border-weight: 0.75pt;
-    --resume-tag-border-ink: var(--resume-ink-accent);
+    --resume-tag-border-ink: currentColor;
     --resume-tag-radius: 0px;
   }
 
@@ -413,7 +418,8 @@
     No rules anywhere: hierarchy is carried entirely by weight, size and space,
     which is the departure. Headings are sentence case and heavy, so they read
     as a different voice from the body rather than as the body shouted. The date
-    column is narrow and grey, so the eye lands on the employer first.
+    column is narrow and set a step below the body, so the eye lands on the
+    employer first — a size decision, not a colour one.
 
     A zero rule weight with a zero gap occupies nothing and draws nothing, so
     "no rule" is a token value rather than a branch in the markup.

@@ -2,17 +2,13 @@ import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 
 /**
- * Fonts, embedded in the printed document rather than merely self-hosted.
+ * Rewrites every font reference in a stylesheet as a `data:` URI.
  *
- * `renderResumePdf` inlines the compiled stylesheet into `page.setContent`,
- * which gives the page an `about:blank` origin. A compiled `@font-face` says
- * `url(../media/Geist-abc123.woff2)`, and against no origin that resolves
- * against nothing: the fetch fails, `font-display: swap` never swaps, and the
- * PDF prints in whatever system face Chromium falls back to. Self-hosting does
- * not help, because the print has no network and no base URL to be relative to.
- *
- * So the bytes travel with the CSS. Every font reference is read off the build
- * output and rewritten as a `data:` URI before the browser is handed anything.
+ * The print inlines the CSS into an `about:blank` page, so a relative
+ * `url(../media/Geist-abc123.woff2)` resolves against no origin: the fetch
+ * fails and the PDF renders in a system fallback. Self-hosting cannot fix that
+ * — the print has no network and no base URL — so the bytes travel with the
+ * CSS instead.
  */
 
 /** What counts as a font, and what MIME type its data URI carries. */

@@ -1,10 +1,8 @@
-import { readdir, readFile } from "node:fs/promises"
-import { join } from "node:path"
 import { chromium, type Page } from "playwright-core"
 import { describe, expect, it } from "vitest"
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { type ResumeStyle } from "~/lib/resume-style"
-import { embedFonts } from "./embed-fonts"
+import { findCompiledCss } from "./compiled-css"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -22,33 +20,29 @@ import { resumePdfDocument } from "./resume-html"
  * is embedded and in use, and that the page fetched nothing to get it.
  */
 
-const compiledCssRoots = [
-  join(process.cwd(), ".next", "static", "css"),
-  join(process.cwd(), ".next", "static", "chunks")
-]
+// The very sheet the PDF route reads, not a second copy of how to find it.
+const css = await findCompiledCss()
 
-/** The built stylesheet, or `null` when the project has not been built. */
-async function compiledCss() {
-  const sheets: string[] = []
-
-  for (const root of compiledCssRoots) {
-    let names: string[]
-
-    try {
-      names = await readdir(root)
-    } catch {
-      continue
-    }
-
-    for (const name of names.filter((entry) => entry.endsWith(".css"))) {
-      sheets.push(await readFile(join(root, name), "utf8"))
-    }
-  }
-
-  return sheets.length ? embedFonts(sheets.join("\n")) : null
+/**
+ * Skipping is a local convenience, and only that.
+ *
+ * Without a build there is nothing to print, so `npm test` on a clean checkout
+ * skips rather than failing for the wrong reason. But a suite that silently
+ * asserts nothing is worse than no suite: this is the only thing standing
+ * between the print and a system fallback. `npm run test:pdf` builds first and
+ * sets this, which turns the skip into a failure.
+ */
+if (!css && process.env.REQUIRE_PDF_TESTS === "1") {
+  throw new Error(
+    "REQUIRE_PDF_TESTS=1 but nothing is built — run `next build` before this suite."
+  )
 }
 
-const css = await compiledCss()
+if (!css) {
+  console.warn(
+    "pdf-fonts.test.ts: skipped, no build under .next/static. `npm run test:pdf` runs it."
+  )
+}
 
 const data: ResumeDocumentData = {
   profession: "Software Engineer",
@@ -90,9 +84,6 @@ const expected: Record<ResumeStyle, { family: string; drawsRules: boolean }> = {
   modern: { family: "Manrope Variable", drawsRules: false }
 }
 
-// A built stylesheet is what the PDF route reads too — without one there is
-// nothing to print, and skipping says so rather than failing for the wrong
-// reason.
 describe.skipIf(!css)("the printed document", () => {
   it.each(Object.entries(expected))(
     "renders %s in its own embedded face, fetching nothing",

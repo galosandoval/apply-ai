@@ -13,6 +13,7 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:pdf": "next build && REQUIRE_PDF_TESTS=1 vitest run src/server/modules/profile/pdf-fonts.test.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },

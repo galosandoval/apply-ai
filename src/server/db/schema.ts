@@ -7,6 +7,7 @@ import {
   text,
   timestamp
 } from "drizzle-orm/pg-core"
+import { defaultResumeStyle, resumeStyleCatalog } from "~/lib/resume-style"
 
 export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
 
@@ -204,7 +205,7 @@ export const resume = pgTable("resume", {
    * renders, and reading the style through to the account would mean a resume
    * already sent changes appearance after the fact.
    */
-  style: text("style").default("standard").notNull(),
+  style: text("style").default(defaultResumeStyle).notNull(),
   /**
    * The accent the style fixed when it was chosen.
    *
@@ -212,7 +213,9 @@ export const resume = pgTable("resume", {
    * a direction later must not repaint a document someone already sent. There
    * is no picker for it — see the spec's out-of-scope list.
    */
-  accent: text("accent").default("#111827").notNull(),
+  accent: text("accent")
+    .default(resumeStyleCatalog[defaultResumeStyle].accent)
+    .notNull(),
   userId: text("user_id").references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })

@@ -10,11 +10,11 @@ import {
   generatedResumeSchema,
   generateResume
 } from "~/server/modules/profile/generate-resume"
+import { resumeStyleStamp } from "~/lib/resume-style"
 import { school, work, skill } from "~/server/db/schema"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
 import * as repo from "./resume.repository"
-import { resumeStyleCatalog } from "~/lib/resume-style"
 import {
   type AddRowInput,
   type CreateResumeInput,
@@ -482,10 +482,7 @@ export async function setStyle(
 ) {
   await assertOwnsResume(db, userId, resumeId)
 
-  await repo.updateResumeStyle(db, resumeId, {
-    style,
-    accent: resumeStyleCatalog[style].accent
-  })
+  await repo.updateResumeStyle(db, resumeId, resumeStyleStamp(style))
 
   return { style }
 }

@@ -31,19 +31,26 @@ variable.
 
 Which leaves a differentiation budget of exactly five axes:
 
-| Axis                      | Tokens                                                                                           |
-| ------------------------- | ------------------------------------------------------------------------------------------------ |
-| Body type                 | `--resume-font-body`, `--resume-font-heading`                                                    |
-| Heading treatment         | `--resume-heading-weight`, `--resume-heading-case`, and the scale                                |
-| Rule weight and placement | `--resume-rule-weight`, `--resume-rule-gap`, `--resume-space-heading`                            |
-| Date-column rhythm        | `--resume-left-column-width`, `--resume-date-align`, `--resume-date-weight`, `--resume-ink-date` |
+| Axis                      | Tokens                                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| Body type                 | `--resume-font-body`, `--resume-font-heading`                                                      |
+| Heading treatment         | `--resume-heading-weight`, `--resume-heading-case`, and the scale                                  |
+| Rule weight and placement | `--resume-rule-weight`, `--resume-rule-gap`, `--resume-space-heading`                              |
+| Date-column rhythm        | `--resume-left-column-width`, `--resume-date-align`, `--resume-date-scale`, `--resume-date-weight` |
+| One accent                | `--resume-ink-accent`                                                                              |
+
+`--resume-font-heading` is the half of the body-type axis all three directions
+currently decline: each takes its headings as a _variation_ on its own body
+face — weight, case and size — rather than introducing a second one. It is a
+live axis, not a dead token; giving a direction a separate heading face is one
+declaration in its overlay and nothing else. See _Four ways this mechanism
+bites_ for why it is declared where it is.
 
 The date range **wraps** inside its column rather than being held on one line.
 The column is a fixed width the style picks, and a range longer than it used to
 sit on top of the employer name — so the width is a decision a style gets to
 make freely, and a pathological range costs a second line rather than the
 layout.
-| One accent | `--resume-ink-accent` |
 
 Three is close to the honest ceiling of what that budget supports. It is the
 reason the set is three and not six.
@@ -59,10 +66,14 @@ Identity comes from the face and from a ledger rhythm — a right-aligned date
 column resolving against a hairline (0.75pt) rule under every heading. The
 profession and each role sit in italic, which a serif has and the two sans faces
 do not. Set at 10.5pt rather than 10pt because a serif at the same point size
-reads smaller. Accent `#1b2a41`, a deep ink navy, also used for links.
+reads smaller. Accent `#1b2a41`, a deep ink navy — read by the name, the
+headings and the hairline rules, and by nothing else.
 
 The strengths block draws as outlined marks rather than filled pills: a grey
-pill on a serif document reads as software.
+pill on a serif document reads as software. The outline takes the text ink, not
+the accent: pointing `--resume-tag-border-ink` at `--resume-ink-accent` is the
+one-accent rule broken by indirection, and `resume-tokens.test.ts` now scans
+each overlay for exactly that.
 
 ### Standard — neutral
 
@@ -122,7 +133,11 @@ nothing.** Hierarchy is size and weight, and the rules take the accent as a soli
 fill rather than as a tint. A style that needs its accent to be legible has
 failed the black-and-white requirement, not earned an exception to it —
 `src/components/resume-tokens.test.ts` holds every accent to a luminance ceiling,
-and holds each overlay to declaring no ink but the accent.
+and holds each overlay to declaring no ink but the accent — and to not pointing
+any _other_ token at it either. That second half exists because scanning ink
+names alone missed it once: Classic outlined the strengths block in the accent
+through `--resume-tag-border-ink`, which is the rule broken by indirection
+rather than by declaration.
 
 There is no user-facing accent picker, deliberately. It is a second picker, a
 second column, and the part most likely to make output look worse rather than
@@ -178,7 +193,12 @@ each is now covered by a test that was checked against the bug it guards:
 2. **A `var()` inside a custom property resolves where it is _declared_.**
    `--resume-font-heading: var(--resume-font-body)` on `:root` resolves against
    `:root`'s body face, so overriding only `--resume-font-body` in an overlay
-   left every style's headings in Geist. Each overlay restates the derivation.
+   left every style's headings in Geist. It is declared on `.resume-document`
+   instead — the element the overlay class is on, where the style's own body
+   face is in scope. All three directions therefore take their headings as a
+   variation on the body face rather than as a second one; an overlay that
+   wants a separate heading face sets `--resume-font-heading` directly, and
+   nothing else has to change.
 3. **Preflight gives `hr` a 1px top border.** A style setting
    `--resume-rule-weight: 0` still drew a line, which is precisely Modern's
    whole departure. The reset lives in `.resume-rule` beside the tokens rather
@@ -213,19 +233,59 @@ Two things were wrong, and both are fixed:
    rewrites it as a `data:` URI, once per process, before the browser sees the
    CSS. `render-resume-pdf.ts` then waits on `document.fonts.ready` so
    `font-display: swap` cannot print a fallback frame.
-2. **The printed body carries the font variable class** the app shell carries. It
-   previously carried none, so even `--font-geist-sans` was undefined there.
+2. **The faces are declared as plain `@font-face` rules** in `global.css`
+   against files the app serves, rather than through `next/font`. `next/font`
+   hands back a generated class name that the print's `about:blank` page has no
+   way to carry, and the `geist` package's export evaluates to `undefined`
+   inside the PDF route's server bundle — so the shell no longer uses it
+   either, and both the app and the print read the same `:root` variables.
 
-The faces are committed as `.woff2` under `src/fonts/` rather than downloaded at
-build time: the PDF embeds whatever bytes are on disk, and a face the build
-fetched is a face that can fail to fetch. Both families are OFL 1.1, which
-permits embedding in a generated document — recorded in `src/fonts/LICENSE.md`.
-Licensing was checked before the faces were chosen.
+The faces are committed as `.woff2` under `public/fonts/` rather than downloaded
+at build time: the PDF embeds whatever bytes are on disk, and a face the build
+fetched is a face that can fail to fetch. All three families are OFL 1.1, which
+permits embedding in a generated document — recorded in
+`public/fonts/LICENSE.md`. Licensing was checked before the faces were chosen.
+
+`compiled-css.ts` is the single reader of the built stylesheet, shared by the
+PDF route and by `pdf-fonts.test.ts`, so the test cannot drive a sheet the
+print does not.
+
+## Choosing a style
+
+Three buttons in the editor toolbar, labelled with the register each direction
+is for. **Pointing at one previews it** — the document beside the picker redraws
+in that direction, and leaving puts it back. Only a click persists.
+
+What is previewed is the user's own resume: their real history, at real length,
+on a real page. Thumbnails were rejected for the same reason the directions were
+explored against real content rather than specified in prose — the constraint
+that decides whether a direction works is one A4 page against a full work
+history, and a thumbnail is exactly the size to hide it. Three miniatures that
+read the same at a glance are not a choice.
+
+The previewed stamp is applied at the one render site in the editor, so it
+cannot leak: the PDF button prints what is stored, not what the pointer happens
+to be over. A touch screen has no hover, so a tap chooses directly and the
+document still redraws immediately — the desktop path improves on that fallback
+rather than replacing it.
+
+There is no accent picker, deliberately — see _Colour carries no information_.
 
 ## Style is stored on the resume
 
-Two columns on `resume`: `style` and `accent`, defaulting to `standard` and
-`#111827` so existing rows render unchanged (migration `0009_resume_style`).
+Two columns on `resume`: `style` and `accent`, defaulting to the Standard
+stamp — `standard` and `#111827` — so a row written before styles existed picks
+up the direction it was already closest to (migration `0009_resume_style`).
+
+**Not byte-identical to what those rows used to render as.** Standard is a
+retune of the old document onto the scale, not a copy of it: the base size, the
+ratio, the rhythm and the left column all moved. Existing resumes therefore
+render as Standard rather than as their former selves, which is as close as
+valuing the token set allows and is the cost the spec accepted when it asked
+for the values to be decided. The defaults are derived from
+`resumeStyleCatalog` in `schema.ts` rather than written out again; the
+migration is frozen SQL, so `resume-tokens.test.ts` holds the two together and
+a retune of Standard's accent means writing a migration.
 
 Not on the account. A saved resume owns everything it renders, and reading the
 style through to the account would mean a resume already sent changes appearance
@@ -248,8 +308,10 @@ break the document's structural guarantees:
   case, colour or rule value where a token is expected.** This is the
   load-bearing one: it is the entire reason style three cost less to build than
   style one, and the first hardcoded value is where that stops being true. It
-  also asserts each overlay actually re-values all five axes, and that every
-  accent survives greyscale.
+  also asserts each overlay actually re-values all five axes, that every accent
+  survives greyscale, that no other token borrows `--resume-ink-accent` through
+  a `var()`, and that the column defaults and the frozen `0009` migration both
+  still agree with the catalog.
 - `embed-fonts.test.ts` — the rewrite that makes the print use the face the
   preview shows.
 - `pdf-fonts.test.ts` — drives the same `about:blank` page the PDF route drives
@@ -258,7 +320,10 @@ break the document's structural guarantees:
   get it, that nothing overflows its container, and that **the scale actually
   moves between styles** rather than being frozen on the root. Not a screenshot
   suite — no pixel is asserted, only relationships the design states on purpose
-  — and it skips when the project has not been built.
+  — and it skips when the project has not been built, warning that it did.
+  `npm run test:pdf` builds first and sets `REQUIRE_PDF_TESTS=1`, which turns
+  that skip into a failure: this is the only suite standing between the print
+  and a system fallback, so it must not be able to pass by asserting nothing.
 
 No visual regression testing, no screenshot diffing, no pixel assertions. The
 design is changing by intent, and a screenshot suite would only generate noise.
@@ -270,3 +335,9 @@ empty one, and a two-page one; printed in black and white; the browser preview
 and the generated PDF compared for identical rendering; and long names, long
 company names and long single bullets checked for overflow. That is the real cost
 of shipping three, and it is not something a test can stand in for.
+
+One more the picker adds: that previewing a direction and then choosing it land
+on the same document. They normally must — both stamp the direction's current
+accent — but a resume saved before a retune keeps the accent it was sent with,
+so releasing the pointer without clicking is the one moment the two legitimately
+differ.

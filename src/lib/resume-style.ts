@@ -1,15 +1,6 @@
 /**
- * The three resume styles, as a name and an accent.
- *
- * A style is a *token overlay* — a class on the document root that re-values
- * the `--resume-*` variables, exactly the way `.resume-reflow` does. Nothing
- * here holds a size, a weight or a colour except the accent, because nothing
- * here is where a style is defined: the values live in `global.css` beside the
- * tokens they override, and this module is only how the rest of the app names
- * one.
- *
- * The rationale for each direction — what it is for, and what was rejected —
- * is in `docs/resume-style.md`.
+ * Names the three resume styles. A style itself is a token overlay in
+ * `global.css`; the rationale for each is in `docs/resume-style.md`.
  */
 
 export const resumeStyles = ["classic", "standard", "modern"] as const
@@ -29,7 +20,7 @@ export const defaultResumeStyle: ResumeStyle = "standard"
  * How each style presents itself in the picker, and the accent it fixes.
  *
  * `accent` is duplicated here and in the CSS overlay on purpose: the CSS is
- * what draws the document, and this copy is what gets written onto a resume so
+ * what draws the document, and this copy is what gets stamped onto a resume so
  * that a resume already sent keeps the accent it was sent with even if the
  * style's value later changes.
  */
@@ -85,4 +76,34 @@ export function toResumeStyle(value: string | null | undefined): ResumeStyle {
  */
 export function resumeStyleClass(style: ResumeStyle) {
   return resumeStyleCatalog[style].className
+}
+
+/**
+ * A style and the accent it fixed when it was chosen.
+ *
+ * One type because they are one decision, and everything that carries them —
+ * the row, the update, the optimistic patch, the render payload — carries both
+ * or neither. A style holding another style's accent is a document nobody
+ * picked.
+ */
+export type ResumeStyleStamp = { style: string; accent: string }
+
+/** What choosing `style` writes onto a resume. */
+export function resumeStyleStamp(style: ResumeStyle): ResumeStyleStamp {
+  return { style, accent: resumeStyleCatalog[style].accent }
+}
+
+/** `#rgb` or `#rrggbb`, which is the only shape an accent is allowed to be. */
+const hexColour = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
+
+/**
+ * A stored accent as one that can be drawn with, or nothing.
+ *
+ * The one place the hex is validated. The column is `text` and the value ends
+ * up in a `style` attribute, so it is checked here rather than at each draw
+ * site — and an unrecognisable accent falls back to the overlay's own, the way
+ * an unrecognisable style falls back to the default.
+ */
+export function toResumeAccent(value: string | null | undefined) {
+  return value && hexColour.test(value) ? value : undefined
 }

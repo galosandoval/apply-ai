@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest"
 import {
   defaultResumeStyle,
   resumeStyleCatalog,
+  resumeStyleStamp,
   resumeStyles
 } from "~/lib/resume-style"
+import { resume } from "~/server/db/schema"
 
 /**
  * The load-bearing test for three styles.
@@ -137,25 +139,32 @@ describe.each(documentSources)("%s", (path) => {
 })
 
 describe("the stored defaults", async () => {
-  const schema = await readFile(
-    join(process.cwd(), "src/server/db/schema.ts"),
-    "utf8"
-  )
+  const stamp = resumeStyleStamp(defaultResumeStyle)
 
   /*
-    The accent lives in three places by design — the catalog writes it onto a
-    resume, the overlay draws with it, and the column default covers rows that
-    predate styles. The first two are checked against each other by the overlay
-    tests below; this is the third, which nothing else would notice drifting.
-    A stale column default means every legacy resume renders in an accent no
-    style fixes.
+    The column defaults are derived from the catalog rather than spelled out
+    again, so this asserts the derivation reaches the table — a `.default()`
+    dropped in a refactor would leave legacy rows with no style at all.
   */
-  it("gives the resume column the default style's own accent", () => {
-    const style = /style"\)\.default\("([^"]+)"\)/.exec(schema)?.[1]
-    const accent = /accent"\)\.default\("([^"]+)"\)/.exec(schema)?.[1]
+  it("gives the resume columns the default style's own stamp", () => {
+    expect(resume.style.default).toBe(stamp.style)
+    expect(resume.accent.default).toBe(stamp.accent)
+  })
 
-    expect(style).toBe(defaultResumeStyle)
-    expect(accent).toBe(resumeStyleCatalog[defaultResumeStyle].accent)
+  /*
+    The migration is frozen SQL and cannot derive anything, so it is the one
+    copy that can silently fall out of step: retune Standard's accent and every
+    row written before the next migration carries a colour no style fixes.
+    Drifting here means writing a migration, not editing this file.
+  */
+  it("matches the migration that added them", async () => {
+    const sql = await readFile(
+      join(process.cwd(), "migrations/0009_resume_style.sql"),
+      "utf8"
+    )
+
+    expect(sql).toContain(`"style" text DEFAULT '${stamp.style}'`)
+    expect(sql).toContain(`"accent" text DEFAULT '${stamp.accent}'`)
   })
 })
 
@@ -217,6 +226,25 @@ describe("the style overlays", async () => {
       // colour is hierarchy a photocopy loses. Size, weight and space are the
       // instruments; the accent is decoration and says nothing.
       expect([...new Set(inks)]).toEqual(["--resume-ink-accent"])
+    }
+  })
+
+  it("lets no other token borrow the accent", () => {
+    for (const name of resumeStyles) {
+      // The ink-name scan above only sees `--resume-ink-*`, so an overlay could
+      // point any *other* token at the accent and pass it — which is how the
+      // strengths block came to be outlined in it. Colour that carries no
+      // information can only be read by the name, the headings and the rules,
+      // and those read it from the stylesheet's own component classes.
+      const borrowed = [
+        ...overlay(name).matchAll(
+          /(--resume-[a-z-]+):\s*var\(--resume-ink-accent\)/g
+        )
+      ].map(([, token]) => token)
+
+      expect(borrowed, `${name} routes the accent into another token`).toEqual(
+        []
+      )
     }
   })
 

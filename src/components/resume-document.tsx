@@ -22,7 +22,9 @@ import {
 } from "~/lib/section-content"
 import {
   type ResumeStyle,
+  type ResumeStyleStamp,
   resumeStyleClass,
+  toResumeAccent,
   toResumeStyle
 } from "~/lib/resume-style"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
@@ -45,6 +47,15 @@ export type ResumeDocumentSection = {
 }
 
 /**
+ * The `ResumeStyleStamp` a payload carries, if it carries one.
+ *
+ * Loose strings because that is what the columns hold, narrowed at the one
+ * place each becomes a class or a token value. Absent means the default — a
+ * resume created before styles existed, or a PDF payload assembled without one.
+ */
+type DocumentStamp = Partial<ResumeStyleStamp>
+
+/**
  * Everything the resume template renders. Deliberately not a Zod-derived type:
  * the editor and the PDF each assemble it from a different source, and this is
  * the contract they agree on.
@@ -64,23 +75,7 @@ export type ResumeDocumentData = {
    * be the document the user was looking at.
    */
   sections?: ResumeDocumentSection[]
-  /**
-   * The typographic direction the resume is drawn in.
-   *
-   * A plain `string` because that is what the column holds, and narrowed at the
-   * one place it becomes a class. Absent means the default — a resume created
-   * before styles existed, or a PDF payload assembled without one.
-   */
-  style?: string
-  /**
-   * The accent the style fixed when it was chosen, as `#rrggbb`.
-   *
-   * Applied over the style's own value so that retuning a direction later does
-   * not repaint a resume that has already been sent. Anything that is not a hex
-   * colour is ignored rather than written into a `style` attribute.
-   */
-  accent?: string
-}
+} & DocumentStamp
 
 /**
  * What the editor selects with, and what it has selected.
@@ -188,18 +183,17 @@ function documentClassName(mode: RenderMode, style: ResumeStyle) {
 /**
  * The resume's own accent, as a token override on the document root.
  *
- * A style overlay fixes an accent; this is the copy that was written onto the
+ * A style overlay fixes an accent; this is the copy that was stamped onto the
  * resume when the style was chosen, and it wins — so retuning a direction never
- * repaints a document someone already sent.
- *
- * Validated as `#rgb` / `#rrggbb` rather than trusted. The value reaches a
- * `style` attribute, and the column is `text`.
+ * repaints a document someone already sent. An accent that is not a colour
+ * falls back to the overlay's own; `toResumeAccent` is where that is decided.
  */
 function accentOverride(accent: string | undefined) {
-  if (!accent || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(accent))
-    return undefined
+  const ink = toResumeAccent(accent)
 
-  return { "--resume-ink-accent": accent } as React.CSSProperties
+  return ink
+    ? ({ "--resume-ink-accent": ink } as React.CSSProperties)
+    : undefined
 }
 
 /**

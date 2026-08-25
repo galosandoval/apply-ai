@@ -10,7 +10,7 @@ import {
 } from "~/lib/resume-selection"
 import {
   type ResumeStyle,
-  resumeStyleCatalog,
+  resumeStyleStamp,
   toResumeStyle
 } from "~/lib/resume-style"
 import {
@@ -86,7 +86,7 @@ export function useResumeEditor(resumeId: string) {
 
   const fields = useFieldAutosave(cache)
   const structure = useStructureMutations(cache, fields)
-  const setStyle = useStyleMutation(cache)
+  const style = useStylePicker(cache)
 
   const resume = resumeQuery.data
 
@@ -121,33 +121,40 @@ export function useResumeEditor(resumeId: string) {
         )
       : null,
     addSection: structure.addSection,
-    /** The typographic direction the document is drawn in. */
+    /** The direction the resume is saved in, which is what the picker marks. */
     style: toResumeStyle(resume?.style),
-    onStyleChange: setStyle
+    /** A direction being previewed and not yet chosen, or nothing. */
+    previewStyle: style.previewed,
+    onStylePreview: style.preview,
+    onStyleChange: style.choose
   }
 }
 
 /**
- * Choosing a style.
+ * Previewing a style, and then choosing one.
  *
- * Patched into the cache first, so the document redraws on the click — the
- * picker has no preview of its own, and the live document *is* the preview. The
- * accent is patched alongside it because the two are one decision, and the
- * server writes the same pair.
+ * Previewing is local and writes nothing: the document redraws in the style
+ * being pointed at and goes back when the pointer leaves, so a user sees a
+ * direction against their own work history before committing to it. Choosing
+ * patches the cache first so the click lands instantly, then sends it.
+ *
+ * The whole `ResumeStyleStamp` is patched, not just the name — the two are one
+ * decision and the server writes the same pair.
  */
-function useStyleMutation(cache: ResumeCache) {
+function useStylePicker(cache: ResumeCache) {
   const { resumeId, patch } = cache
   const settle = useSettle(cache)
   const setStyle = api.resume.setStyle.useMutation(settle)
+  const [previewed, setPreviewed] = useState<ResumeStyle | null>(null)
 
-  return (style: ResumeStyle) => {
-    patch((resume) => ({
-      ...resume,
-      style,
-      accent: resumeStyleCatalog[style].accent
-    }))
-
-    setStyle.mutate({ resumeId, style })
+  return {
+    previewed,
+    preview: setPreviewed,
+    choose: (style: ResumeStyle) => {
+      setPreviewed(null)
+      patch((resume) => ({ ...resume, ...resumeStyleStamp(style) }))
+      setStyle.mutate({ resumeId, style })
+    }
   }
 }
 
