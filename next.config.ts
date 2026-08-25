@@ -18,12 +18,14 @@ const config: NextConfig = {
 
   /**
    * Playwright resolves its own files at runtime (browsers.json, the driver),
-   * which the bundler cannot see. Keep it external and ship the package whole.
+   * and pdf-parse resolves its pdfjs worker by path off its own module URL.
+   * Neither survives bundling — keep them external and ship the packages whole.
    */
-  serverExternalPackages: ["playwright-core"],
+  serverExternalPackages: ["playwright-core", "pdf-parse", "pdfjs-dist"],
 
   outputFileTracingIncludes: {
-    "/api/resume/pdf": ["./node_modules/playwright-core/**"]
+    "/api/resume/pdf": ["./node_modules/playwright-core/**"],
+    "/api/trpc/[trpc]": ["./node_modules/pdfjs-dist/legacy/build/**"]
   },
 
   redirects: async () => {
