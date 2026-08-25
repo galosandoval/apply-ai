@@ -37,12 +37,11 @@ export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
   }
 
   return (
-    <div className="sticky top-0 z-50 flex w-full shrink-0 items-center justify-between gap-4 bg-background px-4 py-2 shadow-md">
+    <div className="sticky top-0 z-10 flex w-full shrink-0 items-center justify-between gap-4 bg-background px-4 shadow-md">
       <Logo />
 
       {children ?? (
         <>
-          <div></div>
           <NavigationMenu className="w-full justify-between">
             <NavigationMenuList>
               <NavLink href={appPath.dashboard}>Dashboard</NavLink>
