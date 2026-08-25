@@ -179,6 +179,9 @@ export function toDocumentData(resume: SavedResume): ResumeDocumentData {
     experience: resume.experience,
     education: resume.education,
     // What is drawn and in what order is data now, not JSX order.
-    sections: resume.sections
+    sections: resume.sections,
+    // The document owns how it looks, so the preview and the print agree.
+    style: resume.style,
+    accent: resume.accent
   }
 }

@@ -10,6 +10,7 @@ import {
   generatedResumeSchema,
   generateResume
 } from "~/server/modules/profile/generate-resume"
+import { resumeStyleStamp } from "~/lib/resume-style"
 import { school, work, skill } from "~/server/db/schema"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
@@ -22,6 +23,7 @@ import {
   type ReorderRowsInput,
   type RowSectionName,
   type SetBulletsInput,
+  type SetStyleInput,
   type UpdateFieldInput
 } from "./resume.schema"
 import * as sections from "./section.service"
@@ -464,6 +466,25 @@ export async function setBullets(
   })
 
   return { rowId: input.rowId }
+}
+
+/**
+ * Sets the resume's typographic direction, and stamps it with the accent that
+ * direction currently fixes.
+ *
+ * The accent is copied rather than referenced so a resume already sent keeps
+ * the document it was sent as, even if the style is retuned later.
+ */
+export async function setStyle(
+  db: Database,
+  userId: string,
+  { resumeId, style }: SetStyleInput
+) {
+  await assertOwnsResume(db, userId, resumeId)
+
+  await repo.updateResumeStyle(db, resumeId, resumeStyleStamp(style))
+
+  return { style }
 }
 
 /**

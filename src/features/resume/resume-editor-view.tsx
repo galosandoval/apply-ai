@@ -7,6 +7,12 @@ import { ResumeDocument } from "~/components/resume-document"
 import { Button } from "~/components/ui/button"
 import { type RenderMode } from "~/components/resume-section"
 import { useResumeRenderMode } from "~/components/use-resume-render-mode"
+import {
+  type ResumeStyle,
+  resumeStyleCatalog,
+  resumeStyleStamp,
+  resumeStyles
+} from "~/lib/resume-style"
 import { type DownloadPdfSchema } from "~/server/db/crud-schema"
 import { ResumePanel } from "~/features/resume/resume-panel"
 import { toDocumentData } from "~/features/resume/resume-field-lens"
@@ -56,6 +62,12 @@ function Editor({ resumeId }: { resumeId: string }) {
         <PaneTabs pane={pane} setPane={setPane} />
 
         <div className="flex items-center gap-3">
+          <StylePicker
+            onChange={editor.onStyleChange}
+            onPreview={editor.onStylePreview}
+            preview={editor.previewStyle}
+            style={editor.style}
+          />
           <SaveStatus state={editor.saveState} />
           <PdfPreviewButton resume={toDocumentData(editor.resume)} />
         </div>
@@ -93,8 +105,18 @@ function Editor({ resumeId }: { resumeId: string }) {
           onClick={editor.onClearSelection}
         >
           <DocumentPane mode={mode}>
+            {/*
+              The previewed direction is stamped over the saved one for as long
+              as the pointer is on its button — and only here. The PDF above
+              prints what is stored, so a hover cannot leak into a download.
+            */}
             <ResumeDocument
-              data={toDocumentData(editor.resume)}
+              data={{
+                ...toDocumentData(editor.resume),
+                ...(editor.previewStyle
+                  ? resumeStyleStamp(editor.previewStyle)
+                  : null)
+              }}
               isEditor
               mode={mode}
               selection={{
@@ -107,6 +129,82 @@ function Editor({ resumeId }: { resumeId: string }) {
       </div>
     </main>
   )
+}
+
+/**
+ * The three typographic directions, as three buttons that preview before they
+ * commit.
+ *
+ * Pointing at one — or tabbing to it — redraws the document beside it in that
+ * direction, and leaving puts it back; only a click persists. So what a user
+ * compares is their own dense work history on a real page rather than a
+ * thumbnail of someone else's, and the choice is not already saved by the time
+ * they can see it. No thumbnails and no modal for the same reason: a style a
+ * user cannot picture against their own content is a style they are guessing
+ * at.
+ *
+ * On a touch screen there is no hover, so a tap chooses directly — the document
+ * still redraws immediately, which is the fallback the desktop path improves on
+ * rather than replaces.
+ */
+function StylePicker({
+  style,
+  preview,
+  onPreview,
+  onChange
+}: {
+  style: ResumeStyle
+  preview: ResumeStyle | null
+  onPreview: (style: ResumeStyle | null) => void
+  onChange: (style: ResumeStyle) => void
+}) {
+  const showing = preview ?? style
+
+  return (
+    <div
+      aria-label="Resume style"
+      className="flex items-center gap-1 rounded-md border border-neutral-200 p-0.5"
+      onMouseLeave={() => onPreview(null)}
+      role="radiogroup"
+    >
+      {resumeStyles.map((name) => {
+        const { label, register } = resumeStyleCatalog[name]
+        const isChosen = name === style
+
+        return (
+          <button
+            aria-checked={isChosen}
+            className={`rounded px-2 py-1 text-sm transition-colors ${chipClassName(
+              isChosen,
+              name === showing
+            )}`}
+            key={name}
+            onBlur={() => onPreview(null)}
+            onClick={() => onChange(name)}
+            onFocus={() => onPreview(name)}
+            onMouseEnter={() => onPreview(name)}
+            role="radio"
+            title={`${register} — hover to preview`}
+            type="button"
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Chosen reads as solid; merely previewed reads as filled but not committed, so
+ * the button under the pointer never claims to be the saved one.
+ */
+function chipClassName(isChosen: boolean, isShowing: boolean) {
+  if (isChosen) return "bg-neutral-900 text-white"
+
+  return isShowing
+    ? "bg-neutral-200 text-neutral-900"
+    : "text-neutral-600 hover:bg-neutral-100"
 }
 
 /**

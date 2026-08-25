@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { resumeStyles } from "~/lib/resume-style"
 import { insertResumeSchema } from "~/server/db/crud-schema"
 
 // API contracts for the resume module.
@@ -87,5 +88,17 @@ export const setBulletsSchema = resumeIdSchema.extend({
   bullets: z.array(z.string().max(1_000)).max(20)
 })
 export type SetBulletsInput = z.infer<typeof setBulletsSchema>
+
+/**
+ * Choosing a typographic direction.
+ *
+ * The accent is not in the input: each style fixes its own, and the server is
+ * what writes it onto the resume. A caller that could supply one would be a
+ * colour picker, which is exactly what the spec put out of scope.
+ */
+export const setStyleSchema = resumeIdSchema.extend({
+  style: z.enum(resumeStyles)
+})
+export type SetStyleInput = z.infer<typeof setStyleSchema>
 
 export const removeResumeSchema = resumeIdSchema

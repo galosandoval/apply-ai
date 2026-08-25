@@ -7,6 +7,7 @@ import {
   text,
   timestamp
 } from "drizzle-orm/pg-core"
+import { defaultResumeStyle, resumeStyleCatalog } from "~/lib/resume-style"
 
 export const pgTable = pgTableCreator((name) => `apply-ai_${name}`)
 
@@ -195,6 +196,26 @@ export const resume = pgTable("resume", {
    * resume from another and so scoring has something to score against.
    */
   jobDescription: text("job_description").default("").notNull(),
+  /**
+   * The typographic direction the document is drawn in — one of
+   * `~/lib/resume-style`'s names, held as `text` so a new direction is a
+   * deploy rather than a migration.
+   *
+   * On the resume rather than on the account: a resume owns everything it
+   * renders, and reading the style through to the account would mean a resume
+   * already sent changes appearance after the fact.
+   */
+  style: text("style").default(defaultResumeStyle).notNull(),
+  /**
+   * The accent the style fixed when it was chosen.
+   *
+   * Stored rather than read from the style's CSS for the same reason: retuning
+   * a direction later must not repaint a document someone already sent. There
+   * is no picker for it — see the spec's out-of-scope list.
+   */
+  accent: text("accent")
+    .default(resumeStyleCatalog[defaultResumeStyle].accent)
+    .notNull(),
   userId: text("user_id").references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })

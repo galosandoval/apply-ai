@@ -243,7 +243,15 @@ export const downloadPdfSchema = insertResumeSchema
     jobDescription: true
   })
   .extend({
-    sections: downloadPdfSectionSchema.array().optional()
+    sections: downloadPdfSectionSchema.array().optional(),
+    /**
+     * How the document looks, sent with it for the same reason the sections
+     * are: the print has to be the document the user was looking at. Loose
+     * strings — the renderer narrows a style it does not recognise to the
+     * default and ignores an accent that is not a hex colour.
+     */
+    style: z.string().max(32).optional(),
+    accent: z.string().max(32).optional()
   })
 
 export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>

@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
 import { type PgUpdateSetSource } from "drizzle-orm/pg-core"
 import { type ContactColumn, type ResumeColumn } from "~/lib/resume-field-path"
+import { type ResumeStyleStamp } from "~/lib/resume-style"
 import { type DbOrTx } from "~/server/db/types"
 import {
   contact,
@@ -59,6 +60,20 @@ export async function insertResume(
   const rows = await db.insert(resume).values(values).returning()
 
   return rows[0] ?? null
+}
+
+/**
+ * The style and the accent it fixed, written together.
+ *
+ * One update because a `ResumeStyleStamp` is one decision: a row holding a
+ * style with another style's accent is a document nobody chose.
+ */
+export async function updateResumeStyle(
+  db: DbOrTx,
+  resumeId: string,
+  stamp: ResumeStyleStamp
+) {
+  return db.update(resume).set(stamp).where(eq(resume.id, resumeId))
 }
 
 export async function updateResumeColumn(

@@ -20,6 +20,13 @@ import {
   coreSectionDefaults,
   isCoreSectionKind
 } from "~/lib/section-content"
+import {
+  type ResumeStyle,
+  type ResumeStyleStamp,
+  resumeStyleClass,
+  toResumeAccent,
+  toResumeStyle
+} from "~/lib/resume-style"
 import { type InsertResumeSchema } from "~/server/db/crud-schema"
 
 /**
@@ -38,6 +45,15 @@ export type ResumeDocumentSection = {
   /** Custom sections only — a core section's content is its typed rows. */
   content?: unknown
 }
+
+/**
+ * The `ResumeStyleStamp` a payload carries, if it carries one.
+ *
+ * Loose strings because that is what the columns hold, narrowed at the one
+ * place each becomes a class or a token value. Absent means the default — a
+ * resume created before styles existed, or a PDF payload assembled without one.
+ */
+type DocumentStamp = Partial<ResumeStyleStamp>
 
 /**
  * Everything the resume template renders. Deliberately not a Zod-derived type:
@@ -59,7 +75,7 @@ export type ResumeDocumentData = {
    * be the document the user was looking at.
    */
   sections?: ResumeDocumentSection[]
-}
+} & DocumentStamp
 
 /**
  * What the editor selects with, and what it has selected.
@@ -130,7 +146,10 @@ export function ResumeDocument({
       needs, and `break-inside: avoid` on each entry keeps a job off a page
       boundary.
     */
-    <div className={documentClassName(mode)}>
+    <div
+      className={documentClassName(mode, toResumeStyle(data.style))}
+      style={accentOverride(data.accent)}
+    >
       <Header doc={doc} />
 
       {sections.map((section) => (
@@ -141,21 +160,40 @@ export function ResumeDocument({
 }
 
 /**
- * The page, or the phone.
+ * The page, or the phone, in one of three styles.
  *
- * Reflow only swaps the width and turns the token overrides on — everything
- * below it reads the same tokens, which is why the two modes cannot disagree
- * about what the document says.
+ * Both are one class that re-values tokens — everything below reads the same
+ * tokens, which is why the two modes cannot disagree about what the document
+ * says and why no component below here has ever heard of a style. Adding a
+ * fourth direction is an overlay in `global.css` and a name in
+ * `~/lib/resume-style`; nothing in this file changes.
  *
  * Each mode carries its own marker class. `resume-page` names the A4 page and
  * nothing else, so an assertion about the page is not also an assertion about
  * the phone.
  */
-function documentClassName(mode: RenderMode) {
-  const shared = "bg-white px-resume-page-x py-resume-page-y text-resume-body"
+function documentClassName(mode: RenderMode, style: ResumeStyle) {
+  const shared = `resume-document ${resumeStyleClass(style)} bg-resume-paper px-resume-page-x py-resume-page-y text-resume-body`
+
   return mode === "page"
-    ? `${shared} resume-page w-resume-page rounded-md`
+    ? `${shared} resume-page w-resume-page rounded-resume-page`
     : `${shared} resume-reflow w-full`
+}
+
+/**
+ * The resume's own accent, as a token override on the document root.
+ *
+ * A style overlay fixes an accent; this is the copy that was stamped onto the
+ * resume when the style was chosen, and it wins — so retuning a direction never
+ * repaints a document someone already sent. An accent that is not a colour
+ * falls back to the overlay's own; `toResumeAccent` is where that is decided.
+ */
+function accentOverride(accent: string | undefined) {
+  const ink = toResumeAccent(accent)
+
+  return ink
+    ? ({ "--resume-ink-accent": ink } as React.CSSProperties)
+    : undefined
 }
 
 /**
@@ -329,16 +367,22 @@ function entryRow(
 ): TwoColumnRow {
   return {
     key,
+    /*
+      The date range wraps inside its column rather than running out of it.
+      `whitespace-nowrap` here meant a long range — "Sep 2016 - May 2018" — sat
+      on top of the employer name in any style whose column is narrower than the
+      text, which is a layout the token set is supposed to be free to choose.
+    */
     left: (
-      <p className="whitespace-nowrap">
+      <p className="resume-dates">
         <Text doc={doc} value={start} /> - <Text doc={doc} value={end} />
       </p>
     ),
     right: (
       <>
-        <div className="font-semibold">
+        <div className="resume-entry-name">
           <Text doc={doc} value={name} />,{" "}
-          <Text className="font-normal italic" doc={doc} value={detail} />
+          <Text className="resume-entry-detail" doc={doc} value={detail} />
         </div>
 
         {body}
@@ -393,12 +437,12 @@ function Header({ doc }: { doc: Doc }) {
       {...select.attributes}
     >
       <div className="justify-self-center">
-        <h1 className="text-resume-name font-bold">
+        <h1 className="resume-name text-resume-name text-resume-accent">
           <Text doc={doc} value={data.contact.fullName} />
         </h1>
       </div>
 
-      <h2 className="text-resume-title font-bold tracking-wide">
+      <h2 className="resume-title text-resume-title">
         <Text doc={doc} value={data.profession} />
       </h2>
 

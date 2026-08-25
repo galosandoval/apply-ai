@@ -9,6 +9,11 @@ import {
   type RowListName
 } from "~/lib/resume-selection"
 import {
+  type ResumeStyle,
+  resumeStyleStamp,
+  toResumeStyle
+} from "~/lib/resume-style"
+import {
   type AnySectionContent,
   type SectionComponentType
 } from "~/lib/section-content"
@@ -81,6 +86,7 @@ export function useResumeEditor(resumeId: string) {
 
   const fields = useFieldAutosave(cache)
   const structure = useStructureMutations(cache, fields)
+  const style = useStylePicker(cache)
 
   const resume = resumeQuery.data
 
@@ -114,7 +120,41 @@ export function useResumeEditor(resumeId: string) {
           fields.unsaved
         )
       : null,
-    addSection: structure.addSection
+    addSection: structure.addSection,
+    /** The direction the resume is saved in, which is what the picker marks. */
+    style: toResumeStyle(resume?.style),
+    /** A direction being previewed and not yet chosen, or nothing. */
+    previewStyle: style.previewed,
+    onStylePreview: style.preview,
+    onStyleChange: style.choose
+  }
+}
+
+/**
+ * Previewing a style, and then choosing one.
+ *
+ * Previewing is local and writes nothing: the document redraws in the style
+ * being pointed at and goes back when the pointer leaves, so a user sees a
+ * direction against their own work history before committing to it. Choosing
+ * patches the cache first so the click lands instantly, then sends it.
+ *
+ * The whole `ResumeStyleStamp` is patched, not just the name — the two are one
+ * decision and the server writes the same pair.
+ */
+function useStylePicker(cache: ResumeCache) {
+  const { resumeId, patch } = cache
+  const settle = useSettle(cache)
+  const setStyle = api.resume.setStyle.useMutation(settle)
+  const [previewed, setPreviewed] = useState<ResumeStyle | null>(null)
+
+  return {
+    previewed,
+    preview: setPreviewed,
+    choose: (style: ResumeStyle) => {
+      setPreviewed(null)
+      patch((resume) => ({ ...resume, ...resumeStyleStamp(style) }))
+      setStyle.mutate({ resumeId, style })
+    }
   }
 }
 
