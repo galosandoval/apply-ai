@@ -24,6 +24,8 @@ import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import { FormField } from "~/components/ui/form"
 import Image from "next/image"
 import { useAppForm } from "~/components/use-app-form"
+import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
+import { appPath } from "~/lib/path"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {
@@ -35,6 +37,7 @@ const initialSkills: InsertSkillsSchema["skills"] = [
 
 export function SkillsStep() {
   const router = useRouter()
+  const { goToStep } = useOnboardingStep()
   const { id: userId } = useUser()
 
   const { data: profile } = api.profile.read.useQuery(undefined, { enabled: !!userId })
@@ -42,10 +45,10 @@ export function SkillsStep() {
   const { mutate } = api.profile.upsertSkills.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/skills")
+      goToStep("skills")
     },
 
-    onMutate: () => router.push("/dashboard")
+    onMutate: () => router.push(appPath.dashboard)
   })
 
   const form = useAppForm(insertSkillsSchema, {
@@ -101,7 +104,7 @@ export function SkillsStep() {
       handleSubmit={handleSubmit(onSubmit)}
       title="Skills"
     >
-      <h2 className="max-w-4xl pb-4 text-sm text-muted-foreground">
+      <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
         This is how your skills will be displayed on your resume. You can add
         several categories and skills. Type in skills and separate them with a
         comma.
@@ -112,7 +115,7 @@ export function SkillsStep() {
         alt="Skills"
         width={768}
         height={100}
-        className="rounded"
+        className="h-auto w-full rounded"
       />
 
       {fields.map((field, index) => (
@@ -169,8 +172,8 @@ function SkillForm({
 }) {
   return (
     <div key={field.id}>
-      <div className="grid grid-cols-8 gap-4">
-        <div className="col-span-2">
+      <div className="grid grid-cols-8 gap-4 max-md:grid-cols-1 max-md:gap-2">
+        <div className="col-span-2 max-md:col-span-1">
           <FormField
             control={control}
             name={`skills.${index}.category`}
@@ -185,7 +188,7 @@ function SkillForm({
             )}
           />
         </div>
-        <div className="col-span-6 flex gap-2">
+        <div className="col-span-6 flex gap-2 max-md:col-span-1">
           <FormField
             control={control}
             name={`skills.${index}.all`}

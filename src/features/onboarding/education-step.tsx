@@ -1,7 +1,6 @@
 "use client"
 
 import { Cross1Icon } from "@radix-ui/react-icons"
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   type UseFieldArrayRemove,
@@ -23,6 +22,7 @@ import { useUser } from "~/utils/useUser"
 import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import { FormField } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
+import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -39,7 +39,7 @@ const initialSchool: InsertEducationSchema["education"] = [
 const maxSchools = 4
 
 export function EducationStep() {
-  const router = useRouter()
+  const { goToStep } = useOnboardingStep()
   const { id } = useUser()
 
   const { data: profile } = api.profile.read.useQuery(undefined, { enabled: !!id })
@@ -47,10 +47,10 @@ export function EducationStep() {
   const { mutate } = api.profile.addEducation.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/education")
+      goToStep("education")
     },
 
-    onMutate: () => router.push("/onboarding/experience")
+    onMutate: () => goToStep("experience")
   })
 
   const form = useAppForm(insertEducationSchema, {
@@ -127,11 +127,23 @@ export function EducationStep() {
           control={control}
           watch={watch}
           index={index}
-          hasMoreThanOneSchool={hasMoreThanOneSchool}
+          showTitle={hasMoreThanOneSchool}
           remove={remove}
           key={field.id}
         />
       ))}
+
+      {/*
+        Removing the last school is allowed, so this is a state the user can
+        reach on purpose — it says so rather than looking like a form that
+        failed to load.
+      */}
+      {fields.length === 0 ? (
+        <p className="max-w-md text-sm text-muted-foreground">
+          Nothing here yet. If you have no education to list, carry on — this
+          step is optional.
+        </p>
+      ) : null}
 
       <MyErrorMessage errors={errors} name="education.root" />
 
@@ -142,7 +154,7 @@ export function EducationStep() {
             variant="ghost"
             onClick={() => append(initialSchool)}
           >
-            Add another
+            {fields.length === 0 ? "Add a school" : "Add another"}
           </Button>
         )}
 
@@ -155,20 +167,21 @@ export function EducationStep() {
 function EducationForm({
   watch,
   index,
-  hasMoreThanOneSchool,
+  showTitle,
   remove,
   control
 }: {
   watch: UseFormWatch<InsertEducationSchema>
   index: number
-  hasMoreThanOneSchool: boolean
+  /** One school needs no heading to tell it from the others. */
+  showTitle: boolean
   remove: UseFieldArrayRemove
   control: Control<InsertEducationSchema>
 }) {
   const nameSub = watch(`education.${index}.name`)
 
   let fieldTitle = ""
-  if (hasMoreThanOneSchool) {
+  if (showTitle) {
     if (nameSub) {
       fieldTitle = nameSub
     } else {
@@ -181,17 +194,19 @@ function EducationForm({
       <div className="flex justify-between">
         <h2>{fieldTitle}</h2>
 
-        {hasMoreThanOneSchool ? (
-          <Button
-            variant="outline"
-            type="button"
-            className="justify-self-end text-destructive"
-            size="icon"
-            onClick={() => remove(index)}
-          >
-            <Cross1Icon />
-          </Button>
-        ) : null}
+        {/*
+          Always removable, the last one included: a user with no degree has to
+          be able to empty this step rather than invent a school to leave it.
+        */}
+        <Button
+          variant="outline"
+          type="button"
+          className="justify-self-end text-destructive"
+          size="icon"
+          onClick={() => remove(index)}
+        >
+          <Cross1Icon />
+        </Button>
       </div>
 
       <FormField
@@ -207,7 +222,7 @@ function EducationForm({
         )}
       />
 
-      <div className="flex justify-around gap-2">
+      <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={control}
           name={`education.${index}.startDate`}

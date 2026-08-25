@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest"
 import {
   insertExperienceSchema,
   insertSkillsSchema,
-  maxBullets,
+  MAX_BULLETS,
   maxSkills,
-  minBullets
+  MIN_BULLETS
 } from "./crud-schema"
 
 /**
@@ -30,38 +30,42 @@ const filled = (count: number) =>
 
 describe("bullets", () => {
   it("accepts the minimum number of filled bullets", () => {
-    expect(insertExperienceSchema.safeParse(job(filled(minBullets))).success).toBe(
-      true
-    )
+    expect(
+      insertExperienceSchema.safeParse(job(filled(MIN_BULLETS))).success
+    ).toBe(true)
   })
 
   it("accepts the maximum number of filled bullets", () => {
-    expect(insertExperienceSchema.safeParse(job(filled(maxBullets))).success).toBe(
-      true
-    )
+    expect(
+      insertExperienceSchema.safeParse(job(filled(MAX_BULLETS))).success
+    ).toBe(true)
   })
 
   it("ignores blank lines when counting", () => {
-    const withBlanks = [...filled(minBullets), "", "   "]
+    const withBlanks = [...filled(MIN_BULLETS), "", "   "]
 
     expect(insertExperienceSchema.safeParse(job(withBlanks)).success).toBe(true)
   })
 
   it("rejects fewer than the minimum", () => {
-    const result = insertExperienceSchema.safeParse(job(filled(minBullets - 1)))
+    const result = insertExperienceSchema.safeParse(
+      job(filled(MIN_BULLETS - 1))
+    )
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(
-      `Write at least ${minBullets} accomplishments`
+      `Write at least ${MIN_BULLETS} accomplishments`
     )
   })
 
   it("rejects more than the maximum", () => {
-    const result = insertExperienceSchema.safeParse(job(filled(maxBullets + 1)))
+    const result = insertExperienceSchema.safeParse(
+      job(filled(MAX_BULLETS + 1))
+    )
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(
-      `Write at most ${maxBullets} accomplishments`
+      `Write at most ${MAX_BULLETS} accomplishments`
     )
   })
 

@@ -331,7 +331,8 @@ export async function findAccount(db: DbOrTx, userId: string) {
     .select({
       firstName: user.firstName,
       lastName: user.lastName,
-      email: user.email
+      email: user.email,
+      profession: user.profession
     })
     .from(user)
     .where(eq(user.id, userId))
@@ -358,6 +359,27 @@ export async function findAccountSkills(db: DbOrTx, userId: string) {
     .from(skill)
     .where(and(eq(skill.userId, userId), isNull(skill.resumeId)))
     .orderBy(asc(skill.position), asc(skill.id))
+}
+
+/**
+ * The account's master work history — the rows onboarding and the import write,
+ * which is what a generation is drafted from. `resumeId IS NULL` again: a
+ * resume's own snapshot is not part of the history it was written from.
+ */
+export async function findAccountExperience(db: DbOrTx, userId: string) {
+  return db
+    .select()
+    .from(work)
+    .where(and(eq(work.userId, userId), isNull(work.resumeId)))
+    .orderBy(asc(work.position), asc(work.id))
+}
+
+export async function findAccountEducation(db: DbOrTx, userId: string) {
+  return db
+    .select()
+    .from(school)
+    .where(and(eq(school.userId, userId), isNull(school.resumeId)))
+    .orderBy(asc(school.position), asc(school.id))
 }
 
 export async function findAccountContact(db: DbOrTx, userId: string) {

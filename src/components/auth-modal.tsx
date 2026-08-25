@@ -89,7 +89,7 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
       return
     }
 
-    router.push(appPath.import)
+    router.push(appPath.onboarding)
   }
 
   return (

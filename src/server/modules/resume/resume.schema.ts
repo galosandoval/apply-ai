@@ -19,6 +19,21 @@ export const resumeIdSchema = z.object({ resumeId: z.string().cuid2() })
 export const createResumeSchema = insertResumeSchema
 export type CreateResumeInput = z.infer<typeof createResumeSchema>
 
+/**
+ * Everything a generation takes.
+ *
+ * The history it is written from is read off the account on the server, so
+ * there is nothing else here: a caller that could supply its own experience
+ * could put anything on the resume it claims came from the model.
+ */
+export const generateResumeSchema = z.object({
+  jobDescription: z
+    .string()
+    .min(1, "Paste the job posting first")
+    .max(20_000, "That posting is too long")
+})
+export type GenerateInput = z.infer<typeof generateResumeSchema>
+
 export const readResumeSchema = resumeIdSchema
 
 export const refreshFromAccountSchema = resumeIdSchema

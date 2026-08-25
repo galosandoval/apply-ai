@@ -2,18 +2,20 @@
 
 import { useRouter } from "next/navigation"
 import { type ChangeEvent, type FormEvent, useState } from "react"
-import toast from "react-hot-toast"
 import { PromptInput } from "~/components/prompt-input"
 import { appPath } from "~/lib/path"
-import { seedFromAccount } from "~/lib/resume-document-data"
 import { testPrompt } from "~/lib/test-prompt"
-import { api, type RouterOutputs } from "~/utils/api"
+import { api } from "~/utils/api"
 
 /** Prefilled in development so drafting doesn't start with a blank page. */
 const initialInput = process.env.NODE_ENV === "development" ? testPrompt : ""
 
 /**
  * Drafting a resume against a posting.
+ *
+ * The posting is the whole input. The history the resume is written from is
+ * read off the account by the server, in the same call that snapshots it onto
+ * the resume — this form never handles it, so the two cannot disagree.
  *
  * Generation **creates** the resume and sends the user to the editor. The
  * preview that used to sit here was a second editing surface whose save button
@@ -23,59 +25,18 @@ const initialInput = process.env.NODE_ENV === "development" ? testPrompt : ""
  * The cost is a row in the list for a draft the user dislikes, which is what
  * the delete action on the list is for.
  */
-export function GenerateResumeForm({
-  profile
-}: {
-  profile: RouterOutputs["profile"]["read"]
-}) {
+export function GenerateResumeForm() {
   const router = useRouter()
   const [jobDescription, setJobDescription] = useState(initialInput)
 
-  const create = api.resume.create.useMutation({
-    onSuccess: ({ resumeId }) => router.push(appPath.resumeById(resumeId)),
-    onError: (error) => toast.error(error.message)
-  })
-
   const generate = api.resume.generate.useMutation({
-    onSuccess: (generated) =>
-      create.mutate({
-        ...seedFromAccount(profile),
-        education: generated.education,
-        experience: generated.experience,
-        profession: generated.profession,
-        // The posting travels with the resume: it is what tells one resume from
-        // another in the list, and what scoring will score against.
-        jobDescription
-      }),
-    onError: (error) => toast.error(error.message)
+    onSuccess: ({ resumeId }) => router.push(appPath.resumeById(resumeId))
   })
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    generate.mutate({
-      profession: profile.profession,
-      experience: JSON.stringify(
-        profile.experience.map((job) => ({
-          name: job.name,
-          startDate: job.startDate,
-          endDate: job.endDate,
-          title: job.title,
-          bullets: job.bullets
-        }))
-      ),
-      education: JSON.stringify(
-        profile.education.map((school) => ({
-          name: school.name,
-          startDate: school.startDate,
-          endDate: school.endDate,
-          degree: school.degree,
-          description: school.description,
-          gpa: school.gpa
-        }))
-      ),
-      jobDescription
-    })
+    generate.mutate({ jobDescription })
   }
 
   const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -84,7 +45,7 @@ export function GenerateResumeForm({
 
   // The redirect happens after the resume exists, so the pending state covers
   // the write as well as the drafting.
-  if (generate.isPending || create.isPending || create.isSuccess) {
+  if (generate.isPending || generate.isSuccess) {
     return <p>Writing your resume...</p>
   }
 
@@ -97,6 +58,17 @@ export function GenerateResumeForm({
         handleInputChange={handleInputChange}
         input={jobDescription}
       />
+
+      {/*
+        A failure leaves the posting in the box, so retrying is pressing send
+        again rather than pasting it a second time.
+      */}
+      {generate.isError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {generate.error.message} Your posting is still here — send it again to
+          retry.
+        </p>
+      ) : null}
     </form>
   )
 }

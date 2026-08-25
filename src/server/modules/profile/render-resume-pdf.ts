@@ -49,8 +49,10 @@ async function readCompiledCss() {
   }
 
   // Read at runtime from the build output, not bundled — the bundler has no
-  // way to know what the build will emit.
-  const staticRoot = join(process.cwd(), /* turbopackIgnore: true */ ".next", "static")
+  // way to know what the build will emit. The `turbopackIgnore` comments below
+  // sit on the path each `fs` call resolves: without them Turbopack sees an
+  // unanalyzable path and traces the entire project into the server bundle.
+  const staticRoot = join(process.cwd(), ".next", "static")
 
   const roots = [join(staticRoot, "css"), join(staticRoot, "chunks")]
 
@@ -67,7 +69,7 @@ async function readCompiledCss() {
 
     for (const entry of entries.filter((name) => name.endsWith(".css"))) {
       sheets.push(
-        await readFile(/* turbopackIgnore: true */ join(root, entry), "utf8")
+        await readFile(join(/* turbopackIgnore: true */ root, entry), "utf8")
       )
     }
   }

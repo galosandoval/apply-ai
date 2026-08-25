@@ -1,7 +1,6 @@
 "use client"
 
 import { Cross1Icon } from "@radix-ui/react-icons"
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   type FieldArrayWithId,
@@ -32,6 +31,7 @@ import {
   FormMessage
 } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
+import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
@@ -55,7 +55,7 @@ const fromBullets = (bullets: string[]) => bullets.join("\n")
 const maxExperience = 4
 
 export function ExperienceStep() {
-  const router = useRouter()
+  const { goToStep } = useOnboardingStep()
 
   const { id } = useUser()
 
@@ -64,10 +64,10 @@ export function ExperienceStep() {
   const { mutate } = api.profile.addWork.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/experience")
+      goToStep("experience")
     },
 
-    onMutate: () => router.push("/onboarding/skills")
+    onMutate: () => goToStep("skills")
   })
 
   const form = useAppForm(insertExperienceSchema, {
@@ -234,7 +234,7 @@ function ExperienceForm({
         )}
       />
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={control}
           name={`experience.${index}.startDate`}
@@ -261,7 +261,7 @@ function ExperienceForm({
         />
       </div>
 
-      <div className="mx-auto max-w-md">
+      <div>
         {index === 0 && (
           <div className="mt-4">
             <MyAlert

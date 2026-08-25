@@ -1,25 +1,14 @@
-import { ProtectedNavbar } from "~/components/navbar/protected-navbar"
-import { OnboardingBreadcrumbs } from "~/components/navbar/onboarding-breadcrumbs"
+import { OnboardingShell } from "~/features/onboarding/onboarding-shell"
 
 /**
- * Onboarding trades the app navigation for step breadcrumbs. That used to be a
- * `pathname.includes("onboarding")` branch inside the navbar; here it is just
- * the layout the onboarding segment happens to have.
+ * Onboarding trades the app navigation for its step tabs. The shell is a client
+ * component because the open step is state, and both the header tabs and the
+ * page's panel read it.
  */
 export default function OnboardingLayout({
   children
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <>
-      <ProtectedNavbar>
-        <OnboardingBreadcrumbs />
-      </ProtectedNavbar>
-
-      <main className="h-full overflow-y-auto md:grid md:place-items-center">
-        {children}
-      </main>
-    </>
-  )
+  return <OnboardingShell>{children}</OnboardingShell>
 }

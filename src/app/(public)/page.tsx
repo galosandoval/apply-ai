@@ -71,13 +71,14 @@ function Hero() {
               </p>
             </div>
           </div>
-          <div className="flex justify-center">
+          <div className="flex items-start justify-center">
             <Image
               alt="Hero"
-              className="aspect-[4/3] overflow-hidden rounded-xl object-cover object-top"
+              className="aspect-[3/2] h-auto w-full max-w-[600px] overflow-hidden rounded-xl object-cover object-top"
               height="400"
               src="/landing-resume.png"
               width="600"
+              priority
             />
           </div>
         </div>
