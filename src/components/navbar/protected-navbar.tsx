@@ -33,7 +33,7 @@ export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
   }
 
   return (
-    <div className="fixed flex w-full items-center justify-between bg-background px-4 py-2 shadow-md">
+    <div className="fixed z-50 flex w-full items-center justify-between bg-background px-4 py-2 shadow-md">
       <Logo />
 
       {children ?? (
