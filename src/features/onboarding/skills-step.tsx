@@ -24,6 +24,8 @@ import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import { FormField } from "~/components/ui/form"
 import Image from "next/image"
 import { useAppForm } from "~/components/use-app-form"
+import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
+import { appPath } from "~/lib/path"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {
@@ -35,6 +37,7 @@ const initialSkills: InsertSkillsSchema["skills"] = [
 
 export function SkillsStep() {
   const router = useRouter()
+  const { goToStep } = useOnboardingStep()
   const { id: userId } = useUser()
 
   const { data: profile } = api.profile.read.useQuery(undefined, { enabled: !!userId })
@@ -42,10 +45,10 @@ export function SkillsStep() {
   const { mutate } = api.profile.upsertSkills.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/skills")
+      goToStep("skills")
     },
 
-    onMutate: () => router.push("/dashboard")
+    onMutate: () => router.push(appPath.dashboard)
   })
 
   const form = useAppForm(insertSkillsSchema, {

@@ -1,7 +1,6 @@
 "use client"
 
 import { Cross1Icon } from "@radix-ui/react-icons"
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import {
   type UseFieldArrayRemove,
@@ -23,6 +22,7 @@ import { useUser } from "~/utils/useUser"
 import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import { FormField } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
+import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -39,7 +39,7 @@ const initialSchool: InsertEducationSchema["education"] = [
 const maxSchools = 4
 
 export function EducationStep() {
-  const router = useRouter()
+  const { goToStep } = useOnboardingStep()
   const { id } = useUser()
 
   const { data: profile } = api.profile.read.useQuery(undefined, { enabled: !!id })
@@ -47,10 +47,10 @@ export function EducationStep() {
   const { mutate } = api.profile.addEducation.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/education")
+      goToStep("education")
     },
 
-    onMutate: () => router.push("/onboarding/experience")
+    onMutate: () => goToStep("experience")
   })
 
   const form = useAppForm(insertEducationSchema, {

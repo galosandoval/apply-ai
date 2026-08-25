@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
@@ -14,13 +13,14 @@ import { FormField } from "~/components/ui/form"
 import toast from "react-hot-toast"
 import { useUser } from "~/utils/useUser"
 import { useAppForm } from "~/components/use-app-form"
+import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 
 export function ContactStep() {
   return <NameAndContactForm />
 }
 
 function NameAndContactForm() {
-  const router = useRouter()
+  const { goToStep } = useOnboardingStep()
   const utils = api.useContext()
   const { id } = useUser()
   const { data: profile, status } = api.profile.read.useQuery(undefined, { enabled: !!id })
@@ -52,7 +52,7 @@ function NameAndContactForm() {
   const { mutate } = api.profile.upsertNameAndContact.useMutation({
     onError: (error) => {
       toast.error(error.message)
-      router.push("/onboarding/contact")
+      goToStep("contact")
     },
 
     onSuccess: (data, input) => {
@@ -82,7 +82,7 @@ function NameAndContactForm() {
       }))
     },
 
-    onMutate: () => router.push("/onboarding/education")
+    onMutate: () => goToStep("education")
   })
 
   const onSubmit = (data: InsertContactSchema) => {

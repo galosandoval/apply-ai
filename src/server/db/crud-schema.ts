@@ -78,10 +78,10 @@ export const insertEducationSchema = z.object({
 
 export type InsertEducationSchema = z.infer<typeof insertEducationSchema>
 
-export const minBullets = 2
-export const maxBullets = 8
+export const MIN_BULLETS = 1
+export const MAX_BULLETS = 8
 
-const maxBulletLength = 300
+const MAX_BULLET_LENGTH = 300
 
 /**
  * One accomplishment per entry, so the length cap is per bullet rather than per
@@ -101,14 +101,14 @@ const bulletsSchema = z
     const filled = bullets.filter((bullet) => bullet.trim())
 
     const issue =
-      filled.length < minBullets
-        ? `Write at least ${minBullets} accomplishments`
-        : filled.length > maxBullets
-          ? `Write at most ${maxBullets} accomplishments`
+      filled.length < MIN_BULLETS
+        ? `Write at least ${MIN_BULLETS} accomplishments`
+        : filled.length > MAX_BULLETS
+          ? `Write at most ${MAX_BULLETS} accomplishments`
           : filled.some((bullet) => bullet.trim().length < 6)
             ? "Each accomplishment must be more than 6 characters"
-            : filled.some((bullet) => bullet.length > maxBulletLength)
-              ? `Each accomplishment must be less than ${maxBulletLength} characters`
+            : filled.some((bullet) => bullet.length > MAX_BULLET_LENGTH)
+              ? `Each accomplishment must be less than ${MAX_BULLET_LENGTH} characters`
               : null
 
     if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue })

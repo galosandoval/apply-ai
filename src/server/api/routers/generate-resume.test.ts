@@ -45,6 +45,17 @@ const { generateResume } =
 
 const stub = vi.mocked(generateResume)
 
+/**
+ * Stubs the model with a response that deliberately isn't the agreed shape.
+ *
+ * The cast is the point of these tests: the router's job is to reject what the
+ * type says can't happen, so the one unsound step lives here rather than being
+ * repeated at every call site.
+ */
+function stubMalformed(response: unknown) {
+  stub.mockResolvedValue(response as GeneratedResume)
+}
+
 const hasTestDatabase = !!testDatabaseUrl
 
 if (!hasTestDatabase) {
@@ -357,7 +368,7 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
     }
 
     it.each(Object.keys(malformed))("rejects %s", async (name) => {
-      stub.mockResolvedValue(malformed[name])
+      stubMalformed(malformed[name])
 
       await expect(
         callerFor(db, fixture.owner).resume.generate({
@@ -367,7 +378,7 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
     })
 
     it("creates nothing at all", async () => {
-      stub.mockResolvedValue(null)
+      stubMalformed(null)
 
       await expect(
         callerFor(db, fixture.owner).resume.generate({

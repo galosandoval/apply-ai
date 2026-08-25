@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse"
 import { z } from "zod"
-import { maxBullets, maxSkills } from "~/server/db/crud-schema"
+import { MAX_BULLETS, maxSkills } from "~/server/db/crud-schema"
 
 /**
  * Shape the model is asked to return. Every field is lenient on purpose — a
@@ -133,7 +133,7 @@ Rules:
 - Only use information present in the resume. Never invent employers, schools, dates, or numbers. Use an empty string for anything missing.
 - Dates are free text, formatted like "Sept 2017". Use "Present" for a current role.
 - "profession" is the person's current job title or the headline at the top of the resume.
-- For each job, "bullets" is the list of accomplishment bullet points, one string per bullet, at most ${maxBullets}. Keep the person's own wording and metrics. If the job is written as a paragraph, split it into one bullet per sentence.
+- For each job, "bullets" is the list of accomplishment bullet points, one string per bullet, at most ${MAX_BULLETS}. Keep the person's own wording and metrics. If the job is written as a paragraph, split it into one bullet per sentence.
 - Group skills into at most ${maxSkills} categories (for example "Languages", "Frameworks"). If the resume lists skills without categories, put them all under a single "Skills" category.
 - Return at most ${maxExperience} jobs and ${maxEducation} schools, most recent first.
 

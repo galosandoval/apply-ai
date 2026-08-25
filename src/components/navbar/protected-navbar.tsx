@@ -20,8 +20,8 @@ const showOnboarding = process.env.NODE_ENV === "development"
  * The signed-in navbar. Rendered by the `(protected)` layout, so it no longer
  * asks whether there is a session — being here means there is one.
  *
- * `children` is the slot the onboarding layout fills with its breadcrumbs,
- * which used to be a `pathname.includes("onboarding")` branch in here.
+ * `children` is the slot the onboarding layout fills with its step tabs, which
+ * used to be a `pathname.includes("onboarding")` branch in here.
  */
 export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
   const router = useRouter()
@@ -43,7 +43,7 @@ export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
             <NavigationMenuList>
               <NavLink href={appPath.dashboard}>Dashboard</NavLink>
               {showOnboarding && (
-                <NavLink href={appPath.import}>Onboarding</NavLink>
+                <NavLink href={appPath.onboarding}>Onboarding</NavLink>
               )}
               <NavLink href={appPath.resume}>Resumes</NavLink>
               <NavigationMenuItem asChild>

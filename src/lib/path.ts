@@ -1,9 +1,5 @@
 export const appPath = {
-  import: "/onboarding/import",
-  contact: "/onboarding/contact",
-  education: "/onboarding/education",
-  experience: "/onboarding/experience",
-  skills: "/onboarding/skills",
+  onboarding: "/onboarding",
   dashboard: "/dashboard",
   resume: "/resume",
   resumeById: (resumeId: string) => `/resume/${resumeId}`
