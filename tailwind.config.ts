@@ -22,9 +22,11 @@ const config = {
         The resume type scale, as tokens rather than literals.
 
         Every value indirects through a CSS variable declared in `global.css`,
-        so a second resume style is a variable change and reflow mode can widen
-        the body text without a component knowing it happened. No resume
-        component names a size, a spacing step or a rule weight directly.
+        so a style is a variable change and reflow mode can widen the body text
+        without a component knowing it happened. No resume component names a
+        size, a spacing step, a rule weight or a colour directly — the axes
+        Tailwind has no theme key for (case, font style, alignment) are the
+        `.resume-*` component classes in `global.css`.
       */
       fontSize: {
         "resume-name": [
@@ -52,19 +54,35 @@ const config = {
         "resume-rule-gap": "var(--resume-rule-gap)",
         "resume-tag-x": "var(--resume-tag-space-x)",
         "resume-tag-y": "var(--resume-tag-space-y)",
+        "resume-heading": "var(--resume-space-heading)",
         "resume-icon": "var(--resume-icon-size)"
+      },
+      borderWidth: {
+        "resume-tag": "var(--resume-tag-border-weight)"
       },
       width: {
         "resume-page": "var(--resume-page-width)",
         "resume-left-column": "var(--resume-left-column-width)"
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)"]
+        // The generic tail is not decoration: the face is a plain `@font-face`
+        // now rather than a `next/font` import with a generated fallback, so
+        // this is what the app chrome falls back to if it does not load.
+        sans: [
+          "var(--font-geist-sans)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif"
+        ]
       },
       colors: {
+        "resume-paper": "var(--resume-paper)",
+        "resume-ink": "var(--resume-ink-text)",
+        "resume-accent": "var(--resume-ink-accent)",
         "resume-muted": "var(--resume-ink-muted)",
         "resume-link": "var(--resume-ink-link)",
         "resume-tag-surface": "var(--resume-tag-surface)",
+        "resume-tag-border": "var(--resume-tag-border-ink)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -102,6 +120,7 @@ const config = {
       },
       borderRadius: {
         "resume-tag": "var(--resume-tag-radius)",
+        "resume-page": "var(--resume-page-radius)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)"

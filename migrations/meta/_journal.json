@@ -64,6 +64,13 @@
       "when": 1787250153330,
       "tag": "0008_skills_section_component_type",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787686802449,
+      "tag": "0009_resume_style",
+      "breakpoints": true
     }
   ]
 }

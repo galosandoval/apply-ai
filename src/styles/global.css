@@ -2,6 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  The faces the resume styles draw with, and the app's own.
+
+  Declared as plain `@font-face` against files in `public/fonts` rather than
+  through `next/font`. `next/font` is a build-time transform that only evaluates
+  inside the client graph: the PDF route is a Node route handler, and importing
+  a `next/font` module from it fails at module evaluation. The print is the one
+  place all three faces have to be real, so the mechanism that works there is
+  the mechanism all of them use.
+
+  It also buys the `unicode-range` split that `next/font/local` cannot express.
+  Google publishes these as Latin and Latin Extended subsets, and the extended
+  face is what a Polish or Turkish surname resolves to.
+
+  Every family is variable, so one file per style covers every weight the token
+  set asks for. All three are OFL 1.1, which permits embedding in a generated
+  document — see `public/fonts/LICENSE.md`.
+*/
+
+@font-face {
+  font-family: "Geist Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Geist-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Variable";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Geist-Italic-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-Italic-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Source Serif 4 Variable";
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-Italic-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Manrope Variable";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/Manrope-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Manrope Variable";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/Manrope-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @layer base {
   :root {
     /* Name: custom color palette
@@ -39,47 +146,317 @@
     --ring: 228 73% 13%;
 
     --radius: 0.5rem;
+
+    /*
+      The families, named once. `--font-geist-sans` keeps its name because
+      Tailwind's `font-sans` is defined against it and the whole app chrome
+      reads it.
+    */
+    --font-geist-sans: "Geist Variable";
+    --font-resume-serif: "Source Serif 4 Variable";
+    --font-resume-modern: "Manrope Variable";
   }
 
   /*
-    The resume style, as one token set.
+    The resume style, as one token set — the *inputs*.
 
     Every resume component draws from these and names no literal of its own, so
-    a second style is a change here rather than a rewrite of five components.
-    The values are the current document's, carried over unchanged — this is the
-    surface the style work lands on, not the style itself.
+    a style is a change here rather than a rewrite of five components. What is
+    here is what a style may set: a base size and the ratios the scale is built
+    from, one spacing step and a density knob, the five identity axes, and the
+    ink. What is *derived* from them lives on `.resume-document` below, for a
+    reason worth understanding before touching either.
+
+    Nothing here assumes a resume. A cover letter is the same header, the same
+    accent and the same scale with one rich-text section, so no token names a
+    date column or a section rule as a requirement.
   */
   :root {
+    /* Geometry. The page, the column dates sit in, and the paper itself. */
     --resume-page-width: 21cm;
     --resume-left-column-width: 7.5rem;
+    --resume-page-radius: 0.375rem;
+    --resume-paper: #ffffff;
 
-    --resume-text-name: 32px;
-    --resume-leading-name: 40px;
-    --resume-text-title: 18.667px;
-    --resume-leading-title: 28px;
-    --resume-text-heading: 14.667px;
-    --resume-leading-heading: 20px;
-    --resume-text-body: 13.333px;
-    --resume-leading-body: 18px;
+    /*
+      The type scale, as a scale.
 
-    --resume-space-page-x: 2.5rem;
-    --resume-space-page-y: 2rem;
-    --resume-space-section: 1rem;
-    --resume-space-entry: 1rem;
-    --resume-space-inline: 0.25rem;
-    --resume-space-bullet: 1.5rem;
+      One base size and one ratio, so the sizes relate to each other instead of
+      being picked individually — a style tunes two numbers and the whole
+      document moves together. The name is the deliberate exception: it is a
+      display size, not a step, so it gets its own multiplier rather than being
+      forced onto a scale it would overshoot. The date column gets one too,
+      because how the repeating two-column shape resolves is an axis a style is
+      meant to differ on.
+    */
+    --resume-text-base: 10pt;
+    --resume-scale-ratio: 1.2;
+    --resume-name-steps: 2.4;
+    --resume-date-scale: 1;
+    --resume-leading-ratio: 1.4;
+    --resume-leading-display: 1.15;
 
-    --resume-rule-weight: 2px;
+    /*
+      The spacing rhythm.
+
+      One step, multiplied. `--resume-rhythm` is the density knob a style turns:
+      it moves every gap between entries and sections at once, which is what
+      makes a generous document and a tight one two values rather than two sets
+      of spacing.
+    */
+    --resume-space-step: 0.25rem;
+    --resume-rhythm: 1;
+
+    /*
+      The five axes a style differentiates on: the faces, the heading treatment,
+      the rule, the date column and one accent. Everything else is shared,
+      because everything else is what parses.
+    */
+    --resume-font-body:
+      var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+    --resume-name-weight: 700;
+    --resume-name-case: uppercase;
+    --resume-title-weight: 500;
+    --resume-title-case: none;
+    --resume-title-style: normal;
+    --resume-heading-weight: 600;
+    --resume-heading-case: uppercase;
+    --resume-entry-name-weight: 600;
+    --resume-entry-detail-weight: 500;
+    --resume-entry-detail-style: normal;
+
+    --resume-rule-weight: 1px;
     --resume-rule-gap: 0.25rem;
 
-    --resume-ink-muted: #a3a3a3;
-    --resume-ink-link: #2563eb;
-    --resume-tag-surface: #e5e5e5;
+    --resume-date-align: left;
+    --resume-date-weight: 400;
 
+    /*
+      Ink.
+
+      `--resume-ink-accent` is the one colour a style chooses, and it is read by
+      the name, the section headings and the rules — nothing else. It carries no
+      information: hierarchy is size and weight, so the document photocopied in
+      black and white loses nothing. A style whose accent has to be legible has
+      failed that, not earned an exception to it — and no style may diverge on
+      any *other* ink, which is what stops de-emphasis quietly becoming a colour
+      decision.
+    */
+    --resume-ink-text: #111827;
+    --resume-ink-accent: #111827;
+    --resume-ink-muted: #a3a3a3;
+    --resume-ink-link: #1d4ed8;
+
+    /* Discrete marks — the strengths block — and the hobbies icon row. */
+    --resume-tag-surface: #e5e5e5;
+    --resume-tag-border-weight: 0px;
+    --resume-tag-border-ink: currentColor;
     --resume-tag-space-x: 0.5rem;
     --resume-tag-space-y: 0.125rem;
     --resume-tag-radius: 0.25rem;
     --resume-icon-size: 1rem;
+  }
+
+  /*
+    Everything derived from those inputs — on the document, not on `:root`.
+
+    This placement is load-bearing, not tidiness. A `var()` inside a custom
+    property is substituted where the property is *declared*, and the result is
+    what inherits. Declared on `:root`, `--resume-text-body: var(--resume-text-base)`
+    freezes at `:root`'s base — so an overlay raising `--resume-text-base` moved
+    nothing, and every style rendered at identical sizes and spacing while
+    looking, in the stylesheet, as though it did not.
+
+    Declared here it resolves on the element that carries the style class, where
+    the overlay's values are in scope. It sits *before* the overlays in source
+    so that a style overriding one of these directly — Modern and its heading
+    gap — still wins on cascade order.
+  */
+  .resume-document {
+    --resume-font-heading: var(--resume-font-body);
+
+    --resume-text-body: var(--resume-text-base);
+    --resume-text-heading: calc(
+      var(--resume-text-base) * var(--resume-scale-ratio)
+    );
+    --resume-text-title: calc(
+      var(--resume-text-base) * var(--resume-scale-ratio) *
+        var(--resume-scale-ratio)
+    );
+    --resume-text-name: calc(
+      var(--resume-text-base) * var(--resume-name-steps)
+    );
+    --resume-text-date: calc(
+      var(--resume-text-base) * var(--resume-date-scale)
+    );
+
+    --resume-leading-body: calc(
+      var(--resume-text-body) * var(--resume-leading-ratio)
+    );
+    --resume-leading-heading: calc(
+      var(--resume-text-heading) * var(--resume-leading-ratio)
+    );
+    --resume-leading-title: calc(
+      var(--resume-text-title) * var(--resume-leading-ratio)
+    );
+    --resume-leading-name: calc(
+      var(--resume-text-name) * var(--resume-leading-display)
+    );
+    --resume-leading-date: calc(
+      var(--resume-text-date) * var(--resume-leading-ratio)
+    );
+
+    --resume-space-page-x: calc(var(--resume-space-step) * 10);
+    --resume-space-page-y: calc(var(--resume-space-step) * 8);
+    --resume-space-section: calc(
+      var(--resume-space-step) * 4 * var(--resume-rhythm)
+    );
+    --resume-space-entry: calc(
+      var(--resume-space-step) * 4 * var(--resume-rhythm)
+    );
+    --resume-space-heading: var(--resume-space-step);
+    --resume-space-inline: var(--resume-space-step);
+    --resume-space-bullet: calc(var(--resume-space-step) * 6);
+
+    --resume-ink-date: var(--resume-ink-text);
+  }
+
+  /*
+    Classic — traditional.
+
+    A serif document for the industries that still read one: law, finance,
+    academia. Identity comes from the face and from the ledger rhythm of a
+    right-aligned date column resolving against a hairline rule under every
+    heading. Set slightly larger than the sans directions because a serif at the
+    same point size reads smaller.
+  */
+  .resume-style-classic {
+    --resume-font-body:
+      var(--font-resume-serif), Georgia, "Times New Roman", serif;
+
+    --resume-text-base: 10.5pt;
+    --resume-scale-ratio: 1.18;
+    --resume-name-steps: 2.6;
+    --resume-leading-ratio: 1.32;
+
+    --resume-name-weight: 600;
+    --resume-name-case: none;
+    --resume-title-weight: 400;
+    --resume-title-style: italic;
+    --resume-heading-weight: 600;
+    --resume-heading-case: uppercase;
+    --resume-entry-name-weight: 600;
+    --resume-entry-detail-weight: 400;
+    --resume-entry-detail-style: italic;
+
+    --resume-rule-weight: 0.75pt;
+    --resume-rule-gap: 0.15rem;
+
+    --resume-left-column-width: 8rem;
+    --resume-date-align: right;
+
+    --resume-rhythm: 0.95;
+
+    --resume-ink-accent: #1b2a41;
+
+    /* Outlined marks rather than filled ones: a grey pill reads as software. */
+    --resume-tag-surface: transparent;
+    --resume-tag-border-weight: 0.75pt;
+    --resume-tag-border-ink: var(--resume-ink-accent);
+    --resume-tag-radius: 0px;
+  }
+
+  /*
+    Standard — neutral.
+
+    The default, and the descendant of the document this app already shipped:
+    Geist, uppercase headings, a rule under each one. Retuned onto the scale
+    rather than redesigned, so a resume written before styles existed still
+    looks like itself. Nothing about it is a statement, which is the point —
+    it is the one to pick when the industry is unknown.
+  */
+  .resume-style-standard {
+    --resume-font-body:
+      var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+    --resume-text-base: 10pt;
+    --resume-scale-ratio: 1.2;
+    --resume-name-steps: 2.4;
+    --resume-leading-ratio: 1.4;
+
+    --resume-name-weight: 700;
+    --resume-name-case: uppercase;
+    --resume-title-weight: 500;
+    --resume-title-style: normal;
+    --resume-heading-weight: 600;
+    --resume-heading-case: uppercase;
+    --resume-entry-name-weight: 600;
+    --resume-entry-detail-weight: 500;
+    --resume-entry-detail-style: normal;
+
+    --resume-rule-weight: 1px;
+    --resume-rule-gap: 0.25rem;
+
+    /* Wide enough that a full "Sep 2016 - May 2018" holds one line in Geist. */
+    --resume-left-column-width: 8.75rem;
+    --resume-date-align: left;
+
+    --resume-rhythm: 1;
+
+    --resume-ink-accent: #111827;
+  }
+
+  /*
+    Modern — contemporary.
+
+    No rules anywhere: hierarchy is carried entirely by weight, size and space,
+    which is the departure. Headings are sentence case and heavy, so they read
+    as a different voice from the body rather than as the body shouted. The date
+    column is narrow and grey, so the eye lands on the employer first.
+
+    A zero rule weight with a zero gap occupies nothing and draws nothing, so
+    "no rule" is a token value rather than a branch in the markup.
+  */
+  .resume-style-modern {
+    --resume-font-body:
+      var(--font-resume-modern), ui-sans-serif, system-ui, sans-serif;
+
+    --resume-text-base: 10pt;
+    --resume-scale-ratio: 1.25;
+    --resume-name-steps: 2.9;
+    --resume-leading-ratio: 1.45;
+    --resume-leading-display: 1.05;
+
+    --resume-name-weight: 800;
+    --resume-name-case: none;
+    --resume-title-weight: 500;
+    --resume-title-style: normal;
+    --resume-heading-weight: 800;
+    --resume-heading-case: none;
+    --resume-entry-name-weight: 700;
+    --resume-entry-detail-weight: 500;
+    --resume-entry-detail-style: normal;
+
+    --resume-rule-weight: 0px;
+    --resume-rule-gap: 0px;
+    --resume-space-heading: calc(var(--resume-space-step) * 2);
+
+    /*
+      The date column sits a step below the body rather than a shade lighter
+      than it. Greying it would read the same on screen and print the same in
+      black and white, but it would be hierarchy carried by colour — and the one
+      thing all three styles agree on is that colour carries none.
+    */
+    --resume-left-column-width: 7rem;
+    --resume-date-align: left;
+    --resume-date-scale: 0.9;
+
+    --resume-rhythm: 1.3;
+
+    --resume-ink-accent: #3f3f46;
+    --resume-tag-surface: #f4f4f5;
+    --resume-tag-radius: 0.375rem;
   }
 
   /*
@@ -88,19 +465,28 @@
     The A4 page scaled into a 390px viewport renders body text at roughly 5pt.
     Reflow drops the page instead of shrinking it, so the type can go up rather
     than down — and because it moves the tokens, no component branches on it.
+
+    It moves the base size and the page margins, and nothing else. The ratio,
+    the rhythm, the faces and the weights are the style's, so the phone stays a
+    preview of the same document rather than a second design. Declared after the
+    style overlays because the two are both one class on the same element, and
+    the later rule is the one that wins.
   */
   .resume-reflow {
-    --resume-text-name: 1.5rem;
-    --resume-leading-name: 2rem;
-    --resume-text-title: 1.125rem;
-    --resume-leading-title: 1.5rem;
-    --resume-text-heading: 1rem;
-    --resume-leading-heading: 1.5rem;
-    --resume-text-body: 1rem;
-    --resume-leading-body: 1.5rem;
+    --resume-text-base: 1rem;
+    --resume-name-steps: 1.6;
 
-    --resume-space-page-x: 1rem;
-    --resume-space-page-y: 1.5rem;
+    /*
+      Stacked, the date range has no column to sit in and no gutter to be
+      separated by, so it carries the entry name's weight instead. A token
+      rather than a branch: the components still know only about page and
+      reflow, which they already did.
+    */
+    --resume-date-weight: var(--resume-entry-name-weight);
+    --resume-date-align: left;
+
+    --resume-space-page-x: calc(var(--resume-space-step) * 4);
+    --resume-space-page-y: calc(var(--resume-space-step) * 6);
   }
 
   .dark {
@@ -150,4 +536,70 @@
 
 .bg-gradient {
   background: var(--gradient);
+}
+
+/*
+  The token axes Tailwind has no theme key for.
+
+  Text case, font style and text alignment are not scales, so there is no
+  `theme.extend` entry to map them through — but a style differentiates on
+  exactly those, and a component that wrote `uppercase` or `italic` would be
+  holding a style decision as a literal. These sit beside the tokens they read
+  for the same reason the tokens sit beside each other.
+*/
+@layer components {
+  .resume-document {
+    font-family: var(--resume-font-body);
+    color: var(--resume-ink-text);
+  }
+
+  .resume-name {
+    font-family: var(--resume-font-heading);
+    font-weight: var(--resume-name-weight);
+    text-transform: var(--resume-name-case);
+  }
+
+  .resume-title {
+    font-weight: var(--resume-title-weight);
+    font-style: var(--resume-title-style);
+    text-transform: var(--resume-title-case);
+  }
+
+  .resume-heading {
+    font-family: var(--resume-font-heading);
+    font-weight: var(--resume-heading-weight);
+    text-transform: var(--resume-heading-case);
+  }
+
+  /* An employer, a school, a skill category — the name a line is filed under. */
+  .resume-entry-name {
+    font-weight: var(--resume-entry-name-weight);
+  }
+
+  /* The role or degree beside it. */
+  .resume-entry-detail {
+    font-weight: var(--resume-entry-detail-weight);
+    font-style: var(--resume-entry-detail-style);
+  }
+
+  /*
+    The rule under a section heading.
+
+    `border: 0` is load-bearing, not tidiness: Tailwind's preflight gives `hr` a
+    1px top border, so a style that sets `--resume-rule-weight: 0` would still
+    draw a line. Modern's whole departure is that it has no rules at all.
+  */
+  .resume-rule {
+    height: var(--resume-rule-weight);
+    border: 0;
+    background-color: var(--resume-ink-accent);
+  }
+
+  .resume-dates {
+    font-size: var(--resume-text-date);
+    line-height: var(--resume-leading-date);
+    text-align: var(--resume-date-align);
+    font-weight: var(--resume-date-weight);
+    color: var(--resume-ink-date);
+  }
 }

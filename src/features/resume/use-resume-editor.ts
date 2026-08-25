@@ -9,6 +9,11 @@ import {
   type RowListName
 } from "~/lib/resume-selection"
 import {
+  type ResumeStyle,
+  resumeStyleCatalog,
+  toResumeStyle
+} from "~/lib/resume-style"
+import {
   type AnySectionContent,
   type SectionComponentType
 } from "~/lib/section-content"
@@ -81,6 +86,7 @@ export function useResumeEditor(resumeId: string) {
 
   const fields = useFieldAutosave(cache)
   const structure = useStructureMutations(cache, fields)
+  const setStyle = useStyleMutation(cache)
 
   const resume = resumeQuery.data
 
@@ -114,7 +120,34 @@ export function useResumeEditor(resumeId: string) {
           fields.unsaved
         )
       : null,
-    addSection: structure.addSection
+    addSection: structure.addSection,
+    /** The typographic direction the document is drawn in. */
+    style: toResumeStyle(resume?.style),
+    onStyleChange: setStyle
+  }
+}
+
+/**
+ * Choosing a style.
+ *
+ * Patched into the cache first, so the document redraws on the click — the
+ * picker has no preview of its own, and the live document *is* the preview. The
+ * accent is patched alongside it because the two are one decision, and the
+ * server writes the same pair.
+ */
+function useStyleMutation(cache: ResumeCache) {
+  const { resumeId, patch } = cache
+  const settle = useSettle(cache)
+  const setStyle = api.resume.setStyle.useMutation(settle)
+
+  return (style: ResumeStyle) => {
+    patch((resume) => ({
+      ...resume,
+      style,
+      accent: resumeStyleCatalog[style].accent
+    }))
+
+    setStyle.mutate({ resumeId, style })
   }
 }
 

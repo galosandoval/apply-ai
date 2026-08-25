@@ -56,7 +56,12 @@ export async function renderResumeHtml(
  *
  * `css` is inlined rather than linked: the print has no network and no origin,
  * which is the whole reason the PDF no longer needs the app to be able to reach
- * its own public URL.
+ * its own public URL. That same lack of an origin is why the faces have to be
+ * embedded in it — see `embed-fonts.ts`.
+ *
+ * The faces need nothing here: they are `@font-face` rules and `:root`
+ * variables in the same stylesheet, which is exactly why they are declared
+ * that way rather than through `next/font`.
  */
 export async function resumePdfDocument(data: ResumeDocumentData, css: string) {
   const body = await renderResumeHtml(data)

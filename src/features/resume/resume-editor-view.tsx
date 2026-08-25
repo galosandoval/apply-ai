@@ -7,6 +7,11 @@ import { ResumeDocument } from "~/components/resume-document"
 import { Button } from "~/components/ui/button"
 import { type RenderMode } from "~/components/resume-section"
 import { useResumeRenderMode } from "~/components/use-resume-render-mode"
+import {
+  type ResumeStyle,
+  resumeStyleCatalog,
+  resumeStyles
+} from "~/lib/resume-style"
 import { type DownloadPdfSchema } from "~/server/db/crud-schema"
 import { ResumePanel } from "~/features/resume/resume-panel"
 import { toDocumentData } from "~/features/resume/resume-field-lens"
@@ -56,6 +61,7 @@ function Editor({ resumeId }: { resumeId: string }) {
         <PaneTabs pane={pane} setPane={setPane} />
 
         <div className="flex items-center gap-3">
+          <StylePicker onChange={editor.onStyleChange} style={editor.style} />
           <SaveStatus state={editor.saveState} />
           <PdfPreviewButton resume={toDocumentData(editor.resume)} />
         </div>
@@ -106,6 +112,53 @@ function Editor({ resumeId }: { resumeId: string }) {
         </div>
       </div>
     </main>
+  )
+}
+
+/**
+ * The three typographic directions, as three buttons.
+ *
+ * There is no thumbnail preview and no modal: choosing redraws the document
+ * beside it immediately, so the preview is the user's own resume in the style
+ * rather than a miniature of someone else's. A style a user cannot picture
+ * against their own dense work history is a style they are guessing at.
+ */
+function StylePicker({
+  style,
+  onChange
+}: {
+  style: ResumeStyle
+  onChange: (style: ResumeStyle) => void
+}) {
+  return (
+    <div
+      aria-label="Resume style"
+      className="flex items-center gap-1 rounded-md border border-neutral-200 p-0.5"
+      role="radiogroup"
+    >
+      {resumeStyles.map((name) => {
+        const { label, register } = resumeStyleCatalog[name]
+        const isChosen = name === style
+
+        return (
+          <button
+            aria-checked={isChosen}
+            className={`rounded px-2 py-1 text-sm transition-colors ${
+              isChosen
+                ? "bg-neutral-900 text-white"
+                : "text-neutral-600 hover:bg-neutral-100"
+            }`}
+            key={name}
+            onClick={() => onChange(name)}
+            role="radio"
+            title={register}
+            type="button"
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 

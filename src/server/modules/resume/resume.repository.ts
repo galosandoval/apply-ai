@@ -61,6 +61,20 @@ export async function insertResume(
   return rows[0] ?? null
 }
 
+/**
+ * The style and the accent it fixed, written together.
+ *
+ * One update because they are one decision: a row holding a style with another
+ * style's accent is a document nobody chose.
+ */
+export async function updateResumeStyle(
+  db: DbOrTx,
+  resumeId: string,
+  values: { style: string; accent: string }
+) {
+  return db.update(resume).set(values).where(eq(resume.id, resumeId))
+}
+
 export async function updateResumeColumn(
   db: DbOrTx,
   resumeId: string,

@@ -277,13 +277,20 @@ export function ResumeSection({
         its own to click.
       */}
       <div
-        className={`break-inside-avoid break-after-avoid ${heading.className}`}
+        className={`break-inside-avoid break-after-avoid pb-resume-heading ${heading.className}`}
         {...heading.attributes}
       >
-        <h2 className="text-resume-heading font-semibold uppercase">{label}</h2>
+        <h2 className="resume-heading text-resume-heading text-resume-accent">
+          {label}
+        </h2>
 
+        {/*
+          A style with no rule sets the weight and the gap to zero, so this
+          block draws nothing and takes up nothing — the space between a heading
+          and its content is `pb-resume-heading` above, which every style has.
+        */}
         <div className="pb-resume-rule-gap pt-resume-rule-gap">
-          <hr className="h-resume-rule rounded border-0 bg-current" />
+          <hr className="resume-rule" />
         </div>
       </div>
 
@@ -342,8 +349,14 @@ function TwoColumnEntry({
       } ${select.className}`}
       {...select.attributes}
     >
+      {/*
+        Stacked on a phone the left column has no column to be in, so it earns
+        its separation from the entry name's weight instead of from the gutter.
+      */}
       <div
-        className={isPage ? "w-resume-left-column shrink-0" : "font-semibold"}
+        className={
+          isPage ? "w-resume-left-column shrink-0" : "resume-entry-name"
+        }
       >
         {row.left}
       </div>
@@ -400,7 +413,7 @@ function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
       } ${select.className}`}
       {...select.attributes}
     >
-      <h3 className="whitespace-nowrap font-semibold">{group.label}</h3>
+      <h3 className="resume-entry-name whitespace-nowrap">{group.label}</h3>
 
       {/*
         A labelled group's items read across the line rather than down it: a
@@ -424,7 +437,7 @@ function TagList({ tags }: { tags: { key: string; label: ReactNode }[] }) {
     <ul className="flex flex-wrap gap-resume-inline">
       {tags.map((tag) => (
         <li
-          className={`${marker.tag} rounded-resume-tag bg-resume-tag-surface px-resume-tag-x py-resume-tag-y`}
+          className={`${marker.tag} rounded-resume-tag border-resume-tag border-resume-tag-border bg-resume-tag-surface px-resume-tag-x py-resume-tag-y`}
           key={tag.key}
         >
           {tag.label}

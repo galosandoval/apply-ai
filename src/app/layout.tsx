@@ -1,7 +1,5 @@
-import { GeistSans } from "geist/font/sans"
 import { type Metadata } from "next"
 import { Toaster } from "react-hot-toast"
-import { cn } from "~/lib/utils"
 import "~/styles/global.css"
 import { Providers } from "./providers"
 
@@ -27,7 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className={cn("h-full font-sans antialiased", GeistSans.variable)}>
+      <body className="h-full font-sans antialiased">
         <Providers>
           <Toaster />
 

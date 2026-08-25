@@ -10,6 +10,7 @@ import {
   removeRowSchema,
   reorderRowsSchema,
   setBulletsSchema,
+  setStyleSchema,
   updateFieldSchema
 } from "~/server/modules/resume/resume.schema"
 
@@ -78,6 +79,13 @@ export const resumeRouter = createTRPCRouter({
     .input(setBulletsSchema)
     .mutation(({ ctx, input }) =>
       resumeService.setBullets(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /** Chooses the typographic direction the document is drawn in. */
+  setStyle: protectedProcedure
+    .input(setStyleSchema)
+    .mutation(({ ctx, input }) =>
+      resumeService.setStyle(ctx.db, ctx.session.user.id, input)
     ),
 
   /** Reorders the jobs, schools or skill groups inside one section. */

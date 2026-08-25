@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { chromium } from "playwright-core"
 import { type ResumeDocumentData } from "~/components/resume-document"
+import { embedFonts } from "./embed-fonts"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -22,6 +23,11 @@ export async function renderResumePdf(data: ResumeDocumentData) {
     await page.setContent(await resumePdfDocument(data, css), {
       waitUntil: "load"
     })
+
+    // The faces are inline, so nothing is fetched — but `font-display: swap`
+    // still renders one frame in the fallback, and `page.pdf` will happily
+    // print that frame. This is the wait for the real face to be in use.
+    await page.evaluate(() => document.fonts.ready)
 
     return await page.pdf({
       format: "A4",
@@ -80,7 +86,10 @@ async function readCompiledCss() {
     )
   }
 
-  cachedCss = sheets.join("\n")
+  // Fonts are embedded before the sheet is cached, so the expensive part —
+  // reading and base64-encoding half a megabyte of variable fonts — happens
+  // once per process rather than once per print.
+  cachedCss = await embedFonts(sheets.join("\n"))
 
   return cachedCss
 }
