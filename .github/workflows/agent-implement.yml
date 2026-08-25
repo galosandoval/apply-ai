@@ -1,0 +1,172 @@
+name: Agent implement
+
+# Scaffolded by `shopfloor init`. The loop's two edges: a human labelling an
+# issue, and CI completing on a branch the agent pushed.
+#
+# This file has to be merged to the default branch: `workflow_run` fires from
+# nowhere else, so the machine edge stays dead until it is there.
+on:
+  issues:
+    types: [labeled]
+  workflow_run:
+    workflows: ['TODO(shopfloor): name the CI workflow whose completion retriggers the loop']
+    types: [completed]
+
+# One run per branch: a second event while a run is in flight would put two
+# agents on one branch.
+#
+# Keyed on the branch rather than the issue number, because the issue number is
+# only on one of the two edges — `github.event.issue` is null on a
+# `workflow_run` event, so an issue-keyed group degrades to `run_id`, which is
+# unique per run and excludes nothing. That would leave the retrigger edge, the
+# one that can fire without a human, with no mutual exclusion at all. The
+# triggering CI run's `head_branch` is the agent branch, and the label event's
+# issue number names the same branch by construction, so both edges land in one
+# group.
+concurrency:
+  group: agent-implement-${{ github.event.workflow_run.head_branch || format('agent/issue-{0}', github.event.issue.number) || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  # Nothing is installed here. This job answers "may this event start a run?"
+  # — classification, the spend gate, the in-flight check, and the attempt
+  # ceiling — before the runner pays for anything, and refuses non-zero when
+  # the answer is no. An event the loop does not run on exits zero and skips
+  # the job below, so ordinary label traffic never paints the repo red.
+  #
+  # It writes exactly once: a spent ceiling lands `agent:exhausted` and posts
+  # the attempt trail here, because the job below is gated on this verdict and
+  # so never runs to do it. That needs the PAT to be able to write issues.
+  admit:
+    # Filters the human edge without filtering the machine edge out of
+    # existence: `github.event.label` is null on a workflow_run event, so a
+    # bare label condition would make that trigger fire a job that never runs.
+    # Redundant with what `shopfloor-admit` decides, and worth a line anyway:
+    # it keeps ordinary label traffic from starting a runner at all.
+    if: >-
+      github.event_name != 'issues' ||
+      github.event.label.name == 'ready-for-agent'
+    runs-on: ubuntu-latest
+    outputs:
+      admitted: ${{ steps.admit.outputs.admitted }}
+    steps:
+      - id: admit
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
+        run: |
+          # The bin exits non-zero on a real refusal so that a caller who
+          # ignores stdout is still stopped by it. This job does not ignore
+          # stdout — it gates the expensive job on the verdict below — so a
+          # refusal here is a skip rather than a red workflow. A run already in
+          # flight, or a spent ceiling, is ordinary traffic, and a check that
+          # paints the repository red for ordinary traffic is a check people
+          # delete. The verdict is read and echoed either way; nothing is
+          # swallowed.
+          set +e
+          verdict="$(npx --yes @galosandoval/shopfloor@1.0.0 shopfloor-admit)"
+          set -e
+          echo "$verdict"
+          echo "admitted=$(echo "$verdict" | jq -r '.admitted')" >> "$GITHUB_OUTPUT"
+
+  run-phase:
+    needs: admit
+    if: needs.admit.outputs.admitted == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    # Two Postgres instances on the ports `.env.example` documents, so the
+    # gate below runs the same suite a maintainer runs locally. The dev
+    # database exists only to satisfy `src/env.ts`'s `DATABASE_URL`
+    # validation; the integration tests connect to the test one, which
+    # `src/server/db/test-database.ts` migrates on first connect and truncates
+    # between cases. Without them the DB-backed tests skip themselves and the
+    # gate would go green on a partial suite.
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apply-ai
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      test-db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apply-ai-test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The PAT, not GITHUB_TOKEN: a push made with the built-in token
+          # fires no downstream events, so the loop would run once and stop.
+          token: ${{ secrets.AGENT_PAT }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The harness runs GATE_COMMAND itself after each spawn, in this
+      # checkout — so the modules have to be here before the first spawn, not
+      # only after the agent gets around to installing them.
+      - run: npm ci
+
+      # Playwright's browser, for the verify phase's e2e specs. `--with-deps`
+      # covers the OS libraries Chromium needs on a bare runner.
+      - run: npx playwright install --with-deps chromium
+
+      # The harness spawns `claude` from PATH; nothing else on this runner
+      # installs it. Pinned to the same version CLI_VERSION states below, so
+      # `cli-version-pin` compares the run against what this job installed
+      # rather than against whatever npm published this morning.
+      - name: Install the Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.246
+
+      # The whole of the loop, in one step. It reads GITHUB_EVENT_PATH itself,
+      # so nothing here names an issue, a branch, or a phase.
+      - name: Run the phase
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.AGENT_PAT }}
+          PROMPT_FILE: agent/implement/prompt.md
+          CLI_VERSION: '2.1.246'
+
+          # The run policy. Every value the deleted `agent/implement/run-policy.ts`
+          # held now lives here, because the harness resolves each from the
+          # environment and no adapter of ours restates them any more. Omitted
+          # on purpose: MODEL (the CLI's own default, rather than a model id
+          # this file would have to keep current), MAX_TURNS and IDLE_MINUTES
+          # (150 / 15, the package defaults the old contract already matched).
+          #
+          # GATE_COMMAND is what makes the run iterate: the harness runs it
+          # after each spawn and feeds a failure back into a fresh one, up to
+          # MAX_ITERATIONS. It must stay the same command the prompt's
+          # environment block names, or the agent and the harness disagree
+          # about what "done" is.
+          GATE_COMMAND: npm run typecheck && npm run lint && npm run test
+          WALL_CLOCK_MINUTES: '45'
+          REQUIRED_ENV_VARS: DATABASE_URL,TEST_DATABASE_URL,APP_URL,OPENAI_API_KEY,GH_TOKEN
+
+          # The app's own environment, checked non-empty before a token is
+          # spent by the line above.
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apply-ai
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/apply-ai-test
+          APP_URL: http://localhost:3000
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Throwaway: better-auth only signs callbacks against this, and both
+          # databases die with the job. Never a real secret's value.
+          BETTER_AUTH_SECRET: ci-only-not-a-secret-0000000000000000000
+        run: npx --yes @galosandoval/shopfloor@1.0.0 shopfloor-run-phase
