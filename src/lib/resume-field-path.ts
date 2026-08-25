@@ -81,6 +81,31 @@ export function isRowTarget(target: ResumeFieldTarget): target is RowTarget {
   return (rowSections as readonly string[]).includes(target.section)
 }
 
+/** True when `value` names a section the resume addresses a row at a time. */
+export function isRowSection(value: string | undefined): value is RowSection {
+  return (rowSections as readonly string[]).includes(value ?? "")
+}
+
+/**
+ * A column target for one row of a core section, or `null` when that section
+ * has no such column.
+ *
+ * A caller holding the section as a union cannot prove the section/column pair
+ * to the type system, because the pair is legal for only some members of it. So
+ * the pairing is checked here, against the same whitelist everything else
+ * reads, and the one widening that check earns lives in the grammar rather than
+ * at each call.
+ */
+export function rowColumnTarget(
+  section: RowSection,
+  row: string,
+  column: string
+): RowTarget | null {
+  const known = (editableColumns[section] as readonly string[]).includes(column)
+
+  return known ? ({ section, kind: "column", row, column } as RowTarget) : null
+}
+
 /**
  * Parses a resume field path. Returns `null` for anything that isn't an
  * editable field — an unknown section, a non-whitelisted column, a container
@@ -106,28 +131,15 @@ export function parseResumeFieldPath(path: string): ResumeFieldTarget | null {
 
   if (section === "section") return parseSectionPath(row, segments)
 
-  if (section === "experience") {
-    if (third === "bullets") return parseBulletPath(row, segments)
-
-    if (segments.length !== 3) return null
-
-    const column = editableColumns.experience.find((name) => name === third)
-
-    return column ? { section, kind: "column", row, column } : null
+  if (section === "experience" && third === "bullets") {
+    return parseBulletPath(row, segments)
   }
 
-  if (section === "education" || section === "skill") {
-    if (segments.length !== 3) return null
+  if (!isRowSection(section)) return null
 
-    const column = editableColumns[section].find((name) => name === third)
+  if (segments.length !== 3 || !third) return null
 
-    // `find` widens to the union of both column types; the section decides.
-    return column
-      ? ({ section, kind: "column", row, column } as ResumeFieldTarget)
-      : null
-  }
-
-  return null
+  return rowColumnTarget(section, row, third)
 }
 
 function parseBulletPath(
@@ -184,11 +196,6 @@ function parseIndex(segments: string[], at: number) {
 
 function isIndex(token: string | undefined): token is string {
   return !!token && /^\d+$/.test(token)
-}
-
-/** True when `path` addresses a field the resume itself owns. */
-export function isEditableResumePath(path: string) {
-  return parseResumeFieldPath(path) !== null
 }
 
 /** Re-addresses a target at a different row, e.g. an index swapped for an id. */

@@ -4,13 +4,14 @@ import { type RouterOutputs } from "~/utils/api"
 /**
  * Seeds a *new* resume's contact and skills from the account's master copy.
  *
- * Only the draft preview uses this: it is editing a resume that does not exist
- * yet, so there is no snapshot to read. A saved resume owns its own copy and
- * never reads through to the account — that is what stops tailoring one
- * application from rewriting one already sent.
+ * Only generation uses this, at the moment a resume is created: there is no
+ * snapshot to read until the row exists. A saved resume owns its own copy from
+ * then on and never reads through to the account — that is what stops tailoring
+ * one application from rewriting one already sent.
  *
- * The optional contact fields come back as `""` rather than `undefined`: the
- * document tolerates either, but the draft form's inputs must stay controlled.
+ * The optional contact fields come back as `""` rather than `undefined`, so a
+ * resume is created with every field present and addressable rather than with
+ * some of them missing.
  */
 export function seedFromAccount(
   profile: RouterOutputs["profile"]["read"]

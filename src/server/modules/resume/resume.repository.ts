@@ -235,6 +235,61 @@ export async function updateRowPosition(
     .returning({ id: table.id })
 }
 
+/**
+ * Deletes one snapshotted row, scoped to the resume as well as the row id — so
+ * a row belonging to another resume deletes nothing, and nothing is what the
+ * service reports as a missing row.
+ */
+export async function deleteSnapshotRow<Table extends SnapshotTable>(
+  db: DbOrTx,
+  table: Table,
+  { resumeId, rowId }: { resumeId: string; rowId: string }
+) {
+  return db
+    .delete(table)
+    .where(and(eq(table.id, rowId), eq(table.resumeId, resumeId)))
+    .returning({ id: table.id })
+}
+
+/**
+ * The next free `position` in one of a resume's row lists.
+ *
+ * Read rather than counted: removing a row leaves a gap, and a count would hand
+ * the next row a position another row already holds.
+ */
+export async function nextRowPosition(
+  db: DbOrTx,
+  table: SnapshotTable,
+  resumeId: string
+) {
+  const rows = await db
+    .select({ max: sql<number | null>`max(${table.position})` })
+    .from(table)
+    .where(eq(table.resumeId, resumeId))
+
+  return (rows[0]?.max ?? -1) + 1
+}
+
+/**
+ * Deletes a resume, and every row snapshotted onto it.
+ *
+ * `section` cascades from the resume; `work`, `school`, `skill` and `contact`
+ * do not — a nullable `resumeId` is also how a master copy is spelled, so the
+ * foreign key cannot carry the delete. They are cleaned up here instead, in one
+ * transaction, or the rows would outlive the only thing that referenced them.
+ */
+export async function deleteResume(db: DbOrTx, resumeId: string) {
+  await db.delete(work).where(eq(work.resumeId, resumeId))
+  await db.delete(school).where(eq(school.resumeId, resumeId))
+  await db.delete(skill).where(eq(skill.resumeId, resumeId))
+  await db.delete(contact).where(eq(contact.resumeId, resumeId))
+
+  return db
+    .delete(resume)
+    .where(eq(resume.id, resumeId))
+    .returning({ id: resume.id })
+}
+
 export async function deleteSnapshotSkills(db: DbOrTx, resumeId: string) {
   return db.delete(skill).where(eq(skill.resumeId, resumeId))
 }

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
   formatResumeFieldPath,
-  isEditableResumePath,
   parseResumeFieldPath,
   withRow
 } from "./resume-field-path"
@@ -183,7 +182,6 @@ describe("parseResumeFieldPath — sections", () => {
 
     it.each(rejected)("rejects %j", (path) => {
       expect(parseResumeFieldPath(path)).toBeNull()
-      expect(isEditableResumePath(path)).toBe(false)
     })
   })
 })
@@ -237,7 +235,6 @@ describe("parseResumeFieldPath — rejected paths", () => {
 
   it.each(rejected)("rejects %j", (path) => {
     expect(parseResumeFieldPath(path)).toBeNull()
-    expect(isEditableResumePath(path)).toBe(false)
   })
 })
 

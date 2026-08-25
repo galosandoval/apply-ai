@@ -1060,4 +1060,325 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       ).rejects.toThrow(/section not found/i)
     })
   })
+
+  /**
+   * Adding, removing and reordering — the operations inline editing could not
+   * express, because there is nowhere to click for a thing that is not there.
+   */
+  describe("setBullets", () => {
+    /** A resume with its drafted rows, ready to add to. */
+    async function withResume() {
+      const caller = callerFor(fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      return { caller, resumeId }
+    }
+
+    it("adds a bullet to a job", async () => {
+      const { caller, resumeId } = await withResume()
+      const [job] = (await caller.resume.readById({ resumeId })).experience
+
+      await caller.resume.setBullets({
+        resumeId,
+        rowId: job!.id,
+        bullets: [...job!.bullets, "Added by hand"]
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.experience[0]?.bullets).toEqual([
+        "Wrote the first algorithm",
+        "Described a general computer",
+        "Added by hand"
+      ])
+    })
+
+    it("removes a bullet", async () => {
+      const { caller, resumeId } = await withResume()
+      const [job] = (await caller.resume.readById({ resumeId })).experience
+
+      await caller.resume.setBullets({
+        resumeId,
+        rowId: job!.id,
+        bullets: [job!.bullets[1]!]
+      })
+
+      expect(
+        (await caller.resume.readById({ resumeId })).experience[0]?.bullets
+      ).toEqual(["Described a general computer"])
+    })
+
+    it("reorders bullets within a job", async () => {
+      const { caller, resumeId } = await withResume()
+      const [job] = (await caller.resume.readById({ resumeId })).experience
+
+      await caller.resume.setBullets({
+        resumeId,
+        rowId: job!.id,
+        bullets: [job!.bullets[1]!, job!.bullets[0]!]
+      })
+
+      expect(
+        (await caller.resume.readById({ resumeId })).experience[0]?.bullets
+      ).toEqual(["Described a general computer", "Wrote the first algorithm"])
+    })
+
+    it("leaves the other jobs alone", async () => {
+      const { caller, resumeId } = await withResume()
+      const jobs = (await caller.resume.readById({ resumeId })).experience
+
+      await caller.resume.setBullets({
+        resumeId,
+        rowId: jobs[0]!.id,
+        bullets: []
+      })
+
+      expect(
+        (await caller.resume.readById({ resumeId })).experience[1]?.bullets
+      ).toEqual(["Built the thing", "Then built the other thing"])
+    })
+
+    it("refuses a job belonging to another resume", async () => {
+      const { caller, resumeId } = await withResume()
+      const { resumeId: otherId } = await caller.resume.create(draft())
+      const theirs = (await caller.resume.readById({ resumeId: otherId }))
+        .experience
+
+      await expect(
+        caller.resume.setBullets({
+          resumeId,
+          rowId: theirs[0]!.id,
+          bullets: ["leaked"]
+        })
+      ).rejects.toThrow(/not found/i)
+
+      expect(
+        (await caller.resume.readById({ resumeId: otherId })).experience[0]
+          ?.bullets
+      ).toEqual(["Wrote the first algorithm", "Described a general computer"])
+    })
+
+    it("refuses another user's resume", async () => {
+      const { caller, resumeId } = await withResume()
+      const [job] = (await caller.resume.readById({ resumeId })).experience
+      const stranger = callerFor(fixture.stranger.userId)
+
+      await expect(
+        stranger.resume.setBullets({
+          resumeId,
+          rowId: job!.id,
+          bullets: ["leaked"]
+        })
+      ).rejects.toThrow(/resume not found/i)
+    })
+  })
+
+  describe("addRow and removeRow", () => {
+    async function withResume() {
+      const caller = callerFor(fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      return { caller, resumeId }
+    }
+
+    it("appends an empty job at the end", async () => {
+      const { caller, resumeId } = await withResume()
+
+      const { rowId } = await caller.resume.addRow({
+        resumeId,
+        section: "experience"
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.experience.map((job) => job.id)).toEqual([
+        found.experience[0]!.id,
+        found.experience[1]!.id,
+        rowId
+      ])
+
+      const added = found.experience[2]!
+
+      expect(added.name).toBe("")
+      expect(added.title).toBe("")
+      expect(added.bullets).toEqual([])
+      expect(added.position).toBe(2)
+    })
+
+    it("appends an empty school and an empty skill group", async () => {
+      const { caller, resumeId } = await withResume()
+
+      const school = await caller.resume.addRow({
+        resumeId,
+        section: "education"
+      })
+      const group = await caller.resume.addRow({ resumeId, section: "skills" })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.education.at(-1)?.id).toBe(school.rowId)
+      expect(found.education.at(-1)?.degree).toBe("")
+      expect(found.skill.at(-1)?.id).toBe(group.rowId)
+      expect(found.skill.at(-1)?.all).toBe("")
+    })
+
+    it("adds the row to this resume only", async () => {
+      const { caller, resumeId } = await withResume()
+      const { resumeId: otherId } = await caller.resume.create(draft())
+
+      await caller.resume.addRow({ resumeId, section: "experience" })
+
+      expect(
+        (await caller.resume.readById({ resumeId: otherId })).experience
+      ).toHaveLength(2)
+
+      // The account's master copy is not a resume's, and gains nothing.
+      expect((await caller.profile.read()).experience).toHaveLength(0)
+    })
+
+    it("removes a job, a school and a skill group", async () => {
+      const { caller, resumeId } = await withResume()
+      const before = await caller.resume.readById({ resumeId })
+
+      await caller.resume.removeRow({
+        resumeId,
+        section: "experience",
+        rowId: before.experience[0]!.id
+      })
+      await caller.resume.removeRow({
+        resumeId,
+        section: "education",
+        rowId: before.education[0]!.id
+      })
+      await caller.resume.removeRow({
+        resumeId,
+        section: "skills",
+        rowId: before.skill[0]!.id
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.experience.map((job) => job.name)).toEqual([
+        "Difference Engines"
+      ])
+      expect(found.education.map((entry) => entry.name)).toEqual([
+        "Somerville College"
+      ])
+      expect(found.skill.map((group) => group.category)).toEqual(["Databases"])
+    })
+
+    it("refuses a row belonging to another resume, and removes nothing", async () => {
+      const { caller, resumeId } = await withResume()
+      const { resumeId: otherId } = await caller.resume.create(draft())
+      const theirs = (await caller.resume.readById({ resumeId: otherId }))
+        .experience
+
+      await expect(
+        caller.resume.removeRow({
+          resumeId,
+          section: "experience",
+          rowId: theirs[0]!.id
+        })
+      ).rejects.toThrow(/not found/i)
+
+      expect(
+        (await caller.resume.readById({ resumeId: otherId })).experience
+      ).toHaveLength(2)
+    })
+
+    it("refuses another user's resume", async () => {
+      const { caller, resumeId } = await withResume()
+      const stranger = callerFor(fixture.stranger.userId)
+
+      await expect(
+        stranger.resume.addRow({ resumeId, section: "experience" })
+      ).rejects.toThrow(/resume not found/i)
+
+      await expect(
+        stranger.resume.removeRow({
+          resumeId,
+          section: "experience",
+          rowId: (await caller.resume.readById({ resumeId })).experience[0]!.id
+        })
+      ).rejects.toThrow(/resume not found/i)
+    })
+
+    /**
+     * A removed row's position is not backfilled, so the next row added must
+     * not land on a position another row already holds.
+     */
+    it("does not reuse the position of a removed row", async () => {
+      const { caller, resumeId } = await withResume()
+      const before = await caller.resume.readById({ resumeId })
+
+      await caller.resume.removeRow({
+        resumeId,
+        section: "experience",
+        rowId: before.experience[1]!.id
+      })
+
+      const { rowId } = await caller.resume.addRow({
+        resumeId,
+        section: "experience"
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.experience.map((job) => job.id)).toEqual([
+        before.experience[0]!.id,
+        rowId
+      ])
+      expect(new Set(found.experience.map((job) => job.position)).size).toBe(2)
+    })
+  })
+
+  /**
+   * Generation now creates a resume rather than previewing one, so a resume the
+   * user dislikes has to be removable — and removing it must not strand the
+   * rows it owns.
+   */
+  describe("remove", () => {
+    it("deletes the resume and everything it owns", async () => {
+      const caller = callerFor(fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      await caller.resume.remove({ resumeId })
+
+      expect(await caller.resume.list()).toHaveLength(2)
+
+      for (const table of [work, school, skill, contact]) {
+        expect(
+          await db.select().from(table).where(eq(table.resumeId, resumeId))
+        ).toHaveLength(0)
+      }
+
+      expect(
+        await db.select().from(section).where(eq(section.resumeId, resumeId))
+      ).toHaveLength(0)
+    })
+
+    it("leaves the account's master copies alone", async () => {
+      const caller = callerFor(fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      await caller.resume.remove({ resumeId })
+
+      const profile = await caller.profile.read()
+
+      expect(profile.skills).toHaveLength(1)
+      expect(profile.contact?.location).toBe("London, UK")
+    })
+
+    it("refuses another user's resume", async () => {
+      const caller = callerFor(fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+      const stranger = callerFor(fixture.stranger.userId)
+
+      await expect(stranger.resume.remove({ resumeId })).rejects.toThrow(
+        /resume not found/i
+      )
+
+      expect(await caller.resume.list()).toHaveLength(3)
+    })
+  })
 })

@@ -29,8 +29,48 @@ export const updateFieldSchema = resumeIdSchema.extend({
 })
 export type UpdateFieldInput = z.infer<typeof updateFieldSchema>
 
+/**
+ * The sections addressed a row at a time. Named here rather than inlined into
+ * each schema so the reorder, the add and the remove cannot disagree about
+ * which lists a row can belong to.
+ */
+export const rowSectionSchema = z.enum(["experience", "education", "skills"])
+export type RowSectionName = z.infer<typeof rowSectionSchema>
+
 export const reorderRowsSchema = resumeIdSchema.extend({
-  section: z.enum(["experience", "education", "skills"]),
+  section: rowSectionSchema,
   rowIds: z.array(rowId).min(1).max(30)
 })
 export type ReorderRowsInput = z.infer<typeof reorderRowsSchema>
+
+export const addRowSchema = resumeIdSchema.extend({
+  section: rowSectionSchema
+})
+export type AddRowInput = z.infer<typeof addRowSchema>
+
+export const removeRowSchema = resumeIdSchema.extend({
+  section: rowSectionSchema,
+  rowId
+})
+export type RemoveRowInput = z.infer<typeof removeRowSchema>
+
+/**
+ * A job's whole bullet list.
+ *
+ * `updateField` replaces one bullet that already exists; this is how the set of
+ * them changes — added, removed, reordered — for the same reason
+ * `section.setContent` exists beside a per-string write. Taking the whole array
+ * also means a reorder cannot leave an index pointing at a different bullet.
+ *
+ * The caps are deliberately looser than the onboarding form's two-to-eight
+ * accomplishments: this is the write a user makes while editing, and a resume
+ * mid-edit is allowed to have no bullets on a job they are about to fill in.
+ * They exist to bound the payload, not to enforce a shape.
+ */
+export const setBulletsSchema = resumeIdSchema.extend({
+  rowId,
+  bullets: z.array(z.string().max(1_000)).max(20)
+})
+export type SetBulletsInput = z.infer<typeof setBulletsSchema>
+
+export const removeResumeSchema = resumeIdSchema

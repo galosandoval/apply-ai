@@ -1,15 +1,18 @@
-import { z } from "zod"
+/**
+ * What a section is and what it may hold.
+ *
+ * Shared by the client and the server: the same discriminator decides which
+ * component draws a section, which paths can address its content, and which
+ * payloads a write will accept.
+ *
+ * Everything that varies per component type lives in one entry of
+ * `sectionComponents` — its schema, its empty value, its slice of the path
+ * grammar, and how one string inside it is replaced. Adding a component type is
+ * one tuple entry and one registry entry, not a hunt for every switch on it.
+ */
 
-// What a section is and what it may hold.
-//
-// Shared by the client and the server: the same discriminator decides which
-// component draws a section, which paths can address its content, and which
-// payloads a write will accept.
-//
-// Everything that varies per component type lives in one entry of
-// `sectionComponents` — its schema, its empty value, its slice of the path
-// grammar, and how one string inside it is replaced. Adding a component type is
-// one tuple entry and one registry entry, not a hunt for every switch on it.
+import { z } from "zod"
+import { moveItem } from "./move-item"
 
 /**
  * Core kinds keep their typed rows — a `work` row's company, dates and bullets
@@ -133,6 +136,95 @@ type ComponentSpec<Type extends SectionComponentType> = {
     target: ContentTargetIn<Type>,
     value: string
   ) => SectionContent[Type] | null
+  read: (
+    content: SectionContent[Type],
+    target: ContentTargetIn<Type>
+  ) => string | null
+  /** Fields that are not part of a repeated element — rich text's whole body. */
+  fields: (content: SectionContent[Type]) => SectionContentField[]
+  /** The repeated part, for the shapes that have one. Rich text does not. */
+  collection: Collection<Type> | null
+}
+
+/**
+ * One string of a section's content, as the panel edits it.
+ *
+ * The panel is generated from this rather than written per component type: a
+ * sixth shape is a registry entry, not a new panel, which is the only way the
+ * editor stays as small as the renderer it edits.
+ */
+export type SectionContentField = {
+  label: string
+  target: SectionContentTarget
+  value: string
+  /** A plain line, or the constrained markdown subset with its toolbar. */
+  input: "text" | "markdown"
+}
+
+/** One repeated element of a section's content — a row, an item, a tag. */
+export type SectionContentEntry = {
+  index: number
+  fields: SectionContentField[]
+}
+
+/**
+ * The repeated part of a shape: how many there are, how one reads, and how the
+ * set of them changes.
+ *
+ * Adding, removing and moving are the same three array operations everywhere,
+ * so they are built once from an accessor pair rather than written per shape —
+ * see `collectionOf`.
+ */
+type Collection<Type extends SectionComponentType> = {
+  /** What one element is called, for the add and remove buttons. */
+  noun: string
+  count: (content: SectionContent[Type]) => number
+  fields: (
+    content: SectionContent[Type],
+    index: number
+  ) => SectionContentField[]
+  add: (content: SectionContent[Type]) => SectionContent[Type]
+  remove: (content: SectionContent[Type], index: number) => SectionContent[Type]
+  move: (
+    content: SectionContent[Type],
+    from: number,
+    to: number
+  ) => SectionContent[Type]
+}
+
+/**
+ * A collection built from an accessor pair, so each shape says only what its
+ * elements are and what one blank one looks like.
+ */
+function collectionOf<Type extends SectionComponentType, Element>({
+  noun,
+  get,
+  set,
+  empty,
+  fields
+}: {
+  noun: string
+  get: (content: SectionContent[Type]) => Element[]
+  set: (content: SectionContent[Type], items: Element[]) => SectionContent[Type]
+  empty: () => Element
+  fields: (element: Element, index: number) => SectionContentField[]
+}): Collection<Type> {
+  return {
+    noun,
+    count: (content) => get(content).length,
+    fields: (content, index) => {
+      const element = get(content)[index]
+
+      return element === undefined ? [] : fields(element, index)
+    },
+    add: (content) => set(content, [...get(content), empty()]),
+    remove: (content, index) =>
+      set(
+        content,
+        get(content).filter((_element, at) => at !== index)
+      ),
+    move: (content, from, to) => set(content, moveItem(get(content), from, to))
+  }
 }
 
 const sectionComponents: {
@@ -147,7 +239,19 @@ const sectionComponents: {
         ? { componentType: "richText", field: "markdown" }
         : null,
     format: () => "markdown",
-    replace: (_content, _target, value) => ({ markdown: value })
+    replace: (_content, _target, value) => ({ markdown: value }),
+    read: (content) => content.markdown,
+    fields: (content) => [
+      {
+        label: "Text",
+        target: { componentType: "richText", field: "markdown" },
+        value: content.markdown,
+        input: "markdown"
+      }
+    ],
+    // A block of prose is one field, not a list of them: the bullet list inside
+    // it is markdown's, and the app's list of things is the list component.
+    collection: null
   },
 
   twoColumn: {
@@ -165,6 +269,29 @@ const sectionComponents: {
         : null
     },
     format: (target) => `rows.${target.index}.${target.side}`,
+    read: (content, target) =>
+      content.rows[target.index]?.[target.side] ?? null,
+    fields: () => [],
+    collection: collectionOf({
+      noun: "row",
+      get: (content) => content.rows,
+      set: (_content, rows) => ({ rows }),
+      empty: () => ({ left: "", right: "" }),
+      fields: (row, index) => [
+        {
+          label: "Left",
+          target: { componentType: "twoColumn", index, side: "left" },
+          value: row.left,
+          input: "text"
+        },
+        {
+          label: "Right",
+          target: { componentType: "twoColumn", index, side: "right" },
+          value: row.right,
+          input: "text"
+        }
+      ]
+    }),
     replace: (content, target, value) => {
       const row = content.rows[target.index]
 
@@ -189,6 +316,22 @@ const sectionComponents: {
       return index === null ? null : { componentType: "list", index }
     },
     format: (target) => `items.${target.index}`,
+    read: (content, target) => content.items[target.index] ?? null,
+    fields: () => [],
+    collection: collectionOf({
+      noun: "item",
+      get: (content) => content.items,
+      set: (_content, items) => ({ items }),
+      empty: () => "",
+      fields: (item, index) => [
+        {
+          label: "Item",
+          target: { componentType: "list", index },
+          value: item,
+          input: "text"
+        }
+      ]
+    }),
     replace: (content, target, value) => {
       const items = replaceString(content.items, target.index, value)
 
@@ -206,6 +349,22 @@ const sectionComponents: {
       return index === null ? null : { componentType: "tagList", index }
     },
     format: (target) => `tags.${target.index}`,
+    read: (content, target) => content.tags[target.index] ?? null,
+    fields: () => [],
+    collection: collectionOf({
+      noun: "tag",
+      get: (content) => content.tags,
+      set: (_content, tags) => ({ tags }),
+      empty: () => "",
+      fields: (tag, index) => [
+        {
+          label: "Tag",
+          target: { componentType: "tagList", index },
+          value: tag,
+          input: "text"
+        }
+      ]
+    }),
     replace: (content, target, value) => {
       const tags = replaceString(content.tags, target.index, value)
 
@@ -228,6 +387,29 @@ const sectionComponents: {
         : null
     },
     format: (target) => `icons.${target.index}.${target.field}`,
+    read: (content, target) =>
+      content.icons[target.index]?.[target.field] ?? null,
+    fields: () => [],
+    collection: collectionOf({
+      noun: "entry",
+      get: (content) => content.icons,
+      set: (_content, icons) => ({ icons }),
+      empty: () => ({ icon: "", text: "" }),
+      fields: (entry, index) => [
+        {
+          label: "Icon",
+          target: { componentType: "iconList", index, field: "icon" },
+          value: entry.icon,
+          input: "text"
+        },
+        {
+          label: "Label",
+          target: { componentType: "iconList", index, field: "text" },
+          value: entry.text,
+          input: "text"
+        }
+      ]
+    }),
     replace: (content, target, value) => {
       const icon = content.icons[target.index]
 
@@ -327,6 +509,120 @@ export function replaceSectionContentString(
   return current
     ? specFor(target.componentType).replace(current, target, value)
     : null
+}
+
+/**
+ * The string a target points at, or `null` when it names an element that isn't
+ * there.
+ *
+ * The inverse of `replaceSectionContentString`, and beside it for the same
+ * reason the read and the write of a field lens share an entry: they are
+ * inverses, and two homes is how one gets a shape the other doesn't.
+ */
+export function readSectionContentString(
+  target: SectionContentTarget,
+  stored: unknown
+): string | null {
+  const current = parseSectionContent(target.componentType, stored)
+
+  return current ? specFor(target.componentType).read(current, target) : null
+}
+
+/**
+ * The fields of a section's content that are not part of a repeated element.
+ *
+ * Rich text is the only shape with any: its whole body is one field. The rest
+ * are collections, and their fields come from `sectionContentEntries`.
+ */
+export function sectionContentFields(
+  componentType: string,
+  stored: unknown
+): SectionContentField[] {
+  if (!isSectionComponentType(componentType)) return []
+
+  const content = parseSectionContent(componentType, stored)
+
+  return content ? specFor(componentType).fields(content) : []
+}
+
+/** The repeated elements of a section's content, in order. */
+export function sectionContentEntries(
+  componentType: string,
+  stored: unknown
+): SectionContentEntry[] {
+  const content = parseSectionContent(componentType, stored)
+  const collection = collectionFor(componentType)
+
+  if (!content || !collection) return []
+
+  return Array.from(
+    { length: collection.count(content) },
+    (_unused, index) => ({
+      index,
+      fields: collection.fields(content, index)
+    })
+  )
+}
+
+/** What one element of this shape is called, or `null` when it has none. */
+export function sectionContentNoun(componentType: string) {
+  return collectionFor(componentType)?.noun ?? null
+}
+
+/**
+ * The content with one element appended, removed or moved — how the *set* of
+ * strings in a custom section changes, where `replaceSectionContentString`
+ * edits one that already exists.
+ *
+ * Each returns `null` when the stored payload doesn't match the component that
+ * has to render it, so a disagreeing row is refused rather than rewritten into
+ * a shape it never had.
+ */
+export function addSectionContentEntry(componentType: string, stored: unknown) {
+  return applyToCollection(componentType, stored, (collection, content) =>
+    collection.add(content)
+  )
+}
+
+export function removeSectionContentEntry(
+  componentType: string,
+  stored: unknown,
+  index: number
+) {
+  return applyToCollection(componentType, stored, (collection, content) =>
+    collection.remove(content, index)
+  )
+}
+
+export function moveSectionContentEntry(
+  componentType: string,
+  stored: unknown,
+  from: number,
+  to: number
+) {
+  return applyToCollection(componentType, stored, (collection, content) =>
+    collection.move(content, from, to)
+  )
+}
+
+function collectionFor(componentType: string) {
+  return isSectionComponentType(componentType)
+    ? specFor(componentType).collection
+    : null
+}
+
+function applyToCollection(
+  componentType: string,
+  stored: unknown,
+  change: (
+    collection: Collection<SectionComponentType>,
+    content: AnySectionContent
+  ) => AnySectionContent
+): AnySectionContent | null {
+  const content = parseSectionContent(componentType, stored)
+  const collection = collectionFor(componentType)
+
+  return content && collection ? change(collection, content) : null
 }
 
 /**
