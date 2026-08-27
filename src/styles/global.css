@@ -241,6 +241,17 @@
     --resume-rule-weight: 1px;
     --resume-rule-gap: 0.25rem;
 
+    /*
+      The mark that opens a skills category, weighted on its own.
+
+      Not the section rule's weight: Modern draws no rules under its headings,
+      and a category with no mark reads as an indent with nothing in it rather
+      than as a group. A mark is list decoration — the bullet a category gets —
+      where a rule is a division of the page, so it is a style's to set even
+      where that style has decided against rules.
+    */
+    --resume-group-mark-weight: 1px;
+
     --resume-date-align: left;
     --resume-date-weight: 400;
 
@@ -349,6 +360,13 @@
     --resume-space-inline: var(--resume-space-step);
     --resume-space-bullet: calc(var(--resume-space-step) * 6);
 
+    /*
+      The dash that opens a skills category — a mark, not a rule across
+      the line. Off the same step as every other length here, so a style
+      that tightens the rhythm shortens the mark with it.
+    */
+    --resume-group-mark-width: calc(var(--resume-space-step) * 2);
+
     --resume-ink-date: var(--resume-ink-text);
   }
 
@@ -382,6 +400,7 @@
 
     --resume-rule-weight: 0.75pt;
     --resume-rule-gap: 0.15rem;
+    --resume-group-mark-weight: 0.75pt;
 
     --resume-left-column-width: 8rem;
     --resume-date-align: right;
@@ -432,6 +451,7 @@
 
     --resume-rule-weight: 1px;
     --resume-rule-gap: 0.25rem;
+    --resume-group-mark-weight: 1px;
 
     /* Wide enough that a full "Sep 2016 - May 2018" holds one line in Geist. */
     --resume-left-column-width: 8.75rem;
@@ -476,6 +496,13 @@
 
     --resume-rule-weight: 0px;
     --resume-rule-gap: 0px;
+
+    /*
+      The one mark Modern keeps, and heavier than the others draw it: the
+      style's weight is in its type, so the thing that opens a category has to
+      hold its own beside an 800 heading.
+    */
+    --resume-group-mark-weight: 2px;
     --resume-space-heading: calc(var(--resume-space-step) * 2);
 
     /*
@@ -627,6 +654,18 @@
   */
   .resume-rule {
     height: var(--resume-rule-weight);
+    border: 0;
+    background-color: var(--resume-ink-accent);
+  }
+
+  /*
+    The mark a skills category opens with — the bullet of a group, drawn short
+    and level with the name rather than across the line. `border: 0` for the
+    reason `.resume-rule` needs it: Tailwind's preflight puts a border on `hr`.
+  */
+  .resume-group-mark {
+    height: var(--resume-group-mark-weight);
+    width: var(--resume-group-mark-width);
     border: 0;
     background-color: var(--resume-ink-accent);
   }

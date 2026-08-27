@@ -67,6 +67,15 @@ const withSections = (
   sections
 })
 
+/**
+ * One block's markup, found by something it says.
+ *
+ * Blocks are siblings rather than a tree, so splitting on the marker gives one
+ * chunk per block, each running to where the next one starts.
+ */
+const blockSaying = (html: string, said: string) =>
+  html.split('data-resume-block="').find((chunk) => chunk.includes(said)) ?? ""
+
 describe("core sections", () => {
   it("renders each core kind from its own typed rows", async () => {
     const html = await renderResumeHtml(
@@ -562,15 +571,6 @@ describe("the block list", () => {
   const keysOf = (html: string) =>
     [...html.matchAll(/data-resume-block="([^"]*)"/g)].map(([, key]) => key)
 
-  /**
-   * One block's markup, found by something it says.
-   *
-   * Blocks are siblings rather than a tree, so splitting on the marker gives
-   * one chunk per block, each running to where the next one starts.
-   */
-  const blockSaying = (html: string, said: string) =>
-    html.split('data-resume-block="').find((chunk) => chunk.includes(said))
-
   it("flattens the document into an ordered list covering every block kind", async () => {
     const html = await renderResumeHtml(data)
 
@@ -789,5 +789,97 @@ describe("structural invariants", () => {
       expect(html).not.toMatch(/\boutline(-\w+)?\b/)
       expect(html).not.toContain("cursor-pointer")
     })
+  })
+})
+
+/**
+ * A skills group as a stacked unit: the category, a rule beside it, then the
+ * skills on the line below.
+ *
+ * The shape a labelled group draws as is what makes a long skills section
+ * scannable — categories reading down the page, each one's skills wrapping
+ * across the full content width rather than starting wherever the longest
+ * category name happens to end.
+ */
+describe("a labelled list group", () => {
+  const skills = withSections([
+    section({
+      id: "a",
+      kind: "skills",
+      label: "Skills",
+      componentType: "groupedList",
+      position: 0,
+      content: {
+        groups: [
+          { label: "Languages", items: ["TypeScript", "Go"] },
+          { label: "Tools", items: ["Docker", "Postgres"] }
+        ]
+      }
+    })
+  ])
+
+  it("gives the category its own line, opened by a mark", async () => {
+    const group = blockSaying(await renderResumeHtml(skills), "Languages")
+
+    // The mark comes first and the category reads off it, the way a bullet
+    // opens a list item.
+    expect(group).toMatch(
+      /<hr[^>]*class="[^"]*resume-group-mark[^"]*"\s*\/?>\s*<h3[^>]*>Languages/
+    )
+
+    // Its own mark, not the section rule stretched across the line: a fixed
+    // length the eye runs down, saying the same thing beside every category —
+    // and one every style draws, including the one that has no rules.
+    expect(group).not.toMatch(/<hr[^>]*class="[^"]*resume-rule/)
+    expect(group).not.toMatch(/<hr[^>]*class="[^"]*flex-1/)
+  })
+
+  it("puts the skills on the line below, wrapping across the full width", async () => {
+    const group = blockSaying(await renderResumeHtml(skills), "Languages")
+
+    const mark = group.indexOf("<hr")
+    const list = group.indexOf("<ul")
+
+    expect(mark).toBeGreaterThan(-1)
+    expect(list).toBeGreaterThan(group.indexOf("Languages"))
+    expect(group.slice(list)).toMatch(/<ul[^>]*class="[^"]*flex-wrap/)
+
+    // Still one list item per skill: discrete things, not a run of commas.
+    expect(group).toContain("<li>TypeScript</li>")
+    expect(group).toContain("<li>Go</li>")
+  })
+
+  it("keeps a category with its own skills and away from the next group", async () => {
+    const html = await renderResumeHtml(skills)
+
+    // One block, category and skills together — a category on one sheet and
+    // the skills it names on the next is a heading for nothing.
+    expect(blockSaying(html, "Languages")).not.toContain("Tools")
+
+    // And the group carries a gap after itself, so the categories read as
+    // separate groups rather than as one run of lines.
+    expect(html).toMatch(
+      /class="[^"]*pb-resume-entry[^"]*" data-resume-block="[^"]*" data-resume-block-kind="listGroup"/
+    )
+  })
+
+  it("leaves a flat list with no label as plain bulleted items", async () => {
+    const html = await renderResumeHtml(
+      withSections([
+        section({
+          id: "l",
+          label: "Languages spoken",
+          componentType: "list",
+          position: 0,
+          content: { items: ["English", "French"] }
+        })
+      ])
+    )
+
+    const group = blockSaying(html, "English")
+
+    expect(group).toContain("list-disc")
+    expect(group).not.toContain("<h3")
+    expect(group).not.toContain("<hr")
   })
 })
