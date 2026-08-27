@@ -1,11 +1,11 @@
 # ATS score
 
 Research for turning "here's your resume" into "here's your resume, and here's
-what's wrong with it for *this* job." Nothing here is built yet.
+what's wrong with it for _this_ job." Nothing here is built yet.
 
 The short version: the feature is worth building, but the name is a lie and the
 lie is load-bearing. There is no single number a real ATS emits that we could
-reproduce. What we *can* do — and what nobody in this market does honestly — is
+reproduce. What we _can_ do — and what nobody in this market does honestly — is
 score the two things that are actually mechanical (does the document parse, does
 it cover the posting) with a rubric we publish, and keep the unfalsifiable parts
 out of the number.
@@ -29,16 +29,16 @@ headers/footers/text boxes, missing section breaks, company names without an
 `Senior Account Executive`).
 
 That last pair is the most useful thing in this whole document, because it is
-*specific*, *checkable*, and *nobody's resume checker checks it*.
+_specific_, _checkable_, and _nobody's resume checker checks it_.
 
 **Scoring is real in some systems and absent in others.** These are not the same
 product and a single "ATS score" cannot describe both:
 
-| System | Automated scoring? |
-| --- | --- |
-| Workday (via [HiredScore](https://www.workday.com/en-us/products/talent-management/ai-recruiting.html), acquired 2024) | Yes — candidates get an **A–D grade** against job requirements. |
-| Greenhouse Talent Matching | Yes, but as five buckets — **Strong / Good / Partial / Limited Match** plus "needs manual review" — computed against *recruiter-defined calibration criteria*, with the recruiter making every advance/reject call. |
-| Greenhouse core pipeline | No algorithmic scoring or auto-reject. Human scorecards against "Focus Attributes." |
+| System                                                                                                                 | Automated scoring?                                                                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workday (via [HiredScore](https://www.workday.com/en-us/products/talent-management/ai-recruiting.html), acquired 2024) | Yes — candidates get an **A–D grade** against job requirements.                                                                                                                                                     |
+| Greenhouse Talent Matching                                                                                             | Yes, but as five buckets — **Strong / Good / Partial / Limited Match** plus "needs manual review" — computed against _recruiter-defined calibration criteria_, with the recruiter making every advance/reject call. |
+| Greenhouse core pipeline                                                                                               | No algorithmic scoring or auto-reject. Human scorecards against "Focus Attributes."                                                                                                                                 |
 
 Greenhouse's matcher is worth studying because it's the only one that documents
 its mechanism: a **series of task-specific fine-tuned LLMs** for extraction, then
@@ -67,11 +67,11 @@ still die on one of them.
 
 ## What the competition ships
 
-| Tool | What it claims |
-| --- | --- |
+| Tool                                                                             | What it claims                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Jobscan](https://www.jobscan.co/blog/what-jobscan-match-rate-should-i-aim-for/) | 1–100% "match rate" over hard skills, soft skills, buzzwords, titles; "based on five priorities" that are never enumerated. Recommends aiming for 75–80% and warns above that you sound "keyword-stuffed and robotic." |
-| Teal | "15 checks" — structure, clarity, measurable results, keywords. |
-| Resume Worded | "30+ checks" — weak verbs, vague accomplishments, missing metrics. |
+| Teal                                                                             | "15 checks" — structure, clarity, measurable results, keywords.                                                                                                                                                        |
+| Resume Worded                                                                    | "30+ checks" — weak verbs, vague accomplishments, missing metrics.                                                                                                                                                     |
 
 **None of them publish a rubric.** Jobscan's own advice is the tell: a score
 whose vendor tells you not to maximize it is not a score, it's a nudge with a
@@ -104,13 +104,14 @@ template, so we can make it structurally perfect and keep it there.** Reading
 failure list it passes on layout. Three concrete defects remain:
 
 - **`ContactLine` hides the URL.** LinkedIn, GitHub and portfolio render as the
-  *label* `LinkedIn` with the URL only in `href`
+  _label_ `LinkedIn` with the URL only in `href`
   (`src/components/resume.tsx:412`). A PDF text-layer parser sees the word
   "LinkedIn" and no profile. Fix: render the URL as the visible text.
 - **Overflow silently deletes content.** `h-[29.7cm]` + `overflow-hidden` +
   `my-auto` (`src/components/resume.tsx:85`) clips anything past one page, with
-  no scrollbar and no warning. Already logged as step 6 of
-  [editable-resume](./editable-resume.md), but it belongs here too: clipped text
+  no scrollbar and no warning. Already logged under
+  [page overflow](./editable-resume.md#page-overflow), but it belongs here too:
+  clipped text
   is missing from the PDF text layer, so it's an invisible parse failure. **This
   should be fixed before shipping a parseability score**, or the score will
   confidently report on a document whose bottom third doesn't exist.
@@ -141,7 +142,7 @@ alike:
 Weight each requirement by where it appeared in the posting — a "Requirements"
 bullet outranks a "Nice to have" one — and say so in the UI.
 
-### 3. Evidence quality — per-bullet, and *not* in the coverage number
+### 3. Evidence quality — per-bullet, and _not_ in the coverage number
 
 Metric present, strong opening verb, specific outcome, reasonable length. This
 is the Resume Worded axis and it's worth having, but it is about the resume in
@@ -152,7 +153,7 @@ polishing prose.
 
 Every claimed match should point at the bullet that supports it, and any
 requirement the model wants to "cover" that has **no basis in the user's
-profile** must be flagged as *not yours to claim*, never auto-inserted.
+profile** must be flagged as _not yours to claim_, never auto-inserted.
 
 This is a real risk in the current flow. The generator prompt already tells the
 model to "use the job description provided to respond with keywords for a
@@ -178,7 +179,7 @@ even tell you which job a saved resume was for.
 
 **2. A resume's skills and contact aren't snapshotted.** `skill` and `contact`
 hang off `profile`, not `resume`, and email lives on `user` — already documented
-in [editable-resume](./editable-resume.md#only-the-snapshot-is-editable). So a
+in [editable-resume](./editable-resume.md#only-the-snapshot-was-editable). So a
 stored score computed over the skills section goes stale the moment the user
 edits their profile for a different application, with nothing to detect it. Two
 ways out: store a content hash of everything scored and mark the score stale on
@@ -211,8 +212,8 @@ match on embeddings.
 v2](https://arxiv.org/pdf/2502.12361) and
 [Resume2Vec](https://www.mdpi.com/2079-9292/14/4/794) both beat BM25 baselines
 on resume–job ranking, with Resume2Vec reporting up to ~16% nDCG improvement
-over conventional ATS ranking. But those papers optimize *ranking a pool of
-candidates for a recruiter*. We have one resume and one posting, and our user
+over conventional ATS ranking. But those papers optimize _ranking a pool of
+candidates for a recruiter_. We have one resume and one posting, and our user
 needs a list of missing things to go fix. A cosine similarity of 0.78 is not
 actionable.
 
@@ -220,7 +221,7 @@ actionable.
 Greenhouse actually does and it's the only one that produces a fixable list:
 
 1. LLM extracts the posting into typed requirements — `{ text, kind:
-   hard|responsibility|knockout, weight: required|preferred }`. `temperature: 0`,
+hard|responsibility|knockout, weight: required|preferred }`. `temperature: 0`,
    `response_format: json_object`, Zod-validated — the exact pattern
    `extractResumeFields` already uses.
 2. Same for the resume's evidence units (bullets, skills).
@@ -263,7 +264,8 @@ Each step ships something.
    `resume.create`, shown on `/resume/[id]`. Unlocks everything else and fixes a
    standing gap.
 2. **Fix the template's parse defects** — visible contact URLs, and page overflow
-   (step 6 of [editable-resume](./editable-resume.md)). Do this *before* scoring
+   (see [page overflow](./editable-resume.md#page-overflow)). Do this _before_
+   scoring
    parseability so the score isn't reporting on a truncated document.
 3. **Add a test runner**, and port the two orphaned probes into it.
 4. **Parseability score.** Fully deterministic, no model, no posting needed.
