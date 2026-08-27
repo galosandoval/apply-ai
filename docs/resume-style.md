@@ -36,7 +36,7 @@ Which leaves a differentiation budget of exactly five axes:
 | Body type                 | `--resume-font-body`, `--resume-font-heading`                                                      |
 | Heading treatment         | `--resume-heading-weight`, `--resume-heading-case`, and the scale                                  |
 | Rule weight and placement | `--resume-rule-weight`, `--resume-rule-gap`, `--resume-space-heading`                              |
-| Date-column rhythm        | `--resume-left-column-width`, `--resume-date-align`, `--resume-date-scale`, `--resume-date-weight` |
+| Date-column rhythm        | `--resume-left-column-width`, `--resume-date-scale`, `--resume-date-weight` |
 | One accent                | `--resume-ink-accent`                                                                              |
 
 `--resume-font-heading` is the half of the body-type axis all three directions

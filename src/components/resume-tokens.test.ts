@@ -199,7 +199,6 @@ describe("the style overlays", async () => {
         "--resume-heading-case",
         "--resume-rule-weight",
         "--resume-left-column-width",
-        "--resume-date-align",
         "--resume-ink-accent"
       ]) {
         expect(block, `${name} does not set ${token}`).toContain(token)
