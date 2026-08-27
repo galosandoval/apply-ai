@@ -378,10 +378,35 @@ describe("the page geometry", async () => {
   })
 
   /*
-    The stylesheet is the one copy. A component that spelt the height out again
-    would be a page the styles cannot resize and a boundary that could drift
-    from the sheet it claims to mark.
+    A sheet is a page element now, so the two facts that make a stack of them
+    read as paper are CSS rather than markup: the space between sheets, and its
+    absence in print. Held here because both are geometry the styles own — a
+    component that spelt either out would be a document the overlays cannot
+    respace and a print that keeps a gap that has nothing to show.
   */
+  it("puts the gap between sheets on the page element, from the token", () => {
+    const sheet = bodyForSelector(".resume-page-sheet")
+
+    expect(sheet, ".resume-page-sheet is missing").not.toBe("")
+    expect(sheet).toContain("var(--resume-page-gap)")
+  })
+
+  it("ends every sheet with a forced break and no gap in print", () => {
+    expect(bodyForSelector(".resume-page-sheet")).toContain("break-after: page")
+
+    // The gap is the app's background between two pieces of paper. On paper
+    // the sheets are already separate, so what would be left is a margin the
+    // print has to find room for — which is a third page for two pages of
+    // content.
+    const printed =
+      /@media print \{\s*\.resume-page-sheet \{([^}]*)\}/.exec(css)?.[1] ?? ""
+
+    expect(printed, ".resume-page-sheet is not re-valued for print").not.toBe(
+      ""
+    )
+    expect(printed).toContain("margin-bottom: 0")
+  })
+
   it("leaves no A4 literal in any component", async () => {
     const paths = (
       await readdir(join(process.cwd(), "src"), {

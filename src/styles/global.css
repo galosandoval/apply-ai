@@ -182,11 +182,11 @@
     /*
       The space between one sheet and the next.
 
-      Not padding and not a margin the page carries: it is the app's background
-      showing through between two pieces of paper, which is the whole reason a
-      second page reads as a second page at a glance. Nothing reads it yet —
-      the stack of pages that will, and the print rule that has to collapse it
-      because the sheets are then actually separate, are both still to come.
+      The app's background showing through between two pieces of paper, which
+      is the whole reason a second page reads as a second page at a glance.
+      Read by `.resume-page-sheet`, which is also where it collapses for print
+      — on paper the sheets are actually separate and there is nothing between
+      them to show.
     */
     --resume-page-gap: 1.5rem;
 
@@ -683,6 +683,31 @@
     line-height: var(--resume-leading-date);
     font-weight: var(--resume-date-weight);
     color: var(--resume-ink-date);
+  }
+
+  /*
+    One sheet in a stack of them.
+
+    The gap is the app's background between two pieces of paper — a margin
+    rather than padding, because it is space *around* the sheet and the sheet's
+    own padding is the print margin. In print there is nothing between two
+    pages to show, so the gap collapses and the break does the separating: the
+    element boundary and the sheet boundary become the same boundary, which is
+    the point of drawing pages at all.
+
+    `break-after` is unconditional rather than print-only. On screen it costs
+    nothing — there are no pages to break onto — and a rule that only exists
+    inside a media query is a rule the print is the first thing to test.
+  */
+  .resume-page-sheet {
+    margin-bottom: var(--resume-page-gap);
+    break-after: page;
+  }
+
+  @media print {
+    .resume-page-sheet {
+      margin-bottom: 0;
+    }
   }
 
   /*

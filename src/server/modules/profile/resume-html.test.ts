@@ -306,6 +306,33 @@ describe.each(resumeStyles)("the %s style", (style) => {
     expect(html).not.toContain("Nothing here yet")
   })
 
+  /*
+    The invariants are re-asserted over a stack of pages, not only over the
+    flow. Pagination adds an element between the document and its blocks — the
+    one place a sidebar, a layout table or a header region could reappear
+    without any section changing at all.
+  */
+  it("holds its structure when the document is a stack of pages", async () => {
+    const styled = { ...everyShape, style }
+    const keys = documentBlocks(await renderResumeHtml(styled)).map(
+      (block) => block.key
+    )
+    const half = Math.ceil(keys.length / 2)
+
+    const html = await renderResumeHtml(styled, {
+      pages: [
+        { blocks: keys.slice(0, half), continuedFrom: null },
+        { blocks: keys.slice(half), continuedFrom: null }
+      ]
+    })
+
+    expect(html).not.toMatch(/<table|<tr|<td|<th[\s>]/)
+    expect(html).not.toMatch(/\bcolumns-\d|\bcolumn-count|\bgrid-cols-[2-9]/)
+    expect(html).not.toContain("<img")
+    expect(html).not.toMatch(/<header|<footer|<aside/)
+    expect(html).toContain(">ada@example.com<")
+  })
+
   it("keeps a very long entry inside the document rather than beside it", async () => {
     const html = await render({
       ...data,
@@ -344,5 +371,168 @@ describe("resumePdfDocument", () => {
 
     expect(document).not.toContain("<link")
     expect(document).not.toContain("<script")
+  })
+})
+
+/**
+ * The document as a stack of pages — what an assignment turns the markup into.
+ *
+ * The assignment is built by hand here rather than by measuring anything:
+ * `paginate` decides where a break lands and is tested against its own
+ * arithmetic, and what this file is for is what the markup does once it has
+ * been told. Hand-built assignments also buy the cases a measurement would
+ * struggle to produce on demand — a job split between two of its own bullets,
+ * a page that opens mid-section.
+ */
+describe("a paginated document", async () => {
+  const keys = documentBlocks(await renderResumeHtml(data)).map(
+    (block) => block.key
+  )
+
+  /** The block keys of one section, in document order. */
+  const inSection = (sectionId: string) =>
+    keys.filter((key) => key.startsWith(`${sectionId}:`))
+
+  /** Everything up to the first block of `sectionId`, then everything after. */
+  function splitAt(sectionId: string, position: number) {
+    const at = keys.indexOf(`${sectionId}:${position}`)
+
+    return [keys.slice(0, at), keys.slice(at)]
+  }
+
+  /** The page elements of a rendered document, in order. */
+  function pageElements(html: string) {
+    const opens = [...html.matchAll(/<div class="([^"]*)" data-resume-page="/g)]
+
+    return opens.map((open, index) => ({
+      className: open[1] ?? "",
+      markup: html.slice(
+        open.index + open[0].length,
+        opens[index + 1]?.index ?? html.length
+      )
+    }))
+  }
+
+  /** The experience section, split between two of one job's own bullets. */
+  const splitJob = splitAt("experience", 3)
+
+  const twoPages = [
+    { blocks: splitJob[0] ?? [], continuedFrom: null },
+    { blocks: splitJob[1] ?? [], continuedFrom: "experience" }
+  ]
+
+  it("draws one page element per assigned page", async () => {
+    const html = await renderResumeHtml(data, { pages: twoPages })
+
+    expect(pageElements(html)).toHaveLength(2)
+
+    for (const page of pageElements(html)) {
+      expect(page.className).toContain("resume-page")
+    }
+  })
+
+  it("puts each block on the page it was assigned to", async () => {
+    const [first, second] = pageElements(
+      await renderResumeHtml(data, { pages: twoPages })
+    )
+
+    expect(first?.markup).toContain("Ada Lovelace")
+    expect(first?.markup).not.toContain("Home Tuition")
+    expect(second?.markup).toContain("Home Tuition")
+    expect(second?.markup).not.toContain("Ada Lovelace")
+  })
+
+  it("renders the continuous flow when it is given no assignment", async () => {
+    const html = await renderResumeHtml(data)
+
+    expect(pageElements(html)).toHaveLength(0)
+    expect(html).toContain("Ada Lovelace")
+    expect(html).toContain("Home Tuition")
+  })
+
+  it("draws each page as a whole sheet with its margins inside it", async () => {
+    const [page] = pageElements(
+      await renderResumeHtml(data, { pages: twoPages })
+    )
+
+    // A4 in both dimensions, from the same tokens the width always came from,
+    // with the print margin on all four sides and the paper's own background
+    // and corners — the sheet is the page rather than a box drawn on one.
+    for (const utility of [
+      "w-resume-page",
+      "h-resume-page",
+      "px-resume-page-x",
+      "py-resume-page-y",
+      "bg-resume-paper",
+      "rounded-resume-page"
+    ]) {
+      expect(page?.className).toContain(utility)
+    }
+  })
+
+  it("never clips a page — a block too tall for one overflows visibly", async () => {
+    const html = await renderResumeHtml(data, { pages: twoPages })
+
+    expect(html).not.toContain("overflow-hidden")
+    expect(html).not.toContain("overflow-clip")
+  })
+
+  it("opens a continued page with the heading of the section it continues", async () => {
+    const [, second] = pageElements(
+      await renderResumeHtml(data, { pages: twoPages })
+    )
+
+    expect(second?.markup).toContain("Experience")
+    expect(second?.markup).toMatch(/data-resume-continued="true"/)
+  })
+
+  it("marks that heading apart from a real second section of the name", async () => {
+    const html = await renderResumeHtml(data, { pages: twoPages })
+
+    // The title text is untouched: the distinction is carried in the markup so
+    // that a parser can tell a repeat from a section, and so a style could
+    // later letter it differently without editing the user's own section name.
+    expect(html).not.toContain("continued)")
+
+    const headings = documentBlocks(html).filter(
+      (block) => block.kind === "heading"
+    )
+
+    // The real heading is a block of the document and appears once; the repeat
+    // carries no block key at all, so measurement cannot mistake it for one.
+    expect(
+      headings.filter((block) => block.key === inSection("experience")[0])
+    ).toHaveLength(1)
+  })
+
+  it("keeps a bullet a real list item when a job spans two pages", async () => {
+    const [, second] = pageElements(
+      await renderResumeHtml(data, { pages: twoPages })
+    )
+
+    expect(second?.markup).toContain("Described a general computer")
+    expect(second?.markup).toMatch(/<ul[^>]*>\s*<li/)
+  })
+
+  it("draws what the assignment left out rather than losing it", async () => {
+    // An assignment measures the document as it was a moment ago, so a block
+    // added since is a block no page claims. It gets a sheet rather than being
+    // dropped — the same choice the overflowing page is.
+    const html = await renderResumeHtml(data, {
+      pages: [{ blocks: splitJob[0] ?? [], continuedFrom: null }]
+    })
+
+    expect(pageElements(html)).toHaveLength(2)
+    expect(pageElements(html)[1]?.markup).toContain("Home Tuition")
+  })
+
+  it("leaves the phone alone — reflow is one flow, not a stack of pages", async () => {
+    const html = await renderResumeHtml(data, {
+      mode: "reflow",
+      pages: twoPages
+    })
+
+    expect(pageElements(html)).toHaveLength(0)
+    expect(html).toContain("resume-reflow")
   })
 })

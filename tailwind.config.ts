@@ -62,7 +62,8 @@ const config = {
         "resume-tag": "var(--resume-tag-border-weight)"
       },
       height: {
-        "resume-meter": "var(--resume-meter-height)"
+        "resume-meter": "var(--resume-meter-height)",
+        "resume-page": "var(--resume-page-height)"
       },
       width: {
         "resume-page": "var(--resume-page-width)",
