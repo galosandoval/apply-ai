@@ -38,11 +38,6 @@ import * as sections from "./section.service"
 const fieldNotFound = () =>
   new TRPCError({ code: "NOT_FOUND", message: "Field not found" })
 
-/**
- * Skills are one row per group in the database and one comma-separated line on
- * the page. The document is the contract, so the split and the join both live
- * here rather than in two places that could disagree.
- */
 /** The account's skill rows as the Skills section stores them. */
 const skillGroupsFrom = (
   rows: { category: string; all: string[] }[]

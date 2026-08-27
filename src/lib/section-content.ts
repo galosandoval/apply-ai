@@ -800,9 +800,9 @@ function toIndex(token: string | undefined) {
  * the renderer and the service both — two copies of "what separates two
  * skills" is how a trailing comma comes to name a skill in one of them.
  */
-export const toItemLine = (items: string[]) => items.join(", ")
+const toItemLine = (items: string[]) => items.join(", ")
 
-export const fromItemLine = (line: string) =>
+const fromItemLine = (line: string) =>
   line
     .split(",")
     .map((item) => item.trim())

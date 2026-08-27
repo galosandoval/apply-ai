@@ -284,7 +284,6 @@ function List({
   )
 }
 
-/** What each shape is called where the user picks one. */
 /**
  * Adding a section, by name rather than by shape.
  *

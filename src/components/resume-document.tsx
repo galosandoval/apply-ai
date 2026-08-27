@@ -554,15 +554,6 @@ function entryRow(
   }
 }
 
-/**
- * Skills as labelled groups — the category is the label, and each skill in the
- * group is one entry.
- *
- * `skill.<row>.all` is one string in the database and in the panel, and one
- * item per skill on the page: a long list reads as things rather than as a run
- * of commas, and the split lives here because the document is where it means
- * something.
- */
 function Header({ doc }: { doc: Doc }) {
   const { data } = doc
 
