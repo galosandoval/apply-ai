@@ -313,11 +313,29 @@ export function sectionBlocks({
   if (empty && !render.isEditor) return []
 
   const drafts = [
-    headingBlock(label, select),
+    headingBlock(label),
     ...(empty ? [placeholderBlock()] : toBlocks(shape, render.mode))
   ]
 
-  return withBlockKeys(sectionId, closingSection(drafts))
+  return withBlockKeys(sectionId, closingSection(ownedBy(select, drafts)))
+}
+
+/**
+ * A block that selects nothing of its own is selected by its section.
+ *
+ * A shape whose content is addressed a row at a time — a job, a school, a
+ * skills group — answers for its own blocks, and the innermost target wins as
+ * it always has. Everything else is the section: a rich-text paragraph and a
+ * tag row are edited *through* the section panel, so a box drawn around the
+ * heading alone stops at the rule while the panel edits the text under it. It
+ * also makes that content clickable, where before a click on a paragraph fell
+ * through to the page and cleared the selection.
+ */
+function ownedBy(
+  select: SelectHandle | null | undefined,
+  drafts: ResumeBlockDraft[]
+): ResumeBlockDraft[] {
+  return drafts.map((draft) => ({ ...draft, select: draft.select ?? select }))
 }
 
 /**
@@ -341,18 +359,14 @@ function closingSection(drafts: ResumeBlockDraft[]): ResumeBlockDraft[] {
  * of the content that follows — a heading stranded at the foot of a page
  * introduces nothing.
  *
- * The heading is also the section's own click target: clicking a job selects
- * the job, so selecting the section it sits in needs somewhere of its own to
- * click.
+ * It selects nothing of its own, so — like every other block a shape does not
+ * address a row at a time — it is selected by its section. Clicking a job
+ * still selects the job: the innermost target wins.
  */
-function headingBlock(
-  label: ReactNode,
-  select?: SelectHandle | null
-): ResumeBlockDraft {
+function headingBlock(label: ReactNode): ResumeBlockDraft {
   return {
     kind: "heading",
     space: "none",
-    select,
     node: (
       <div className="pb-resume-heading">
         <h2 className="resume-heading text-resume-heading text-resume-accent">

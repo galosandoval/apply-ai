@@ -56,11 +56,19 @@ const data: ResumeDocumentData = {
   ],
   sections: [
     {
+      id: "r",
+      kind: "custom",
+      label: "Summary",
+      componentType: "richText",
+      position: 0,
+      content: { markdown: "A short summary.\n\nAnd a second paragraph." }
+    },
+    {
       id: "b",
       kind: "experience",
       label: "Experience",
       componentType: "twoColumn",
-      position: 0
+      position: 1
     }
   ]
 }
@@ -107,6 +115,28 @@ describe("selection", () => {
     expect(targets.filter((target) => target.includes("Engines"))).toHaveLength(
       2
     )
+  })
+
+  it("selects a section through its own content, not just its heading", () => {
+    const summary = clickTargets(render()).find((target) =>
+      target.includes("Summary")
+    )
+
+    // A rich-text section is edited *through* the section panel — a box around
+    // the heading alone stops at the rule while the panel edits the text under
+    // it. Clicking the text used to fall through and clear the selection.
+    expect(summary).toContain("A short summary.")
+    expect(summary).toContain("And a second paragraph.")
+  })
+
+  it("keeps an entry's own target out of its section's", () => {
+    const heading = clickTargets(render()).find((target) =>
+      target.includes("Experience")
+    )
+
+    // The innermost target still wins: a job answers for its own blocks, so
+    // the section heading does not swallow them.
+    expect(heading).not.toContain("Analytical Engines")
   })
 
   it("holds the gap between entries outside the target it follows", () => {

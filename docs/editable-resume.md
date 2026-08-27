@@ -385,6 +385,13 @@ Three things follow, and each of them is a thing that used to live one level up:
   that spans two — which no wrapper element could have been. The gap after a
   run is margin, not padding: an outline is drawn outside the padding and
   inside the margin, and the box has to end where the content does.
+- **A block that selects nothing of its own is selected by its section.** A
+  shape addressed a row at a time — a job, a school, a skills group — answers
+  for its own blocks, and the innermost target still wins. Everything else is
+  the section, because a rich-text paragraph and a tag row are edited _through_
+  the section panel: a box around the heading alone stopped at the rule while
+  the panel edited the text under it, and clicking that text fell through to
+  the page and cleared the selection.
 - **A bullet is its own list.** One `<ul>` per bullet rather than one holding
   the job's nine, because an element cannot be in two places and a job split
   across a boundary asks exactly that of it. Every bullet is still a real list
