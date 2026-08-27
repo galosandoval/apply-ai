@@ -45,6 +45,8 @@ export type ResumeBlockKind =
   | "tagRow"
   /** An icon-list section's row. */
   | "iconRow"
+  /** One labelled level of a meter section, bar and all. */
+  | "meterRow"
 
 /**
  * The space a block owns *after* itself, named rather than valued.

@@ -22,8 +22,13 @@ import {
  */
 
 describe("section kinds", () => {
-  it("has exactly three core kinds", () => {
-    expect(coreSectionKinds).toEqual(["experience", "education", "skills"])
+  it("has exactly two core kinds — the ones with typed rows", () => {
+    expect(coreSectionKinds).toEqual(["experience", "education"])
+  })
+
+  // Skills is content-bearing now, so it is not core even though it is named.
+  it("does not treat skills as core", () => {
+    expect(isCoreSectionKind("skills")).toBe(false)
   })
 
   it.each(coreSectionKinds)("treats %s as core", (kind) => {
@@ -46,7 +51,9 @@ describe("component types", () => {
       "twoColumn",
       "list",
       "tagList",
-      "iconList"
+      "iconList",
+      "meter",
+      "groupedList"
     ])
   })
 
@@ -66,7 +73,11 @@ describe("parseSectionContent — accepted payloads", () => {
     twoColumn: { rows: [{ left: "AWS Certified", right: "2024" }] },
     list: { items: ["Shipped the thing", "Shipped the other thing"] },
     tagList: { tags: ["TypeScript", "Postgres"] },
-    iconList: { icons: [{ icon: "github", text: "github.com/me" }] }
+    iconList: { icons: [{ icon: "github", text: "github.com/me" }] },
+    meter: { meters: [{ label: "Spanish", level: 80 }] },
+    groupedList: {
+      groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+    }
   } as const
 
   it.each(sectionComponentTypes)("accepts %s content", (componentType) => {

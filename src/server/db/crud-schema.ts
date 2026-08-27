@@ -174,24 +174,6 @@ export const resumeContactSchema = z.object({
 export type ResumeContactSchema = z.infer<typeof resumeContactSchema>
 
 /**
- * A resume's skill groups. Keyed `skill`, singular, because a path addresses
- * one row of the table — `skill.<row>.category`, the way `contact.<column>` and
- * `experience.<row>.<column>` do.
- */
-export const resumeSkillsSchema = z.object({
-  skill: z
-    .object({
-      id: z.string().optional(),
-      category: z.string(),
-      all: z.string()
-    })
-    .array()
-    .max(maxSkills)
-})
-
-export type ResumeSkillsSchema = z.infer<typeof resumeSkillsSchema>
-
-/**
  * A whole resume, shaped exactly as the document renders it.
  *
  * The draft preview drives a form off this schema and addresses its fields with
@@ -208,7 +190,6 @@ export const insertResumeSchema = z
     jobDescription: z.string().max(20_000),
     contact: resumeContactSchema
   })
-  .merge(resumeSkillsSchema)
   .merge(insertEducationSchema)
   .merge(insertExperienceSchema)
 

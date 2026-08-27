@@ -56,7 +56,7 @@ export async function findSkills(db: DbOrTx, userId: string) {
       id: skill.id
     })
     .from(skill)
-    .where(and(eq(skill.userId, userId), isNull(skill.resumeId)))
+    .where(eq(skill.userId, userId))
     .orderBy(asc(skill.position))
 }
 
@@ -181,9 +181,7 @@ export async function upsertExperience(db: DbOrTx, values: WorkValues[]) {
 }
 
 export async function deleteSkills(db: DbOrTx, userId: string) {
-  return db
-    .delete(skill)
-    .where(and(eq(skill.userId, userId), isNull(skill.resumeId)))
+  return db.delete(skill).where(eq(skill.userId, userId))
 }
 
 type SkillValues = typeof skill.$inferInsert

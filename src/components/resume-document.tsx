@@ -2,7 +2,6 @@ import { Fragment } from "react"
 import {
   customSectionShape,
   type EntryPart,
-  type ListGroup,
   type RenderMode,
   type RenderOptions,
   type SectionShape,
@@ -71,7 +70,6 @@ export type ResumeDocumentData = {
   profession: string
   /** The resume's own snapshot, not the account's — see `schema.contact`. */
   contact: InsertResumeSchema["contact"]
-  skill: InsertResumeSchema["skill"]
   experience: InsertResumeSchema["experience"]
   education: InsertResumeSchema["education"]
   /**
@@ -452,8 +450,6 @@ function coreShape(doc: Doc, kind: CoreSectionKind): SectionShape {
       return { componentType: "twoColumn", rows: experienceRows(doc) }
     case "education":
       return { componentType: "twoColumn", rows: educationRows(doc) }
-    case "skills":
-      return { componentType: "list", groups: skillGroups(doc) }
   }
 }
 
@@ -567,24 +563,6 @@ function entryRow(
  * of commas, and the split lives here because the document is where it means
  * something.
  */
-function skillGroups(doc: Doc): ListGroup[] {
-  return doc.data.skill.map((group) => ({
-    label: <Text doc={doc} value={group.category} />,
-    items: splitSkills(group.all).map((skill, at) => (
-      <Fragment key={at}>{skill}</Fragment>
-    )),
-    select: rowHandle(doc, "skills", group.id)
-  }))
-}
-
-/** The stored line as the skills it lists. A trailing comma names nothing. */
-function splitSkills(all: string) {
-  return all
-    .split(",")
-    .map((skill) => skill.trim())
-    .filter(Boolean)
-}
-
 function Header({ doc }: { doc: Doc }) {
   const { data } = doc
 

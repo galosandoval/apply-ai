@@ -85,7 +85,10 @@ const forbidden: { what: string; pattern: RegExp }[] = [
   },
   {
     what: "an inline CSS declaration",
-    pattern: /style=\{\{\s*(?!"--resume)/
+    // The whitespace is inside the lookahead, not before it: `\s*` outside can
+    // match nothing, so the sanctioned `style={{ "--resume-…" }}` matched on
+    // the space Prettier puts there and the one allowed escape was unusable.
+    pattern: /style=\{\{(?!\s*"--resume)/
   }
 ]
 

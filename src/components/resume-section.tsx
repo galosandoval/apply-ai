@@ -1,4 +1,4 @@
-import { type ReactNode } from "react"
+import { type CSSProperties, type ReactNode } from "react"
 import {
   isResumeIconName,
   ResumeIcon,
@@ -19,7 +19,7 @@ import {
 } from "~/lib/section-content"
 
 /**
- * The five shapes a resume section can draw as — the whole rendering system.
+ * The six shapes a resume section can draw as — the whole rendering system.
  *
  * A section type is a *configuration* of one of these, never a renderer of its
  * own: a custom section is a user-created instance, and a core section is a
@@ -28,7 +28,7 @@ import {
  *
  * Everything that varies per shape lives in one entry of `shapeSpecs` — how a
  * stored payload becomes it, when it counts as empty, and what draws it. Adding
- * a sixth shape is one registry entry, not a hunt for every switch on the type.
+ * a seventh shape is one registry entry, not a hunt for every switch on the type.
  *
  * Adding one is still a deliberate act: every shape multiplies the work in the
  * editor and in the style, so the set stays small on purpose.
@@ -65,6 +65,8 @@ export type SectionShape =
   | { componentType: "list"; groups: ListGroup[] }
   | { componentType: "tagList"; tags: { key: string; label: ReactNode }[] }
   | { componentType: "iconList"; icons: IconEntry[] }
+  | { componentType: "meter"; meters: MeterEntry[] }
+  | { componentType: "groupedList"; groups: ListGroup[] }
 
 export type TwoColumnRow = {
   left: ReactNode
@@ -99,6 +101,13 @@ export type ListGroup = {
   label?: ReactNode
   items: ReactNode[]
   select?: SelectHandle | null
+}
+
+/** A labelled level. `level` is a percentage, already clamped on the way in. */
+export type MeterEntry = {
+  key: string
+  label: ReactNode
+  level: number
 }
 
 /**
@@ -245,6 +254,59 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
     toBlocks: (shape) => [
       { kind: "iconRow", space: "none", node: <IconList icons={shape.icons} /> }
     ]
+  },
+
+  meter: {
+    fromContent: (content) => {
+      const parsed = parseSectionContent("meter", content)
+
+      return (
+        parsed && {
+          componentType: "meter",
+          meters: parsed.meters.map((entry, index) => ({
+            key: String(index),
+            label: entry.label,
+            level: entry.level
+          }))
+        }
+      )
+    },
+    isEmpty: (shape) => !shape.meters.length,
+    // One block per level rather than one for the set: a list of eight
+    // languages is as splittable as a list of eight bullets, and a bar is
+    // never separated from the name it measures.
+    toBlocks: (shape) =>
+      shape.meters.map((entry) => ({
+        kind: "meterRow",
+        space: "inline",
+        node: <Meter entry={entry} key={entry.key} />
+      }))
+  },
+
+  groupedList: {
+    fromContent: (content) => {
+      const parsed = parseSectionContent("groupedList", content)
+
+      return (
+        parsed && {
+          componentType: "groupedList",
+          groups: parsed.groups.map((group) => ({
+            label: group.label,
+            items: group.items
+          }))
+        }
+      )
+    },
+    isEmpty: (shape) => !shape.groups.some((group) => group.items.length),
+    // One block per group, category and items together: a category separated
+    // from the skills it names is a heading for nothing.
+    toBlocks: (shape, mode) =>
+      shape.groups.filter(isDrawn).map((group) => ({
+        kind: "listGroup",
+        space: "inline",
+        select: group.select,
+        node: <ListEntry group={group} mode={mode} />
+      }))
   }
 }
 
@@ -556,6 +618,35 @@ function TagList({ tags }: { tags: { key: string; label: ReactNode }[] }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * A name and the level it was given, drawn as a bar.
+ *
+ * The number itself is never printed. A resume that claims "Spanish: 80%" is
+ * making a precise claim it cannot support; a bar reads as the approximation
+ * it is, which is the only honest thing a self-assessed level can be.
+ *
+ * `aria-hidden` on the track because the bar is decoration for a value the
+ * label already carries — a screen reader gets the name, not a percentage the
+ * document declines to state in print.
+ */
+function Meter({ entry }: { entry: MeterEntry }) {
+  return (
+    <div className="flex items-center gap-resume-entry">
+      <span className="w-resume-left-column shrink-0">{entry.label}</span>
+
+      <div
+        aria-hidden
+        className="h-resume-meter min-w-0 flex-1 rounded-resume-tag bg-resume-tag-surface"
+      >
+        <div
+          className="resume-meter-fill h-full rounded-resume-tag bg-resume-accent"
+          style={{ "--resume-meter-level": `${entry.level}%` } as CSSProperties}
+        />
+      </div>
+    </div>
   )
 }
 

@@ -16,7 +16,7 @@ export function MyErrorMessage<T extends Record<Path<T>, string>>(
       errors={props.errors}
       name={props.name as any}
       render={({ message }) => (
-        <p className="text-destructive text-[0.8rem]">{message}</p>
+        <p className="text-[0.8rem] text-destructive">{message}</p>
       )}
     />
   )

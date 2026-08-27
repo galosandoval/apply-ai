@@ -29,7 +29,7 @@ import {
  * `SnapshotValues` is what keeps a write honest: a `work` column cannot be set
  * on a `school` row, because the table decides which keys the values may carry.
  */
-export type SnapshotTable = typeof work | typeof school | typeof skill
+export type SnapshotTable = typeof work | typeof school
 
 export type SnapshotValues<Table extends SnapshotTable> =
   PgUpdateSetSource<Table>
@@ -108,14 +108,6 @@ export async function findEducation(db: DbOrTx, resumeId: string) {
     .from(school)
     .where(eq(school.resumeId, resumeId))
     .orderBy(asc(school.position), asc(school.id))
-}
-
-export async function findSkills(db: DbOrTx, resumeId: string) {
-  return db
-    .select()
-    .from(skill)
-    .where(eq(skill.resumeId, resumeId))
-    .orderBy(asc(skill.position), asc(skill.id))
 }
 
 export async function findContact(db: DbOrTx, resumeId: string) {
@@ -197,15 +189,6 @@ export async function insertEducation(
   if (!values.length) return []
 
   return db.insert(school).values(values).returning({ id: school.id })
-}
-
-export async function insertSkills(
-  db: DbOrTx,
-  values: (typeof skill.$inferInsert)[]
-) {
-  if (!values.length) return []
-
-  return db.insert(skill).values(values).returning({ id: skill.id })
 }
 
 /**
@@ -296,17 +279,12 @@ export async function nextRowPosition(
 export async function deleteResume(db: DbOrTx, resumeId: string) {
   await db.delete(work).where(eq(work.resumeId, resumeId))
   await db.delete(school).where(eq(school.resumeId, resumeId))
-  await db.delete(skill).where(eq(skill.resumeId, resumeId))
   await db.delete(contact).where(eq(contact.resumeId, resumeId))
 
   return db
     .delete(resume)
     .where(eq(resume.id, resumeId))
     .returning({ id: resume.id })
-}
-
-export async function deleteSnapshotSkills(db: DbOrTx, resumeId: string) {
-  return db.delete(skill).where(eq(skill.resumeId, resumeId))
 }
 
 export async function deleteSnapshotContact(db: DbOrTx, resumeId: string) {
@@ -372,7 +350,7 @@ export async function findAccountSkills(db: DbOrTx, userId: string) {
   return db
     .select()
     .from(skill)
-    .where(and(eq(skill.userId, userId), isNull(skill.resumeId)))
+    .where(eq(skill.userId, userId))
     .orderBy(asc(skill.position), asc(skill.id))
 }
 

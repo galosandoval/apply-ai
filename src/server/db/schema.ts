@@ -94,19 +94,21 @@ export const verification = pgTable("verification", {
 })
 
 /**
- * A skill group, either the account's master copy (`resumeId` null) or one
- * resume's snapshot of it (`resumeId` set).
+ * A skill group on the account — the master copy, and now the only copy.
  *
- * The two are never the same row: editing a resume's skills has to be unable to
- * reach a resume the user already sent.
+ * A resume's skills used to be snapshotted into rows here with a `resumeId`.
+ * They are the content of the resume's Skills section instead: a category is a
+ * way of arranging short strings, not the machine-readable claim a date range
+ * or an employer is, so it had no business being a typed row. What is
+ * snapshotted is still snapshotted — into `section.content`, where editing it
+ * cannot reach a resume the user already sent.
  */
 export const skill = pgTable("skill", {
   id: text("id").primaryKey(),
   category: text("category").notNull(),
   all: text("all").array().notNull(),
   position: integer("position").notNull(),
-  userId: text("user_id").references(() => user.id),
-  resumeId: text("resume_id").references(() => resume.id)
+  userId: text("user_id").references(() => user.id)
 })
 
 /**
@@ -237,11 +239,13 @@ export const resumeRelations = relations(resume, ({ one, many }) => ({
  * custom sections can interleave on one comparable `position`, and so adding a
  * section is a single insert.
  *
- * - **Core** (`experience`, `education`, `skills`) carries no `content`: it is a
- *   label, an order, and a pointer to its own typed rows. Those rows are what
- *   make a resume machine-readable, so their structure is not the user's to
- *   change — only the label and the position are.
- * - **Custom** (`custom`) holds its own `content`, shaped by `componentType`.
+ * - **Core** (`experience`, `education`) carries no `content`: it is a label, an
+ *   order, and a pointer to its own typed rows. Those rows are what make a
+ *   resume machine-readable, so their structure is not the user's to change —
+ *   only the label and the position are.
+ * - **Everything else** holds its own `content`, shaped by `componentType`.
+ *   `skills` is one of these and is named only so a refresh from the account
+ *   can still find it; `custom` is a section the user added.
  */
 export const section = pgTable("section", {
   id: text("id").primaryKey(),

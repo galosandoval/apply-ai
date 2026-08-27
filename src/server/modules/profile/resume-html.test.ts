@@ -21,7 +21,6 @@ const data: ResumeDocumentData = {
     linkedIn: "linkedin.com/in/ada",
     portfolio: "https://ada.dev"
   },
-  skill: [{ id: "s1", category: "Languages", all: "TypeScript, Go" }],
   experience: [
     {
       id: "w1",
@@ -74,8 +73,11 @@ const everyShape: ResumeDocumentData = {
       id: "skills",
       kind: "skills",
       label: "Skills",
-      componentType: "list",
-      position: 2
+      componentType: "groupedList",
+      position: 2,
+      content: {
+        groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+      }
     },
     {
       id: "summary",
@@ -200,13 +202,15 @@ describe("renderResumeHtml", async () => {
     expect(holding?.markup).not.toContain(second)
   })
 
-  it("renders the name, profession and every section", () => {
+  // Skills is absent on purpose: this payload carries no sections, so it falls
+  // back to the ones a new resume is created with — and Skills is a
+  // content-bearing section now, so a payload with no content for it has no
+  // skills to draw. The styled fixture below carries one and asserts it.
+  it("renders the name, profession and every section it has content for", () => {
     expect(html).toContain("Ada Lovelace")
     expect(html).toContain("Software Engineer")
     expect(html).toContain("Analytical Engines")
     expect(html).toContain("Home Tuition")
-    expect(html).toContain("TypeScript")
-    expect(html).toContain("Go")
   })
 })
 
@@ -290,7 +294,6 @@ describe.each(resumeStyles)("the %s style", (style) => {
         linkedIn: "",
         portfolio: ""
       },
-      skill: [],
       experience: [],
       education: []
     }

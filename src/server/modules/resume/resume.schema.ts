@@ -50,7 +50,7 @@ export type UpdateFieldInput = z.infer<typeof updateFieldSchema>
  * each schema so the reorder, the add and the remove cannot disagree about
  * which lists a row can belong to.
  */
-export const rowSectionSchema = z.enum(["experience", "education", "skills"])
+export const rowSectionSchema = z.enum(["experience", "education"])
 export type RowSectionName = z.infer<typeof rowSectionSchema>
 
 export const reorderRowsSchema = resumeIdSchema.extend({

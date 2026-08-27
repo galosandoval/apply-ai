@@ -21,7 +21,7 @@ Nothing is typed into the document itself.
 | Module                                      | Owns                                                                     |
 | ------------------------------------------- | ------------------------------------------------------------------------ |
 | `src/components/resume-document.tsx`        | The one template. Props in, markup out; builds the block list.           |
-| `src/components/resume-section.tsx`         | The five shapes a section can draw as, and the blocks each contributes.  |
+| `src/components/resume-section.tsx`         | The seven shapes a section can draw as, and the blocks each contributes. |
 | `src/lib/resume-blocks.ts`                  | What a block is: its kinds, its key, the space it owns.                  |
 | `src/lib/resume-selection.ts`               | What can be selected, and what makes an element selectable.              |
 | `src/lib/section-content.ts`                | What a section is and may hold — shared by client and server.            |
@@ -52,12 +52,36 @@ It is **read-only always**. Three optional props are the only variation:
   rather than nothing. A blank the user cannot see is a blank they cannot fill
   in; a placeholder in a finished PDF is worse than a gap.
 
-A section is a **configuration of one of five shapes** — rich text, two-column,
-list, tag list, icon list — never a renderer of its own. A custom section is a
-user-created instance; a core section (Experience, Education, Skills) is a
-pre-configured one fed by its typed rows, which is what keeps it
-machine-readable for the scoring work. That is also what gives a style one
-surface to land on instead of one per section.
+A section is a **configuration of one of seven shapes** — rich text,
+two-column, list, grouped list, tag list, icon list, meter — never a renderer of
+its own. A custom section is a user-created instance; a core section
+(Experience, Education) is a pre-configured one fed by its typed rows, which is
+what keeps it machine-readable for the scoring work. That is also what gives a
+style one surface to land on instead of one per section.
+
+### Sections are picked by name, not by shape (#63)
+
+A user adding "Certificates" is naming the content they have, not choosing
+between a two-column frame and a tag row. So `src/lib/section-catalog.ts` offers
+named sections — Text, Summary, Projects, Awards, Publications, Hobbies, Social
+media, References and the rest — and the shape comes with the one they pick. The
+label is an ordinary field afterwards, so a preset is a starting point rather
+than a decision the user is stuck with. The shape still fixes at creation:
+it decides what the content _is_, and there is no honest conversion from a
+paragraph to a set of tags.
+
+The catalog is client-side data. The server takes a label and a shape and
+validates both, and has no opinion about which pairs a picker offers — a catalog
+it enforced would be a second, weaker copy of the shape registry.
+
+**Skills is no longer a core section.** Its categories were never the
+machine-readable claim a date range or an employer is; they are a way of
+arranging short strings, which is what `groupedList` is for. So a resume's
+skills are that section's own `content`, the account keeps the only `skill`
+rows, and Skills is in the catalog like everything else. It keeps `kind:
+"skills"` for one reason: a refresh from the account has to know which section
+the skills go back into, and a label the user is free to rename cannot answer
+that. See `migrations/0010_skills_section_content.sql`.
 
 ### The document is a block list (#62)
 
@@ -157,8 +181,8 @@ on the wrong job if rows come back in a different order.
 `section-content.ts` holds the other half: what each component type's payload
 is, which paths address its content, and the `collection` describing how its
 elements are added, removed and moved. That registry is what makes the panel
-_generated_ rather than written — a sixth section shape is a registry entry, not
-a sixth panel.
+_generated_ rather than written — an eighth section shape is a registry entry,
+not an eighth panel.
 
 ### Rich text is a constrained markdown subset
 

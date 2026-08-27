@@ -38,10 +38,6 @@ const baseData: Omit<ResumeDocumentData, "sections"> = {
     linkedIn: "linkedin.com/in/ada",
     portfolio: "https://ada.dev"
   },
-  skill: [
-    { id: "s1", category: "Languages", all: "TypeScript, Go" },
-    { id: "s2", category: "Tools", all: "Docker, Postgres" }
-  ],
   experience: [
     {
       id: "w1",
@@ -79,9 +75,14 @@ describe("core sections", () => {
           id: "a",
           kind: "skills",
           label: "Skills",
-          componentType: "list",
+          componentType: "groupedList",
           position: 0,
-          content: null
+          content: {
+            groups: [
+              { label: "Languages", items: ["TypeScript", "Go"] },
+              { label: "Tools", items: ["Docker", "Postgres"] }
+            ]
+          }
         }),
         section({
           id: "b",
@@ -146,9 +147,14 @@ describe("core sections", () => {
           id: "a",
           kind: "skills",
           label: "Skills",
-          componentType: "list",
+          componentType: "groupedList",
           position: 0,
-          content: null
+          content: {
+            groups: [
+              { label: "Languages", items: ["TypeScript", "Go"] },
+              { label: "Tools", items: ["Docker", "Postgres"] }
+            ]
+          }
         })
       ])
     )
@@ -189,9 +195,13 @@ describe("a document with no sections of its own", () => {
     // whole reason both sides read one list.
     const html = await renderResumeHtml(baseData)
 
-    const positions = coreSectionDefaults.map((core) =>
-      html.indexOf(`>${core.label}<`)
-    )
+    // Skills is content-bearing now, and this payload has no content for it —
+    // so it draws nothing at all, the way any empty section does outside the
+    // editor. What the fallback still owes is the order and the labels of the
+    // sections that do have something to draw.
+    const positions = coreSectionDefaults
+      .filter((core) => core.kind !== "skills")
+      .map((core) => html.indexOf(`>${core.label}<`))
 
     expect(positions.every((at) => at > -1)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
@@ -243,9 +253,11 @@ describe("section order and labels", () => {
           id: "a",
           kind: "skills",
           label: "Skills",
-          componentType: "list",
+          componentType: "groupedList",
           position: 1,
-          content: null
+          content: {
+            groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+          }
         }),
         section({
           id: "b",
@@ -432,9 +444,11 @@ describe("page mode and reflow mode", () => {
       id: "a",
       kind: "skills",
       label: "Skills",
-      componentType: "list",
+      componentType: "groupedList",
       position: 0,
-      content: null
+      content: {
+        groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+      }
     }),
     section({
       id: "b",
@@ -497,9 +511,11 @@ describe("the block list", () => {
         id: "a",
         kind: "skills",
         label: "Skills",
-        componentType: "list",
+        componentType: "groupedList",
         position: 0,
-        content: null
+        content: {
+          groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+        }
       }),
       section({
         id: "b",
@@ -671,9 +687,11 @@ describe("structural invariants", () => {
       id: "a",
       kind: "skills",
       label: "Skills",
-      componentType: "list",
+      componentType: "groupedList",
       position: 0,
-      content: null
+      content: {
+        groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+      }
     }),
     section({
       id: "b",

@@ -5,10 +5,8 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
-import {
-  type SectionComponentType,
-  sectionComponentTypes
-} from "~/lib/section-content"
+import { searchSectionCatalog, type SectionPreset } from "~/lib/section-catalog"
+import { type SectionComponentType } from "~/lib/section-content"
 import { MarkdownField } from "~/features/resume/markdown-field"
 import {
   type PanelAction,
@@ -287,35 +285,30 @@ function List({
 }
 
 /** What each shape is called where the user picks one. */
-const shapeLabels: Record<SectionComponentType, string> = {
-  richText: "Paragraph",
-  twoColumn: "Two columns",
-  list: "List",
-  tagList: "Tags",
-  iconList: "Icons"
-}
-
 /**
- * Adding a section, with its shape chosen up front.
+ * Adding a section, by name rather than by shape.
  *
- * The shape is fixed at creation because it decides what the section's content
- * *is*: changing it afterwards would mean converting one payload into another,
- * and there is no honest conversion from a paragraph to a set of tags.
+ * A user adding "Certificates" is naming the *content* they have, not choosing
+ * between a two-column frame and a tag row — so the picker offers named
+ * sections and the shape comes with the one they pick. The label is an ordinary
+ * field on the section afterwards, so a preset is a starting point and never a
+ * decision the user is stuck with.
+ *
+ * The shape itself stays fixed at creation, which is the part that has not
+ * changed: it decides what the section's content *is*, and there is no honest
+ * conversion from a paragraph to a set of tags.
  */
 function AddSection({
   onAdd
 }: {
   onAdd: (label: string, componentType: SectionComponentType) => void
 }) {
-  const [label, setLabel] = useState("")
-  const [componentType, setComponentType] =
-    useState<SectionComponentType>("richText")
+  const [query, setQuery] = useState("")
+  const groups = searchSectionCatalog(query)
 
-  const add = () => {
-    if (!label.trim()) return
-
-    onAdd(label.trim(), componentType)
-    setLabel("")
+  const add = (preset: SectionPreset) => {
+    onAdd(preset.label, preset.componentType)
+    setQuery("")
   }
 
   return (
@@ -324,33 +317,48 @@ function AddSection({
         Add a section
       </h3>
 
-      <Label htmlFor="new-section-label">Name</Label>
+      <Label className="sr-only" htmlFor="section-search">
+        Search sections
+      </Label>
       <Input
-        id="new-section-label"
-        onChange={(event) => setLabel(event.target.value)}
-        placeholder="Summary"
-        value={label}
+        id="section-search"
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search sections"
+        value={query}
       />
 
-      <Label htmlFor="new-section-shape">Shape</Label>
-      <select
-        className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-        id="new-section-shape"
-        onChange={(event) =>
-          setComponentType(event.target.value as SectionComponentType)
-        }
-        value={componentType}
-      >
-        {sectionComponentTypes.map((type) => (
-          <option key={type} value={type}>
-            {shapeLabels[type]}
-          </option>
-        ))}
-      </select>
+      {groups.length === 0 ? (
+        <p className="py-2 text-sm text-neutral-500">
+          No section matches “{query.trim()}”. Add a Text section and name it
+          whatever you like.
+        </p>
+      ) : (
+        <div className="flex max-h-80 flex-col gap-3 overflow-y-auto">
+          {groups.map((group) => (
+            <div className="flex flex-col gap-1" key={group.title}>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+                {group.title}
+              </h4>
 
-      <Button disabled={!label.trim()} onClick={add} type="button">
-        Add section
-      </Button>
+              {group.presets.map((preset) => (
+                <button
+                  className="rounded-md px-2 py-1.5 text-left hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none"
+                  key={preset.id}
+                  onClick={() => add(preset)}
+                  type="button"
+                >
+                  <span className="block text-sm font-medium">
+                    {preset.label}
+                  </span>
+                  <span className="block text-xs text-neutral-500">
+                    {preset.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   )
 }

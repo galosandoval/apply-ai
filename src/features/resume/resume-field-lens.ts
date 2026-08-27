@@ -68,17 +68,6 @@ const fieldLenses: { [Section in ResumeSection]: FieldLens<Section> } = {
     })
   },
 
-  skill: {
-    read: (resume, target) =>
-      resume.skill.find((row) => row.id === target.row)?.[target.column],
-    write: (resume, target, value) => ({
-      ...resume,
-      skill: resume.skill.map((group) =>
-        group.id === target.row ? { ...group, [target.column]: value } : group
-      )
-    })
-  },
-
   experience: {
     read: (resume, target) => {
       const job = resume.experience.find((row) => row.id === target.row)
@@ -175,7 +164,6 @@ export function toDocumentData(resume: SavedResume): ResumeDocumentData {
   return {
     profession: resume.profession,
     contact: resume.contact,
-    skill: resume.skill,
     experience: resume.experience,
     education: resume.education,
     // What is drawn and in what order is data now, not JSX order.

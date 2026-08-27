@@ -86,25 +86,6 @@ describe("parseResumeFieldPath — accepted paths", () => {
     })
   })
 
-  it.each(["category", "all"] as const)("addresses skill.%s", (column) => {
-    expect(parseResumeFieldPath(`skill.0.${column}`)).toEqual({
-      section: "skill",
-      kind: "column",
-      row: "0",
-      column
-    })
-  })
-})
-
-describe("parseResumeFieldPath — sections", () => {
-  it("addresses a section's label", () => {
-    expect(parseResumeFieldPath("section.sec1.label")).toEqual({
-      section: "section",
-      kind: "label",
-      row: "sec1"
-    })
-  })
-
   /**
    * Each content shape belongs to exactly one component type, so the path alone
    * says which component the write is for — and the server can refuse a write
@@ -228,6 +209,8 @@ describe("parseResumeFieldPath — rejected paths", () => {
     "contact.email.0",
     "skill",
     "skill.0",
+    "skill.0.category",
+    "skill.0.all",
     "skill.0.position",
     "skill.0.userId",
     "skill..all"
@@ -275,19 +258,6 @@ describe("index → id → reparse round trip", () => {
 
     expect(withRow(target, "anything")).toEqual(target)
     expect(formatResumeFieldPath(target)).toBe("contact.email")
-  })
-
-  it("swaps a skill index for a row id", () => {
-    const target = parseResumeFieldPath("skill.2.all")!
-    const path = formatResumeFieldPath(withRow(target, "cuid-of-skill-3"))
-
-    expect(path).toBe("skill.cuid-of-skill-3.all")
-    expect(parseResumeFieldPath(path)).toEqual({
-      section: "skill",
-      kind: "column",
-      row: "cuid-of-skill-3",
-      column: "all"
-    })
   })
 
   it.each([

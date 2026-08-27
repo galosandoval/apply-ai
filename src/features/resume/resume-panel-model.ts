@@ -296,10 +296,6 @@ const rowColumns = {
     ["startDate", "Start"],
     ["endDate", "End"],
     ["description", "Description"]
-  ],
-  skill: [
-    ["category", "Category"],
-    ["all", "Skills"]
   ]
 } as const satisfies {
   [List in RowListName]: readonly (readonly [ColumnOf<List>, string])[]
@@ -309,10 +305,7 @@ const rowColumns = {
 type CoreColumn = (typeof rowColumns)[RowListName][number][0]
 
 /** Which of those columns is a paragraph rather than a line. */
-const multilineColumns: ReadonlySet<CoreColumn> = new Set([
-  "description",
-  "all"
-])
+const multilineColumns: ReadonlySet<CoreColumn> = new Set(["description"])
 
 /**
  * One column of a core row, as the panel shows it.
@@ -331,11 +324,11 @@ function stringAt(
 }
 
 /** What a core row is called in a list of them, or "" when it has no name. */
-function entryLabel(list: RowListName, row: CoreRow) {
-  return stringAt(row, list === "skill" ? "category" : "name")
+function entryLabel(row: CoreRow) {
+  return stringAt(row, "name")
 }
 
-/** One job, school or skill group: its own fields, and what it owns. */
+/** One job or school: its own fields, and what it owns. */
 function rowPanel(
   resume: SavedResume,
   selected: Extract<ResolvedSelection, { kind: "row" }>,
@@ -373,7 +366,7 @@ function rowPanel(
   })
 
   return {
-    title: entryLabel(list, row) || "Entry",
+    title: entryLabel(row) || "Entry",
     fields,
     lists:
       list === "experience" ? [bulletList(bullets, row.id, structure)] : [],
@@ -506,7 +499,7 @@ function coreEntryList(
     noun: core.noun,
     items: rows.map((row) => ({
       key: row.id,
-      label: entryLabel(core.key, row) || `Untitled ${core.noun}`,
+      label: entryLabel(row) || `Untitled ${core.noun}`,
       fields: [],
       onSelect: () => select({ kind: "row", list: core.key, rowId: row.id })
     })),

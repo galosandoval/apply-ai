@@ -55,10 +55,14 @@ const config = {
         "resume-tag-x": "var(--resume-tag-space-x)",
         "resume-tag-y": "var(--resume-tag-space-y)",
         "resume-heading": "var(--resume-space-heading)",
-        "resume-icon": "var(--resume-icon-size)"
+        "resume-icon": "var(--resume-icon-size)",
+        "resume-meter": "var(--resume-meter-height)"
       },
       borderWidth: {
         "resume-tag": "var(--resume-tag-border-weight)"
+      },
+      height: {
+        "resume-meter": "var(--resume-meter-height)"
       },
       width: {
         "resume-page": "var(--resume-page-width)",

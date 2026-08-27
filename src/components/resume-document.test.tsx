@@ -25,7 +25,6 @@ const data: ResumeDocumentData = {
     linkedIn: "",
     portfolio: ""
   },
-  skill: [{ id: "s1", category: "Languages", all: "TypeScript, Go" }],
   experience: [
     {
       id: "w1",

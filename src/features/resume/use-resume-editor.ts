@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { parseResumeFieldPath } from "~/lib/resume-field-path"
-import {
-  apiNameFor,
-  type ResumeSelection,
-  type RowListName
-} from "~/lib/resume-selection"
+import { type ResumeSelection, type RowListName } from "~/lib/resume-selection"
 import {
   type ResumeStyle,
   resumeStyleStamp,
@@ -576,7 +572,7 @@ function useRowMutations(cache: ResumeCache, fields: PendingFields) {
 
     addRow: (list: RowListName) => {
       fields.flush()
-      addRow.mutate({ resumeId, section: apiNameFor(list) })
+      addRow.mutate({ resumeId, section: list })
     },
 
     removeRow: (list: RowListName, rowId: string) => {
@@ -588,7 +584,7 @@ function useRowMutations(cache: ResumeCache, fields: PendingFields) {
         [list]: resume[list].filter((row) => row.id !== rowId)
       }))
 
-      removeRow.mutate({ resumeId, section: apiNameFor(list), rowId })
+      removeRow.mutate({ resumeId, section: list, rowId })
     },
 
     reorderRows: (list: RowListName, rowIds: string[]) => {
@@ -599,7 +595,7 @@ function useRowMutations(cache: ResumeCache, fields: PendingFields) {
         [list]: byIds<{ id: string }>(resume[list], rowIds)
       }))
 
-      reorderRows.mutate({ resumeId, section: apiNameFor(list), rowIds })
+      reorderRows.mutate({ resumeId, section: list, rowIds })
     }
   }
 }
