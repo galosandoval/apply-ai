@@ -1,0 +1,95 @@
+import { type ReactNode } from "react"
+
+/**
+ * The document as an ordered list of blocks.
+ *
+ * A resume is still a tree while it is being built — a section owns its
+ * entries, an entry owns its bullets — but what a page is filled with is a
+ * *list*. A block is the smallest run of the document that is never cut: it is
+ * assigned whole to exactly one page, or it is not assigned at all.
+ *
+ * That is the whole reason this type exists. `break-inside: avoid` on a job
+ * asks the browser to keep a job whole, which is how a nine-bullet role comes
+ * to throw itself onto the next page and waste most of a sheet. The block is
+ * the unit that replaces it, and it is deliberately smaller than an entry.
+ *
+ * Nothing here knows how a block is drawn. The node is opaque, the spacing is
+ * a name rather than a value, and the key is arithmetic — so the list can be
+ * measured, grouped and re-grouped without a renderer having an opinion.
+ */
+
+/**
+ * What a block is, as far as anything above the renderer is concerned.
+ *
+ * The set is closed on purpose: it is the list of things a page break is
+ * allowed to fall between, and adding to it is a decision about the document
+ * rather than about a component.
+ */
+export type ResumeBlockKind =
+  /** The name, profession and contact details, which stay together. */
+  | "header"
+  /** A section's title and its rule, as one. */
+  | "heading"
+  /** One entry's identity line — employer or school, role or degree, dates. */
+  | "entry"
+  /** One bullet of one experience entry. */
+  | "bullet"
+  /** One education entry's description. */
+  | "description"
+  /** One paragraph — or one bullet list — of a rich-text section. */
+  | "paragraph"
+  /** One skills group: its category, its rule and all of its skills. */
+  | "listGroup"
+  /** A tag-list section's row of tags. */
+  | "tagRow"
+  /** An icon-list section's row. */
+  | "iconRow"
+
+/**
+ * The space a block owns *after* itself, named rather than valued.
+ *
+ * Spacing used to be a parent's job — `space-y-*` between entries, padding on
+ * the section element. A parent cannot space two children that have ended up
+ * on different sheets, so the gap moves down onto the block that precedes it.
+ * Trailing rather than leading, so that a block arriving at the top of a page
+ * brings no gap with it.
+ */
+export type ResumeBlockSpace = "none" | "inline" | "entry" | "section"
+
+/** A block before it knows which section it belongs to or where in it. */
+export type ResumeBlockDraft = {
+  kind: ResumeBlockKind
+  space: ResumeBlockSpace
+  node: ReactNode
+}
+
+export type ResumeBlock = ResumeBlockDraft & {
+  /** Stable across a re-render and across an edit elsewhere — see below. */
+  key: string
+  sectionId: string
+}
+
+/**
+ * A block's key: its section, and where it sits inside that section.
+ *
+ * Derived rather than generated, so the same document always produces the same
+ * keys — a measurement can be matched to the block it was taken from after a
+ * re-render, and editing one section renumbers nothing in any other. Position
+ * within the section rather than within the document is what buys the second
+ * half of that.
+ */
+function resumeBlockKey(sectionId: string, position: number) {
+  return `${sectionId}:${position}`
+}
+
+/** A section's drafts as blocks, numbered in document order. */
+export function withBlockKeys(
+  sectionId: string,
+  drafts: ResumeBlockDraft[]
+): ResumeBlock[] {
+  return drafts.map((draft, position) => ({
+    ...draft,
+    key: resumeBlockKey(sectionId, position),
+    sectionId
+  }))
+}

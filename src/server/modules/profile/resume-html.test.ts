@@ -120,6 +120,31 @@ const everyShape: ResumeDocumentData = {
   ]
 }
 
+/**
+ * The document's blocks, in order — what a page is filled with.
+ *
+ * Blocks are siblings rather than a tree, so one block's markup is everything
+ * between its own opening tag and the next block's. The trailing `</div>` that
+ * comes with that is not worth parsing away.
+ */
+function documentBlocks(html: string) {
+  const opens = [
+    ...html.matchAll(
+      /<div class="([^"]*)" data-resume-block="([^"]*)" data-resume-block-kind="([^"]*)">/g
+    )
+  ]
+
+  return opens.map((open, index) => ({
+    className: open[1] ?? "",
+    key: open[2] ?? "",
+    kind: open[3] ?? "",
+    markup: html.slice(
+      open.index + open[0].length,
+      opens[index + 1]?.index ?? html.length
+    )
+  }))
+}
+
 describe("renderResumeHtml", async () => {
   const html = await renderResumeHtml(data)
 
@@ -156,8 +181,23 @@ describe("renderResumeHtml", async () => {
     expect(html).not.toContain("29.7cm")
   })
 
-  it("marks each job and school as unbreakable across a page boundary", () => {
-    expect(html).toContain("break-inside-avoid")
+  it("makes one bullet the unbreakable unit, not the whole job", () => {
+    /*
+      This replaces "marks each job and school as unbreakable across a page
+      boundary", and the replacement is the point rather than a regression.
+      Entry-level unbreakability is what forced a whole job onto the next sheet
+      and wasted most of the one before it: a nine-bullet role either fit or
+      moved entire. The block is the unit now, and it is deliberately smaller
+      than an entry — a job may split between two of its own bullets.
+    */
+    const [first, second] = ["Wrote the first algorithm", "Described a general"]
+
+    const holding = documentBlocks(html).find((block) =>
+      block.markup.includes(first)
+    )
+
+    expect(holding?.className).toContain("break-inside-avoid")
+    expect(holding?.markup).not.toContain(second)
   })
 
   it("renders the name, profession and every section", () => {

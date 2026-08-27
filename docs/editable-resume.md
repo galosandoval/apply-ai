@@ -286,8 +286,10 @@ one page was **silently clipped** — no scrollbar, no warning, the text simply
 was not in the document.
 
 - The fixed height and `overflow-hidden` are gone; the page is normal flow.
-- Each job and school carries `break-inside-avoid`, so neither splits across a
-  page boundary.
+- ~~Each job and school carries `break-inside-avoid`, so neither splits across
+  a page boundary.~~ Step 8 takes that off the entry: keeping a job whole is
+  what throws a nine-bullet role onto the next sheet and wastes most of the one
+  before it.
 - ~~**Still owed:** a visible page-boundary rule in the editor.~~ Spec D draws
   it: the editor overlays a rule at each A4 page boundary, so spilling onto a
   second page is something the user sees before sending rather than after.
@@ -350,3 +352,46 @@ Six details worth keeping:
 - **Both exits flush.** Unmount and `beforeunload` send what is pending rather
   than only cancelling its timer: a debounce that throws away its last keystroke
   on the way out is a debounce that eats sentences.
+
+## Step 8 — The document is a block list (#62)
+
+The document is still a nested tree while it is being _built_ — a section owns
+its entries, an entry owns its bullets — but what a page is filled with is a
+**list**. `src/lib/resume-blocks.ts` names the unit: a block is the smallest run
+of the document that is never cut, assigned whole to exactly one page or not at
+all.
+
+Nine kinds, and the set is closed on purpose — it is the list of places a page
+break is allowed to fall: the contact header, a section heading and its rule, an
+entry's identity line, one bullet, one education description, one rich-text
+paragraph, one list group, a tag row, an icon row.
+
+Three things follow, and each of them is a thing that used to live one level up:
+
+- **`break-inside-avoid` moved off the entry and onto the block.** Asking the
+  browser to keep a job whole is asking it to move the job whole. The block is
+  deliberately smaller than an entry, so a job may split between two of its own
+  bullets — the case entry-level unbreakability made impossible.
+- **Spacing moved off the parent and onto the block.** `space-y-*` between
+  entries, padding on the `<section>` element: a parent cannot space two
+  children that have ended up on different sheets, and there is no element left
+  that contains a whole section. Each block owns the gap _after_ itself, so a
+  block arriving at the top of a page brings no gap with it.
+- **A bullet is its own list.** One `<ul>` per bullet rather than one holding
+  the job's nine, because an element cannot be in two places and a job split
+  across a boundary asks exactly that of it. Every bullet is still a real list
+  item inside a real list, on whichever sheet it lands on, and the discs line up
+  because the indent is a token rather than a position.
+
+Every block carries a stable key — `sectionId:position`, position _within its
+section_ — its section id and its kind. Derived rather than generated, so a
+height measured from the DOM can be matched back to the block it came from after
+a re-render, and editing one section renumbers nothing in any other. The key and
+the kind are emitted into the markup (`data-resume-block`,
+`data-resume-block-kind`) because measurement happens over the rendered
+document: in the editor's DOM, and in the browser the PDF is printed from.
+
+The rendered output is unchanged — the same continuous flow, in the same order,
+drawn the same way. This step changes what the document _is_, not what it looks
+like; grouping the list into pages is the step after it, and `paginate` in
+`src/lib/paginate.ts` is already waiting for the measurements.

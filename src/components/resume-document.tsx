@@ -1,13 +1,19 @@
-import { Fragment, type ReactNode } from "react"
+import { Fragment } from "react"
 import {
   customSectionShape,
+  type EntryPart,
   type ListGroup,
   type RenderMode,
   type RenderOptions,
-  ResumeSection,
   type SectionShape,
+  sectionBlocks,
   type TwoColumnRow
 } from "~/components/resume-section"
+import {
+  type ResumeBlock,
+  type ResumeBlockSpace,
+  withBlockKeys
+} from "~/lib/resume-blocks"
 import {
   isSameSelection,
   type ResumeSelection,
@@ -143,19 +149,79 @@ export function ResumeDocument({
       Normal flow, not a fixed page height with `overflow-hidden`: content past
       the first page used to be silently deleted from the document. The page
       still has a printable width in page mode; height is whatever the content
-      needs, and `break-inside: avoid` on each entry keeps a job off a page
-      boundary. What one sheet has room for is `--resume-page-content-height`,
-      for whoever asks.
+      needs. What one sheet has room for is `--resume-page-content-height`, for
+      whoever asks.
     */
     <div
       className={documentClassName(mode, toResumeStyle(data.style))}
       style={accentOverride(data.accent)}
     >
-      <Header doc={doc} />
-
-      {sections.map((section) => (
-        <DocumentSection doc={doc} key={section.id} section={section} />
+      {documentBlocks(doc, sections).map((block) => (
+        <ResumeBlockElement block={block} key={block.key} />
       ))}
+    </div>
+  )
+}
+
+/**
+ * The whole document, in order, as the blocks a page is filled with.
+ *
+ * The tree is still how it is built — a section owns its entries, an entry owns
+ * its bullets — but what comes out is a flat list, because a page is filled
+ * with a list. Every block here can be moved to another sheet on its own, which
+ * is the property the nesting could not have.
+ */
+function documentBlocks(doc: Doc, sections: ResumeDocumentSection[]) {
+  return [
+    /*
+      The header is its own one-block section. It belongs to no section the
+      user owns, and every block has to name one — so it names the same thing
+      the selection model already calls it, and a page that opens with it is
+      opening that section rather than continuing anything.
+    */
+    ...withBlockKeys("header", [
+      { kind: "header", space: "none", node: <Header doc={doc} /> }
+    ]),
+    ...sections.flatMap((section) => sectionBlocksFor(doc, section))
+  ]
+}
+
+/** The space a block owns after itself, as the padding that draws it. */
+const blockSpaceClass: Record<ResumeBlockSpace, string> = {
+  none: "",
+  inline: "pb-resume-inline",
+  entry: "pb-resume-entry",
+  section: "pb-resume-section"
+}
+
+/**
+ * One block, drawn.
+ *
+ * `break-inside-avoid` sits here rather than on a job or a school: an entry
+ * that cannot break is an entry that moves whole to the next sheet, which is
+ * how a nine-bullet role comes to waste most of a page. The block is the unit
+ * that is never cut, and it is deliberately smaller than an entry.
+ *
+ * The key and the kind are in the markup because measurement happens over the
+ * rendered document — in the editor's DOM and in the PDF's browser — and a
+ * height is worth nothing without the block it was taken from.
+ */
+function ResumeBlockElement({ block }: { block: ResumeBlock }) {
+  const className = [
+    "break-inside-avoid",
+    block.kind === "heading" ? "break-after-avoid" : "",
+    blockSpaceClass[block.space]
+  ]
+    .filter(Boolean)
+    .join(" ")
+
+  return (
+    <div
+      className={className}
+      data-resume-block={block.key}
+      data-resume-block-kind={block.kind}
+    >
+      {block.node}
     </div>
   )
 }
@@ -248,33 +314,29 @@ function Text({
 }
 
 /**
- * One section, drawn as whichever shape it configures.
+ * One section as its blocks, in whichever shape it configures.
  *
  * A core section is dispatched on its `kind` and fed by its typed rows; a
  * custom one is dispatched on its `componentType` and fed by its own content.
  * Neither gets a renderer of its own — that is the whole point.
  */
-function DocumentSection({
-  doc,
-  section
-}: {
-  doc: Doc
+function sectionBlocksFor(
+  doc: Doc,
   section: ResumeDocumentSection
-}) {
+): ResumeBlock[] {
   const shape = isCoreSectionKind(section.kind)
     ? coreShape(doc, section.kind)
     : customSectionShape(section.componentType, section.content)
 
-  if (!shape) return null
+  if (!shape) return []
 
-  return (
-    <ResumeSection
-      label={section.label}
-      render={doc.render}
-      select={handleFor(doc, { kind: "section", sectionId: section.id })}
-      shape={shape}
-    />
-  )
+  return sectionBlocks({
+    label: section.label,
+    render: doc.render,
+    sectionId: section.id,
+    select: handleFor(doc, { kind: "section", sectionId: section.id }),
+    shape
+  })
 }
 
 /**
@@ -305,36 +367,46 @@ function rowHandle(doc: Doc, kind: CoreSectionKind, rowId: string | undefined) {
 }
 
 function experienceRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.experience.map((job, index) => ({
+  return doc.data.experience.map((job) => ({
     ...entryRow(doc, {
-      key: job.id ?? String(index),
       start: job.startDate,
       end: job.endDate,
       name: job.name,
       detail: job.title,
-      body: (
-        <ul className="list-disc pl-resume-bullet">
-          {job.bullets.map((bullet, bulletIndex) => (
-            <li className="whitespace-pre-line" key={bulletIndex}>
-              {bullet}
-            </li>
-          ))}
-        </ul>
-      )
+      body: job.bullets.map((bullet) => ({
+        kind: "bullet",
+        /*
+          One list per bullet, rather than one list holding every bullet of a
+          job. A list is an element, and an element cannot be in two places —
+          which is what a job split across a page boundary asks of it. Each
+          bullet is still a real list item inside a real list, on whichever
+          sheet it lands on, and the discs line up because the indent is a
+          token rather than a position.
+        */
+        node: (
+          <ul className="list-disc pl-resume-bullet">
+            <li className="whitespace-pre-line">{bullet}</li>
+          </ul>
+        )
+      }))
     }),
     select: rowHandle(doc, "experience", job.id)
   }))
 }
 
 function educationRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.education.map((school, index) => ({
+  return doc.data.education.map((school) => ({
     ...entryRow(doc, {
-      key: school.id ?? String(index),
       start: school.startDate,
       end: school.endDate,
       name: school.name,
       detail: school.degree,
-      body: <Text doc={doc} multiline value={school.description} />
+      body: [
+        {
+          kind: "description",
+          node: <Text doc={doc} multiline value={school.description} />
+        }
+      ]
     }),
     select: rowHandle(doc, "education", school.id)
   }))
@@ -351,23 +423,20 @@ function educationRows(doc: Doc): TwoColumnRow[] {
 function entryRow(
   doc: Doc,
   {
-    key,
     start,
     end,
     name,
     detail,
     body
   }: {
-    key: string
     start: string
     end: string
     name: string
     detail: string
-    body: ReactNode
+    body: EntryPart[]
   }
 ): TwoColumnRow {
   return {
-    key,
     /*
       The date range wraps inside its column rather than running out of it.
       `whitespace-nowrap` here meant a long range — "Sep 2016 - May 2018" — sat
@@ -380,15 +449,12 @@ function entryRow(
       </p>
     ),
     right: (
-      <>
-        <div className="resume-entry-name">
-          <Text doc={doc} value={name} />,{" "}
-          <Text className="resume-entry-detail" doc={doc} value={detail} />
-        </div>
-
-        {body}
-      </>
-    )
+      <div className="resume-entry-name">
+        <Text doc={doc} value={name} />,{" "}
+        <Text className="resume-entry-detail" doc={doc} value={detail} />
+      </div>
+    ),
+    body
   }
 }
 
@@ -402,8 +468,7 @@ function entryRow(
  * something.
  */
 function skillGroups(doc: Doc): ListGroup[] {
-  return doc.data.skill.map((group, index) => ({
-    key: group.id ?? String(index),
+  return doc.data.skill.map((group) => ({
     label: <Text doc={doc} value={group.category} />,
     items: splitSkills(group.all).map((skill, at) => (
       <Fragment key={at}>{skill}</Fragment>
