@@ -174,9 +174,21 @@
   :root {
     /* Geometry. The page, the column dates sit in, and the paper itself. */
     --resume-page-width: 21cm;
+    --resume-page-height: 29.7cm;
     --resume-left-column-width: 7.5rem;
     --resume-page-radius: 0.375rem;
     --resume-paper: #ffffff;
+
+    /*
+      The space between one sheet and the next.
+
+      Not padding and not a margin the page carries: it is the app's background
+      showing through between two pieces of paper, which is the whole reason a
+      second page reads as a second page at a glance. Nothing reads it yet —
+      the stack of pages that will, and the print rule that has to collapse it
+      because the sheets are then actually separate, are both still to come.
+    */
+    --resume-page-gap: 1.5rem;
 
     /*
       The type scale, as a scale.
@@ -309,6 +321,21 @@
 
     --resume-space-page-x: calc(var(--resume-space-step) * 10);
     --resume-space-page-y: calc(var(--resume-space-step) * 8);
+
+    /*
+      What one sheet has room for: the page less the margin at its head and
+      foot. Derived rather than restated, because the number is handed to the
+      code that decides where a break lands — and a hand-written copy that drifts
+      from the padding the page is drawn with does not fail a test, it cuts a
+      line of text in half.
+
+      Here rather than on `:root` for the reason the whole block is here: the
+      page padding is re-valued by a style and by reflow, and a `var()` freezes
+      at the element it is declared on.
+    */
+    --resume-page-content-height: calc(
+      var(--resume-page-height) - var(--resume-space-page-y) * 2
+    );
     --resume-space-section: calc(
       var(--resume-space-step) * 4 * var(--resume-rhythm)
     );
@@ -607,5 +634,24 @@
     text-align: var(--resume-date-align);
     font-weight: var(--resume-date-weight);
     color: var(--resume-ink-date);
+  }
+
+  /*
+    Where each page would end, drawn over a document that is still one sheet.
+
+    Editor chrome rather than part of the document, so the colour is a plain
+    value here and not a resume token: the styles are what the printed page
+    looks like, and this is never printed. What it does read from the tokens is
+    the page height, so the mark it draws cannot disagree with the sheet it
+    claims to be marking.
+  */
+  .resume-page-rule {
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--resume-page-height) - 1px),
+      rgba(220, 38, 38, 0.5) calc(var(--resume-page-height) - 1px),
+      rgba(220, 38, 38, 0.5) var(--resume-page-height)
+    );
   }
 }

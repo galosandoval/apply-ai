@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises"
+import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
@@ -27,6 +27,7 @@ import { resume } from "~/server/db/schema"
 /** Every component that draws part of the resume document. */
 const documentSources = [
   "src/components/resume-document.tsx",
+  "src/components/resume-page-boundary.tsx",
   "src/components/resume-section.tsx",
   "src/components/resume-icon.tsx",
   "src/lib/resume-markdown.tsx"
@@ -92,10 +93,10 @@ const forbidden: { what: string; pattern: RegExp }[] = [
 /**
  * The file's lines with every comment blanked out, line numbering intact.
  *
- * These files explain themselves at length, and several of those explanations
- * quote the literal they exist to justify not using — `h-[29.7cm]` is in a
- * comment about why the page no longer clips. A prose mention of a value is the
- * opposite of holding one.
+ * These files explain themselves at length, and an explanation of why a value
+ * is not held here is apt to name the value — the comment about why the page no
+ * longer clips at A4 is written the way it is to avoid exactly that. A prose
+ * mention of a value is the opposite of holding one, and should not fail.
  */
 function codeLines(source: string) {
   let inBlock = false
@@ -270,5 +271,110 @@ describe("the style overlays", async () => {
         0.4
       )
     }
+  })
+})
+
+describe("the page geometry", async () => {
+  const css = await readFile(
+    join(process.cwd(), "src/styles/global.css"),
+    "utf8"
+  )
+
+  /**
+   * Where a token is declared: the selector it sits under and that rule's body.
+   *
+   * A rule body has no nested braces in this stylesheet, so the brace either
+   * side of the declaration is its own — which is the whole parser this needs.
+   */
+  const declarationSite = (token: string) => {
+    const at = css.indexOf(`${token}:`)
+
+    if (at === -1) return { selector: "", body: "" }
+
+    const opens = css.lastIndexOf("{", at)
+
+    return {
+      selector: (css.slice(0, opens).trimEnd().split("\n").pop() ?? "").trim(),
+      body: css.slice(opens + 1, css.indexOf("}", at))
+    }
+  }
+
+  /** A rule body, found by its selector rather than by a token inside it. */
+  const bodyForSelector = (selector: string) =>
+    css.slice(css.indexOf(`${selector} {`)).split("}")[0] ?? ""
+
+  /** What a token is set to, on one line. */
+  const declaredValue = (token: string) =>
+    new RegExp(`${token}:\\s*([^;]+);`).exec(css)?.[1]?.replace(/\s+/g, " ")
+
+  /*
+    A page has two dimensions and sheets have space between them. Only the width
+    was ever a token, because only the width was ever drawn — the height lived in
+    the editor's boundary rule and the gap did not exist. Both are style
+    decisions the moment a document is a stack of pages rather than one sheet.
+  */
+  it("names the page's height and the gap between sheets beside its width", () => {
+    const geometry = declarationSite("--resume-page-width").body
+
+    expect(geometry).toContain("--resume-page-height")
+    expect(geometry).toContain("--resume-page-gap")
+  })
+
+  it("holds the A4 height in that token and nowhere else in the stylesheet", () => {
+    expect(declaredValue("--resume-page-height")).toBe("29.7cm")
+    expect(css.match(/29\.7cm/g)).toHaveLength(1)
+  })
+
+  /*
+    Pagination is handed a number and asked where the breaks go. Restated by
+    hand it would be a number that disagrees with the padding the page is
+    actually drawn with, and the disagreement would show up as a line of text
+    cut in half rather than as a failing test.
+  */
+  it("derives the height a page can hold from the page and its padding", () => {
+    expect(declarationSite("--resume-page-content-height").selector).toBe(
+      ".resume-document"
+    )
+
+    const derived = declaredValue("--resume-page-content-height") ?? ""
+
+    expect(derived).toContain("var(--resume-page-height)")
+    expect(derived).toContain("var(--resume-space-page-y)")
+  })
+
+  it("draws the editor's page boundary from the page height", () => {
+    const rule = bodyForSelector(".resume-page-rule")
+
+    expect(rule, ".resume-page-rule is missing").not.toBe("")
+    expect(rule).toContain("var(--resume-page-height)")
+  })
+
+  /*
+    The stylesheet is the one copy. A component that spelt the height out again
+    would be a page the styles cannot resize and a boundary that could drift
+    from the sheet it claims to mark.
+  */
+  it("leaves no A4 literal in any component", async () => {
+    const paths = (
+      await readdir(join(process.cwd(), "src"), {
+        recursive: true
+      })
+    )
+      .filter((path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path))
+      .map((path) => join("src", path))
+
+    const offenders: string[] = []
+
+    for (const path of paths) {
+      const source = await readFile(join(process.cwd(), path), "utf8")
+
+      codeLines(source).forEach((line, index) => {
+        if (line.includes("29.7cm")) {
+          offenders.push(`${path}:${index + 1}  ${line.trim()}`)
+        }
+      })
+    }
+
+    expect(offenders).toEqual([])
   })
 })

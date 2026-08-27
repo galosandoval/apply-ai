@@ -140,11 +140,12 @@ export function ResumeDocument({
 
   return (
     /*
-      Normal flow, not a fixed `h-[29.7cm]` with `overflow-hidden`: content past
+      Normal flow, not a fixed page height with `overflow-hidden`: content past
       the first page used to be silently deleted from the document. The page
       still has a printable width in page mode; height is whatever the content
       needs, and `break-inside: avoid` on each entry keeps a job off a page
-      boundary.
+      boundary. What one sheet has room for is `--resume-page-content-height`,
+      for whoever asks.
     */
     <div
       className={documentClassName(mode, toResumeStyle(data.style))}
