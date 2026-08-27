@@ -88,7 +88,7 @@ Sections:
 - Always return the user's experience and education.
 - You may also return up to two extra sections, and only these, each as one entry of "sections":
   - "Summary": 1 to 2 short paragraphs written for this posting, one entry per paragraph.
-  - "Strengths": 3 to 6 capabilities that are not tied to a single employer, one entry each.
+  - "Strengths": 3 to 6 short capability phrases that are not tied to a single employer, one entry each. A few words each, noun phrases — not sentences, and not punctuated as sentences.
 - Omit either if the history does not support it. Any other section is discarded.`
 
 /**

@@ -206,12 +206,12 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       )
     },
     isEmpty: (shape) => !shape.groups.some((group) => group.items.length),
-    toBlocks: (shape, mode) =>
+    toBlocks: (shape) =>
       shape.groups.filter(isDrawn).map((group) => ({
         kind: "listGroup",
         space: "inline",
         select: group.select,
-        node: <ListEntry group={group} mode={mode} />
+        node: <ListEntry group={group} />
       }))
   },
 
@@ -299,13 +299,15 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
     },
     isEmpty: (shape) => !shape.groups.some((group) => group.items.length),
     // One block per group, category and items together: a category separated
-    // from the skills it names is a heading for nothing.
-    toBlocks: (shape, mode) =>
+    // from the skills it names is a heading for nothing. The gap after it is
+    // an entry's, not an inline one — a group is an entry of the section, and
+    // the categories have to read as separate things down the page.
+    toBlocks: (shape) =>
       shape.groups.filter(isDrawn).map((group) => ({
         kind: "listGroup",
-        space: "inline",
+        space: "entry",
         select: group.select,
-        node: <ListEntry group={group} mode={mode} />
+        node: <ListEntry group={group} />
       }))
   }
 }
@@ -567,8 +569,16 @@ function isDrawn(group: ListGroup) {
  *
  * The whole group is one block, category and skills together, so a category is
  * never separated from the skills it names.
+ *
+ * A labelled group stacks: a short mark, the category beside it, then the
+ * skills on the line below. Side by side, the longest category name in the
+ * document decided where every group's skills began — so one long name pushed
+ * every other group's items into a narrow column, and nothing separated one
+ * group from the one above it. Stacked, the mark is what the eye runs down and
+ * the skills get the whole content width. Every style draws one — it is the
+ * bullet of a group rather than a rule, and its weight is its own token.
  */
-function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
+function ListEntry({ group }: { group: ListGroup }) {
   if (!group.label) {
     return (
       <ul className="list-disc pl-resume-bullet">
@@ -580,14 +590,17 @@ function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
   }
 
   return (
-    <div
-      className={
-        mode === "page"
-          ? "flex gap-resume-inline"
-          : "flex flex-col gap-resume-inline"
-      }
-    >
-      <h3 className="resume-entry-name whitespace-nowrap">{group.label}</h3>
+    <div className="flex flex-col gap-resume-inline">
+      <div className="flex items-center gap-resume-inline">
+        <hr className="resume-group-mark shrink-0" />
+
+        {/*
+          The category wraps rather than overflowing: the mark keeps its width
+          and the label takes what is left, and a long category name on a
+          narrow phone has nowhere else to go.
+        */}
+        <h3 className="resume-entry-name min-w-0">{group.label}</h3>
+      </div>
 
       {/*
         A labelled group's items read across the line rather than down it: a
@@ -596,7 +609,7 @@ function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
         each and spaced apart, so the group reads as distinct things rather than
         as one run of commas.
       */}
-      <ul className="flex min-w-0 flex-1 flex-wrap gap-x-resume-entry gap-y-resume-inline">
+      <ul className="flex flex-wrap gap-x-resume-entry gap-y-resume-inline">
         {group.items.map((item, index) => (
           <li key={index}>{item}</li>
         ))}

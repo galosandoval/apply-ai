@@ -311,8 +311,9 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
       expect(rows[0]?.content).toEqual({
         markdown: "First paragraph\n\nSecond"
       })
+      expect(rows[4]?.componentType).toBe("tagList")
       expect(rows[4]?.content).toEqual({
-        items: ["Mentoring", "Incident response"]
+        tags: ["Mentoring", "Incident response"]
       })
     })
 

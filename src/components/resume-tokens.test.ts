@@ -251,6 +251,22 @@ describe("the style overlays", async () => {
     }
   })
 
+  it("gives every style a mark to open a skills category with", () => {
+    for (const name of resumeStyles) {
+      const weight = /--resume-group-mark-weight:\s*([^;]+);/.exec(
+        overlay(name)
+      )?.[1]
+
+      expect(weight, `${name} sets no category mark`).toBeDefined()
+
+      // Modern draws no rules, and inheriting the rule weight here left its
+      // categories indented by a mark that was not there. A mark is the bullet
+      // of a group rather than a division of the page, so every style draws
+      // one — which is a weight none of them may leave at zero.
+      expect(weight, `${name} draws no category mark`).not.toMatch(/^0[a-z]*$/)
+    }
+  })
+
   it("gives every style a greyscale-safe accent — no bright colour", () => {
     for (const name of resumeStyles) {
       const accent = /--resume-ink-accent:\s*(#[0-9a-f]{6})/i.exec(
