@@ -38,10 +38,6 @@ const baseData: Omit<ResumeDocumentData, "sections"> = {
     linkedIn: "linkedin.com/in/ada",
     portfolio: "https://ada.dev"
   },
-  skill: [
-    { id: "s1", category: "Languages", all: "TypeScript, Go" },
-    { id: "s2", category: "Tools", all: "Docker, Postgres" }
-  ],
   experience: [
     {
       id: "w1",
@@ -79,9 +75,14 @@ describe("core sections", () => {
           id: "a",
           kind: "skills",
           label: "Skills",
-          componentType: "list",
+          componentType: "groupedList",
           position: 0,
-          content: null
+          content: {
+            groups: [
+              { label: "Languages", items: ["TypeScript", "Go"] },
+              { label: "Tools", items: ["Docker", "Postgres"] }
+            ]
+          }
         }),
         section({
           id: "b",
@@ -146,9 +147,14 @@ describe("core sections", () => {
           id: "a",
           kind: "skills",
           label: "Skills",
-          componentType: "list",
+          componentType: "groupedList",
           position: 0,
-          content: null
+          content: {
+            groups: [
+              { label: "Languages", items: ["TypeScript", "Go"] },
+              { label: "Tools", items: ["Docker", "Postgres"] }
+            ]
+          }
         })
       ])
     )
@@ -189,9 +195,13 @@ describe("a document with no sections of its own", () => {
     // whole reason both sides read one list.
     const html = await renderResumeHtml(baseData)
 
-    const positions = coreSectionDefaults.map((core) =>
-      html.indexOf(`>${core.label}<`)
-    )
+    // Skills is content-bearing now, and this payload has no content for it —
+    // so it draws nothing at all, the way any empty section does outside the
+    // editor. What the fallback still owes is the order and the labels of the
+    // sections that do have something to draw.
+    const positions = coreSectionDefaults
+      .filter((core) => core.kind !== "skills")
+      .map((core) => html.indexOf(`>${core.label}<`))
 
     expect(positions.every((at) => at > -1)).toBe(true)
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
@@ -243,9 +253,11 @@ describe("section order and labels", () => {
           id: "a",
           kind: "skills",
           label: "Skills",
-          componentType: "list",
+          componentType: "groupedList",
           position: 1,
-          content: null
+          content: {
+            groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+          }
         }),
         section({
           id: "b",
@@ -432,9 +444,11 @@ describe("page mode and reflow mode", () => {
       id: "a",
       kind: "skills",
       label: "Skills",
-      componentType: "list",
+      componentType: "groupedList",
       position: 0,
-      content: null
+      content: {
+        groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+      }
     }),
     section({
       id: "b",
@@ -481,15 +495,203 @@ describe("page mode and reflow mode", () => {
   })
 })
 
+/**
+ * The document as a block list.
+ *
+ * A block is the smallest run of the document that is never cut — it is
+ * assigned whole to one page or not at all. Asserted here through the markup,
+ * which is what a caller can observe: the key and the kind each block carries
+ * are in the rendered document because that is where they have to be read
+ * from, in the editor's DOM and in the PDF's browser.
+ */
+describe("the block list", () => {
+  const everySection = (summary: string) =>
+    withSections([
+      section({
+        id: "a",
+        kind: "skills",
+        label: "Skills",
+        componentType: "groupedList",
+        position: 0,
+        content: {
+          groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+        }
+      }),
+      section({
+        id: "b",
+        kind: "experience",
+        label: "Experience",
+        componentType: "twoColumn",
+        position: 1,
+        content: null
+      }),
+      section({
+        id: "c",
+        kind: "education",
+        label: "Education",
+        componentType: "twoColumn",
+        position: 2,
+        content: null
+      }),
+      section({
+        id: "r",
+        label: "Summary",
+        componentType: "richText",
+        position: 3,
+        content: { markdown: summary }
+      }),
+      section({
+        id: "g",
+        label: "Strengths",
+        componentType: "tagList",
+        position: 4,
+        content: { tags: ["Curious"] }
+      }),
+      section({
+        id: "i",
+        label: "Hobbies",
+        componentType: "iconList",
+        position: 5,
+        content: { icons: [{ icon: "music", text: "Piano" }] }
+      })
+    ])
+
+  const data = everySection("First.\n\nSecond.")
+
+  /** Every block's key, in document order. */
+  const keysOf = (html: string) =>
+    [...html.matchAll(/data-resume-block="([^"]*)"/g)].map(([, key]) => key)
+
+  /**
+   * One block's markup, found by something it says.
+   *
+   * Blocks are siblings rather than a tree, so splitting on the marker gives
+   * one chunk per block, each running to where the next one starts.
+   */
+  const blockSaying = (html: string, said: string) =>
+    html.split('data-resume-block="').find((chunk) => chunk.includes(said))
+
+  it("flattens the document into an ordered list covering every block kind", async () => {
+    const html = await renderResumeHtml(data)
+
+    const kinds = [...html.matchAll(/data-resume-block-kind="([^"]*)"/g)].map(
+      ([, kind]) => kind
+    )
+
+    expect(kinds[0]).toBe("header")
+    expect(new Set(kinds)).toEqual(
+      new Set([
+        "header",
+        "heading",
+        "entry",
+        "bullet",
+        "description",
+        "paragraph",
+        "listGroup",
+        "tagRow",
+        "iconRow"
+      ])
+    )
+  })
+
+  it("keys each block by its section and its position within it", async () => {
+    const html = await renderResumeHtml(data)
+
+    // Experience: its heading, the one job's identity line, its two bullets.
+    expect(keysOf(html).filter((key) => key?.startsWith("b:"))).toEqual([
+      "b:0",
+      "b:1",
+      "b:2",
+      "b:3"
+    ])
+  })
+
+  it("keeps a key stable across a re-render and an edit elsewhere", async () => {
+    const first = keysOf(await renderResumeHtml(data))
+    const again = keysOf(await renderResumeHtml(data))
+
+    expect(again).toEqual(first)
+
+    // A measured height is worth nothing if the block it was taken from is
+    // renumbered by an edit two sections away. Position *within the section*
+    // is what buys that.
+    const edited = keysOf(
+      await renderResumeHtml(everySection("A longer\n\nsummary\n\nentirely."))
+    )
+
+    const inExperience = (keys: (string | undefined)[]) =>
+      keys.filter((key) => key?.startsWith("b:"))
+
+    expect(inExperience(edited)).toEqual(inExperience(first))
+  })
+
+  it("keeps an employer, its role and its dates in one block", async () => {
+    const html = await renderResumeHtml(data)
+    const identity = blockSaying(html, "Analytical Engines")
+
+    // An employer separated from its dates by a sheet of paper is the one
+    // split that says something false about the document.
+    expect(identity).toContain("1840")
+    expect(identity).toContain("Engineer")
+
+    // And the bullets are their own blocks, so the job may split below here.
+    expect(identity).not.toContain("Wrote the first algorithm")
+  })
+
+  it("puts the unbreakable mark on the block, not on the job or the school", async () => {
+    const html = await renderResumeHtml(data)
+
+    // `break-inside-avoid` on an entry is what made a nine-bullet job move
+    // whole to the next sheet. The entry row keeps its layout and loses the
+    // instruction; every block wrapper carries it instead.
+    expect(html).not.toMatch(
+      /class="resume-two-column-row[^"]*break-inside-avoid/
+    )
+    expect(html).toMatch(/class="break-inside-avoid[^"]*" data-resume-block=/)
+  })
+
+  it("gives the block the spacing a parent used to own", async () => {
+    // Two jobs, so there is an inter-entry gap for a block to own in the
+    // first place — with one entry per section the only gap is the section's.
+    const html = await renderResumeHtml({
+      ...data,
+      experience: [
+        ...data.experience,
+        {
+          id: "w2",
+          name: "Difference Engines",
+          title: "Analyst",
+          startDate: "1836",
+          endDate: "1840",
+          bullets: ["Read the notes"]
+        }
+      ]
+    })
+
+    // A parent cannot space two children that end up on different sheets, so
+    // no parent is left holding the rhythm between entries or between groups.
+    expect(html).not.toMatch(/class="[^"]*space-y-/)
+
+    // The gap after a section, and the gap before the next entry, belong to
+    // the blocks that close them.
+    expect(html).toMatch(
+      /class="[^"]*pb-resume-section[^"]*" data-resume-block=/
+    )
+    expect(html).toMatch(/class="[^"]*pb-resume-entry[^"]*" data-resume-block=/)
+  })
+})
+
 describe("structural invariants", () => {
   const data = withSections([
     section({
       id: "a",
       kind: "skills",
       label: "Skills",
-      componentType: "list",
+      componentType: "groupedList",
       position: 0,
-      content: null
+      content: {
+        groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+      }
     }),
     section({
       id: "b",

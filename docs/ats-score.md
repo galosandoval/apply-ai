@@ -1,11 +1,13 @@
 # ATS score
 
 Research for turning "here's your resume" into "here's your resume, and here's
-what's wrong with it for *this* job." Nothing here is built yet.
+what's wrong with it for _this_ job." **No scoring is built.** Several things it
+depends on have landed since this was written — see
+[where the codebase stands](#where-the-codebase-stands).
 
 The short version: the feature is worth building, but the name is a lie and the
 lie is load-bearing. There is no single number a real ATS emits that we could
-reproduce. What we *can* do — and what nobody in this market does honestly — is
+reproduce. What we _can_ do — and what nobody in this market does honestly — is
 score the two things that are actually mechanical (does the document parse, does
 it cover the posting) with a rubric we publish, and keep the unfalsifiable parts
 out of the number.
@@ -29,16 +31,16 @@ headers/footers/text boxes, missing section breaks, company names without an
 `Senior Account Executive`).
 
 That last pair is the most useful thing in this whole document, because it is
-*specific*, *checkable*, and *nobody's resume checker checks it*.
+_specific_, _checkable_, and _nobody's resume checker checks it_.
 
 **Scoring is real in some systems and absent in others.** These are not the same
 product and a single "ATS score" cannot describe both:
 
-| System | Automated scoring? |
-| --- | --- |
-| Workday (via [HiredScore](https://www.workday.com/en-us/products/talent-management/ai-recruiting.html), acquired 2024) | Yes — candidates get an **A–D grade** against job requirements. |
-| Greenhouse Talent Matching | Yes, but as five buckets — **Strong / Good / Partial / Limited Match** plus "needs manual review" — computed against *recruiter-defined calibration criteria*, with the recruiter making every advance/reject call. |
-| Greenhouse core pipeline | No algorithmic scoring or auto-reject. Human scorecards against "Focus Attributes." |
+| System                                                                                                                 | Automated scoring?                                                                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workday (via [HiredScore](https://www.workday.com/en-us/products/talent-management/ai-recruiting.html), acquired 2024) | Yes — candidates get an **A–D grade** against job requirements.                                                                                                                                                     |
+| Greenhouse Talent Matching                                                                                             | Yes, but as five buckets — **Strong / Good / Partial / Limited Match** plus "needs manual review" — computed against _recruiter-defined calibration criteria_, with the recruiter making every advance/reject call. |
+| Greenhouse core pipeline                                                                                               | No algorithmic scoring or auto-reject. Human scorecards against "Focus Attributes."                                                                                                                                 |
 
 Greenhouse's matcher is worth studying because it's the only one that documents
 its mechanism: a **series of task-specific fine-tuned LLMs** for extraction, then
@@ -67,11 +69,11 @@ still die on one of them.
 
 ## What the competition ships
 
-| Tool | What it claims |
-| --- | --- |
+| Tool                                                                             | What it claims                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Jobscan](https://www.jobscan.co/blog/what-jobscan-match-rate-should-i-aim-for/) | 1–100% "match rate" over hard skills, soft skills, buzzwords, titles; "based on five priorities" that are never enumerated. Recommends aiming for 75–80% and warns above that you sound "keyword-stuffed and robotic." |
-| Teal | "15 checks" — structure, clarity, measurable results, keywords. |
-| Resume Worded | "30+ checks" — weak verbs, vague accomplishments, missing metrics. |
+| Teal                                                                             | "15 checks" — structure, clarity, measurable results, keywords.                                                                                                                                                        |
+| Resume Worded                                                                    | "30+ checks" — weak verbs, vague accomplishments, missing metrics.                                                                                                                                                     |
 
 **None of them publish a rubric.** Jobscan's own advice is the tell: a score
 whose vendor tells you not to maximize it is not a score, it's a nudge with a
@@ -94,26 +96,31 @@ Averaging them lets a beautifully-parsing resume that matches nothing show 70%.
 ### 1. Parseability — deterministic, and mostly our own bug
 
 Checked against the extracted text layer of **our own generated PDF**, not
-against the React tree. Puppeteer gives us a text layer we can read back, so
+against the React tree. The print gives us a text layer we can read back, so
 this is a real assertion about the artifact, not a proxy for it.
 
 This axis has a strange property that is a huge advantage: **we control the
-template, so we can make it structurally perfect and keep it there.** Reading
-`src/components/resume.tsx`, the template is already single-column, uses real
-`<ul>/<li>` for bullets, and has no tables or images. Against Greenhouse's
-failure list it passes on layout. Three concrete defects remain:
+template, so we can make it structurally perfect and keep it there.** Against
+Greenhouse's failure list the document passes on layout — single column, real
+`<ul>/<li>` for bullets, no tables, no text as an image — and that is no longer
+a claim from reading the source. It is asserted per style in
+`resume-sections.test.ts`, because a new style is exactly the kind of change
+that would quietly reintroduce a sidebar or a layout table.
 
-- **`ContactLine` hides the URL.** LinkedIn, GitHub and portfolio render as the
-  *label* `LinkedIn` with the URL only in `href`
-  (`src/components/resume.tsx:412`). A PDF text-layer parser sees the word
-  "LinkedIn" and no profile. Fix: render the URL as the visible text.
-- **Overflow silently deletes content.** `h-[29.7cm]` + `overflow-hidden` +
-  `my-auto` (`src/components/resume.tsx:85`) clips anything past one page, with
-  no scrollbar and no warning. Already logged as step 6 of
-  [editable-resume](./editable-resume.md), but it belongs here too: clipped text
-  is missing from the PDF text layer, so it's an invisible parse failure. **This
-  should be fixed before shipping a parseability score**, or the score will
-  confidently report on a document whose bottom third doesn't exist.
+Two of the three defects this section originally listed have been fixed:
+
+- ~~**`ContactLine` hides the URL.**~~ Contact details render the address as the
+  visible text, not the word "LinkedIn" over an `href`. A test at seam 3 asserts
+  the URL is in the text layer, because that is the half a parser can read.
+- ~~**Overflow silently deletes content.**~~ The fixed page height and
+  `overflow-hidden` are gone — see
+  [page overflow](./editable-resume.md#page-overflow). It mattered here too:
+  clipped text is missing from the PDF text layer, so it was an invisible parse
+  failure, and a score would have confidently reported on a document whose
+  bottom third did not exist.
+
+One remains, and it is still the most valuable thing on this list:
+
 - **Abbreviations and bare company names** are user-entered and unchecked. This
   is the check nobody else runs and Greenhouse explicitly asks for: flag
   `Sr.`/`Mgr`/`Eng` in a title, flag a company name with no legal suffix.
@@ -141,7 +148,7 @@ alike:
 Weight each requirement by where it appeared in the posting — a "Requirements"
 bullet outranks a "Nice to have" one — and say so in the UI.
 
-### 3. Evidence quality — per-bullet, and *not* in the coverage number
+### 3. Evidence quality — per-bullet, and _not_ in the coverage number
 
 Metric present, strong opening verb, specific outcome, reasonable length. This
 is the Resume Worded axis and it's worth having, but it is about the resume in
@@ -152,52 +159,60 @@ polishing prose.
 
 Every claimed match should point at the bullet that supports it, and any
 requirement the model wants to "cover" that has **no basis in the user's
-profile** must be flagged as *not yours to claim*, never auto-inserted.
+profile** must be flagged as _not yours to claim_, never auto-inserted.
 
-This is a real risk in the current flow. The generator prompt already tells the
-model to "use the job description provided to respond with keywords for a
-recruiter or recruiting algorithm" (`src/pages/api/resume/chat.ts:57`) with no
-instruction against inventing them — unlike the import prompt, which does say
-"Never invent employers, schools, dates, or numbers"
-(`src/server/modules/profile/resume-pdf.ts:134`). A score that rewards coverage,
-wired to a generator that will happily manufacture coverage, is a machine for
-helping users lie in interviews. **Give the generator the import prompt's
-anti-fabrication rule as part of this work.**
+The generator used to be the risk here: it was told to produce keywords for a
+recruiting algorithm with no instruction against inventing them, while the
+import prompt already said "never invent employers, schools, dates, or
+numbers." A score that rewards coverage, wired to a generator that will happily
+manufacture coverage, is a machine for helping users lie in interviews.
 
-## Blockers in the current codebase
+**That half is done.** `generate-resume.ts` now requires every employer, school,
+title, date, number and skill to appear in the user's history, and forbids
+claiming a technology or result the history does not support. It cannot be unit
+tested — asserting on prompt _strings_ would pass while the model fabricated
+freely, which reads as coverage and is worse than no test — so it is checked by
+hand against the real model with a written-down fixture set. See
+[anti-fabrication-review](./anti-fabrication-review.md), and run it whenever the
+prompt or the model behind it changes.
 
-These are the reason this is a feature and not an afternoon.
+**The half that is not done** is the flag: a requirement the model wants to
+"cover" that has no basis in the profile must be surfaced as _not yours to
+claim_, never auto-inserted. Do not ship coverage-driven rewriting without it.
 
-**1. The job description is thrown away.** It only ever exists as
-`useChat` message state on the dashboard (`src/pages/dashboard/index.tsx:83`),
-posted to the edge handler and dropped. The `resume` table has no column for it
-(`src/server/db/schema.ts:110`). **Nothing job-relative can be scored, re-scored,
-or shown on `/resume/[id]` until the posting is persisted alongside the resume.**
-This is the first commit, and it's independently useful — the editor page can't
-even tell you which job a saved resume was for.
+## Where the codebase stands
 
-**2. A resume's skills and contact aren't snapshotted.** `skill` and `contact`
-hang off `profile`, not `resume`, and email lives on `user` — already documented
-in [editable-resume](./editable-resume.md#only-the-snapshot-is-editable). So a
-stored score computed over the skills section goes stale the moment the user
-edits their profile for a different application, with nothing to detect it. Two
-ways out: store a content hash of everything scored and mark the score stale on
-mismatch (cheap, honest, ships now), or finish the snapshot work (correct, and a
-migration). **Recommend the hash first** — it's needed anyway once resumes are
-editable, since every autosaved keystroke invalidates the score.
+This was written as a list of blockers — the reasons this is a feature and not
+an afternoon. Three of the four have since landed, and they are recorded here
+rather than deleted because the build order below assumed them.
 
-**3. No test runner.** Both step-4 probes in
-[editable-resume](./editable-resume.md#verified) were run and thrown away. A
-scoring rubric is exactly the kind of code that rots silently — it keeps
-returning a plausible number while meaning something different. Fixture-based
-tests over `(resume, posting) → score` are the only way to change weights
-without guessing. **Add a runner as part of this feature.**
+**Landed — the posting is persisted.** `resume.jobDescription` is written when
+the resume is generated and shown in the resume list, so a resume can finally
+say which job it was for. Nothing job-relative could be scored, re-scored or
+displayed until it existed.
 
-**4. `pdf-parse` already reads PDFs, and we already extract structure with an
-LLM.** `extractPdfText` + `extractResumeFields`
-(`src/server/modules/profile/resume-pdf.ts`) is most of a parseability checker
-already: render our PDF, read the text back, and diff the round trip against the
-input. Reuse it rather than writing a second extractor.
+**Landed — a resume snapshots everything it renders.** `skill` and `contact` now
+carry a nullable `resumeId` (#48), so a score computed over the skills section
+no longer goes stale the moment the user edits their profile for a different
+application. The hash-and-mark-stale workaround this section used to recommend
+is not needed for _that_ reason — but it is still needed for editing, since
+every autosaved keystroke invalidates a stored score. **Store the score with a
+content hash of what it was computed over.**
+
+**Landed — there is a test runner.** Vitest, and the two throwaway probes this
+section pointed at are committed as
+[verified](./editable-resume.md#verified). That mattered because a scoring
+rubric is exactly the kind of code that rots silently: it keeps returning a
+plausible number while meaning something different. Fixture-based tests over
+`(resume, posting) → score` are the only way to change weights without guessing,
+and there is now somewhere to put them.
+
+**Still true — most of a parseability checker already exists.**
+`extractPdfText` and `extractResumeFields`
+(`src/server/modules/profile/parse-resume-pdf.ts`) read a PDF and pull typed
+fields out of it with an LLM. Render our own PDF, read the text back, and diff
+the round trip against the input. Reuse it rather than writing a second
+extractor.
 
 ## Extraction: how to get requirements out of a posting
 
@@ -211,8 +226,8 @@ match on embeddings.
 v2](https://arxiv.org/pdf/2502.12361) and
 [Resume2Vec](https://www.mdpi.com/2079-9292/14/4/794) both beat BM25 baselines
 on resume–job ranking, with Resume2Vec reporting up to ~16% nDCG improvement
-over conventional ATS ranking. But those papers optimize *ranking a pool of
-candidates for a recruiter*. We have one resume and one posting, and our user
+over conventional ATS ranking. But those papers optimize _ranking a pool of
+candidates for a recruiter_. We have one resume and one posting, and our user
 needs a list of missing things to go fix. A cosine similarity of 0.78 is not
 actionable.
 
@@ -220,7 +235,7 @@ actionable.
 Greenhouse actually does and it's the only one that produces a fixable list:
 
 1. LLM extracts the posting into typed requirements — `{ text, kind:
-   hard|responsibility|knockout, weight: required|preferred }`. `temperature: 0`,
+hard|responsibility|knockout, weight: required|preferred }`. `temperature: 0`,
    `response_format: json_object`, Zod-validated — the exact pattern
    `extractResumeFields` already uses.
 2. Same for the resume's evidence units (bullets, skills).
@@ -259,28 +274,31 @@ free per keystroke — the resume editor autosaves on every blur.
 
 Each step ships something.
 
-1. **Persist the job description.** Column on `resume`, plumbed through
-   `resume.create`, shown on `/resume/[id]`. Unlocks everything else and fixes a
-   standing gap.
-2. **Fix the template's parse defects** — visible contact URLs, and page overflow
-   (step 6 of [editable-resume](./editable-resume.md)). Do this *before* scoring
-   parseability so the score isn't reporting on a truncated document.
-3. **Add a test runner**, and port the two orphaned probes into it.
-4. **Parseability score.** Fully deterministic, no model, no posting needed.
+**Already done**, and they were the first three steps of this list: the posting
+is persisted, the template's two parse defects are fixed, and there is a test
+runner. The generator's anti-fabrication rule shipped early, out of order,
+because it is the one defect here that can cause a user real harm.
+
+What is left:
+
+1. **The remaining parse defect** — flag abbreviated titles and bare company
+   names. Do this _before_ scoring parseability, so the score is not reporting a
+   clean document that a real parser will read as `Sr. Acct Exec` at a company
+   with no legal suffix.
+2. **Parseability score.** Fully deterministic, no model, no posting needed.
    Reads back our own PDF's text layer via the existing `pdf-parse` path. Ships
    as a standalone "your resume will parse cleanly ✓" and is the cheapest
    credible thing on the list.
-5. **Requirement extraction + coverage.** The matched / missing / extra list
+3. **Requirement extraction + coverage.** The matched / missing / extra list
    first, with evidence links. The number comes last and is derived from the
    list — not the reverse.
-6. **Knockouts as a separate pass/fail panel.**
-7. **Anti-fabrication rule in the generator prompt**, plus the "not yours to
-   claim" flag on any suggested requirement with no basis in the profile. Do not
-   ship coverage-driven rewriting without this.
-8. **Evidence quality**, per bullet, displayed separately.
+4. **Knockouts as a separate pass/fail panel.**
+5. **The "not yours to claim" flag** on any suggested requirement with no basis
+   in the profile. Do not ship coverage-driven rewriting without it.
+6. **Evidence quality**, per bullet, displayed separately.
 
-Steps 1–4 are the defensible core and involve no scoring model at all. Steps
-5–8 are where the product is.
+Steps 1–2 are the defensible core and involve no scoring model at all. Steps
+3–6 are where the product is.
 
 ## Open questions
 

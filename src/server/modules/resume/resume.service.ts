@@ -11,7 +11,7 @@ import {
   generateResume
 } from "~/server/modules/profile/generate-resume"
 import { resumeStyleStamp } from "~/lib/resume-style"
-import { school, work, skill } from "~/server/db/schema"
+import { school, work } from "~/server/db/schema"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
 import * as repo from "./resume.repository"
@@ -38,18 +38,11 @@ import * as sections from "./section.service"
 const fieldNotFound = () =>
   new TRPCError({ code: "NOT_FOUND", message: "Field not found" })
 
-/**
- * Skills are one row per group in the database and one comma-separated line on
- * the page. The document is the contract, so the split and the join both live
- * here rather than in two places that could disagree.
- */
-const toSkillLine = (entries: string[]) => entries.join(", ")
-
-const fromSkillLine = (line: string) =>
-  line
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean)
+/** The account's skill rows as the Skills section stores them. */
+const skillGroupsFrom = (
+  rows: { category: string; all: string[] }[]
+): sections.SkillGroup[] =>
+  rows.map((group) => ({ label: group.category, items: group.all }))
 
 export async function list(db: Database, userId: string) {
   return repo.listResumes(db, userId)
@@ -70,24 +63,17 @@ export async function readById(db: Database, userId: string, resumeId: string) {
   if (!found)
     throw new TRPCError({ code: "NOT_FOUND", message: "Resume not found" })
 
-  const [experience, education, skills, contact, sectionRows] =
-    await Promise.all([
-      repo.findExperience(db, resumeId),
-      repo.findEducation(db, resumeId),
-      repo.findSkills(db, resumeId),
-      repo.findContact(db, resumeId),
-      repo.findSections(db, resumeId)
-    ])
+  const [experience, education, contact, sectionRows] = await Promise.all([
+    repo.findExperience(db, resumeId),
+    repo.findEducation(db, resumeId),
+    repo.findContact(db, resumeId),
+    repo.findSections(db, resumeId)
+  ])
 
   return {
     ...found,
     experience,
     education,
-    skill: skills.map((group) => ({
-      id: group.id,
-      category: group.category,
-      all: toSkillLine(group.all)
-    })),
     contact: {
       fullName: contact?.fullName ?? "",
       email: contact?.email ?? "",
@@ -114,8 +100,17 @@ export async function create(
   db: Database,
   userId: string,
   input: CreateResumeInput,
-  resumeSections: sections.NewSection[] = sections.coreSectionList
+  resumeSections?: sections.NewSection[]
 ) {
+  // Read before the transaction opens: the default sections carry the
+  // account's skills as content, so building them is a query and not a
+  // rearrangement of what the caller passed.
+  const list =
+    resumeSections ??
+    sections.defaultSections(
+      skillGroupsFrom(await repo.findAccountSkills(db, userId))
+    )
+
   const resumeId = await db.transaction(async (tx) => {
     const created = await repo.insertResume(tx, {
       id: createId(),
@@ -150,7 +145,7 @@ export async function create(
 
     await writeSnapshot(tx, id, userId, input)
 
-    await repo.insertSections(tx, sections.newSections(id, resumeSections))
+    await repo.insertSections(tx, sections.newSections(id, list))
 
     return id
   })
@@ -184,9 +179,7 @@ type AccountSeed = Awaited<ReturnType<typeof readAccountSeed>>
  * created with a field missing is a field the editor cannot reach, where an
  * empty one is a field the user can fill in.
  */
-function seedFrom(
-  account: AccountSeed
-): Pick<CreateResumeInput, "contact" | "skill"> {
+function seedFrom(account: AccountSeed): Pick<CreateResumeInput, "contact"> {
   const { details, contact: accountContact } = account
 
   return {
@@ -197,11 +190,7 @@ function seedFrom(
       phone: accountContact?.phone ?? "",
       linkedIn: accountContact?.linkedIn ?? "",
       portfolio: accountContact?.portfolio ?? ""
-    },
-    skill: account.skills.map((group) => ({
-      category: group.category,
-      all: toSkillLine(group.all)
-    }))
+    }
   }
 }
 
@@ -292,29 +281,20 @@ export async function generate(
       experience: parsed.data.experience,
       education: parsed.data.education
     },
-    sections.sectionsFromGeneration(parsed.data.sections)
+    sections.sectionsFromGeneration(
+      parsed.data.sections,
+      skillGroupsFrom(account.skills)
+    )
   )
 }
 
-/** The resume's own copy of the skills and contact details it renders. */
+/** The resume's own copy of the contact details it renders. */
 async function writeSnapshot(
   tx: DbOrTx,
   resumeId: string,
   userId: string,
-  input: Pick<CreateResumeInput, "skill" | "contact">
+  input: Pick<CreateResumeInput, "contact">
 ) {
-  await repo.insertSkills(
-    tx,
-    input.skill.map((group, position) => ({
-      id: createId(),
-      category: group.category,
-      all: fromSkillLine(group.all),
-      position,
-      userId,
-      resumeId
-    }))
-  )
-
   await repo.insertContact(tx, {
     ...input.contact,
     id: createId(),
@@ -339,22 +319,33 @@ export async function refreshFromAccount(
 
   const account = await readAccountSeed(db, userId)
 
+  const existing = await repo.findSections(db, resumeId)
+  const skillsSection = existing.find((row) => row.kind === "skills")
+
   await db.transaction(async (tx) => {
-    await repo.deleteSnapshotSkills(tx, resumeId)
     await repo.deleteSnapshotContact(tx, resumeId)
 
     await writeSnapshot(tx, resumeId, userId, seedFrom(account))
+
+    // Only where the resume still has one. Skills is an ordinary section now,
+    // so it can be deleted — and re-adding a section the user removed is not a
+    // refresh, it is overruling them.
+    if (skillsSection) {
+      await repo.updateSection(tx, resumeId, skillsSection.id, {
+        componentType: "groupedList",
+        content: { groups: skillGroupsFrom(account.skills) }
+      })
+    }
   })
 
   return { resumeId }
 }
 
-const orderedTables = { experience: work, education: school, skills: skill }
+const orderedTables = { experience: work, education: school }
 
 const findRows = {
   experience: repo.findExperience,
-  education: repo.findEducation,
-  skills: repo.findSkills
+  education: repo.findEducation
 }
 
 /** What a blank row of one list looks like, and how it is inserted. */
@@ -399,14 +390,11 @@ const addableRows: Record<RowSectionName, InsertBlankRow> = {
         startDate: "",
         endDate: ""
       }
-    ]),
-
-  skills: (db, row) =>
-    repo.insertSkills(db, [{ ...row, category: "", all: [] }])
+    ])
 }
 
 /**
- * Appends a blank job, school or skill group to one of a resume's lists.
+ * Appends a blank job or school to one of a resume's lists.
  *
  * The position is read from the rows that exist rather than counted, so a list
  * a row was removed from does not hand the next one a position already taken.
@@ -604,20 +592,6 @@ async function writeTarget(
         target.content,
         value
       )
-      return
-
-    case "skill":
-      await writeRow(
-        db,
-        skill,
-        resumeId,
-        target.row,
-        // `all` is one line on the page and one row per entry in the database.
-        target.column === "all"
-          ? { all: fromSkillLine(value) }
-          : { category: value }
-      )
-
       return
 
     case "education":

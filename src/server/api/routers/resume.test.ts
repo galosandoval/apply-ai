@@ -100,9 +100,9 @@ async function seed() {
     endDate: "2020"
   })
 
-  // The account's master copy: what a new resume is seeded from, and the thing
-  // that must not reach back into a resume already saved. `resumeId` null is
-  // the only difference between these rows and a snapshot.
+  // The account's master copy, and now the only copy: what a new resume is
+  // seeded from, and the thing that must not reach back into a resume already
+  // saved. A resume's own skills are its Skills section's content.
   await db.insert(skill).values({
     id: createId(),
     userId: owner.userId,
@@ -131,6 +131,22 @@ async function seed() {
   }
 }
 
+/**
+ * The Skills section's groups — where a resume's skills live now.
+ *
+ * Skills stopped being a core section with typed rows of its own, so a resume's
+ * copy is section content like any other. Read through one helper so the
+ * assertions say what they are checking rather than how it is stored.
+ */
+function skillGroupsOf(found: {
+  sections: { kind: string; content: unknown }[]
+}) {
+  const content = found.sections.find((row) => row.kind === "skills")?.content
+
+  return (content as { groups?: { label: string; items: string[] }[] } | null)
+    ?.groups
+}
+
 /** A draft the way the preview submits one: whole document, nothing missing. */
 function draft(overrides: Partial<CreateResumeInput> = {}): CreateResumeInput {
   return {
@@ -144,10 +160,6 @@ function draft(overrides: Partial<CreateResumeInput> = {}): CreateResumeInput {
       linkedIn: "linkedin.com/in/ada",
       portfolio: "ada.dev"
     },
-    skill: [
-      { category: "Languages", all: "TypeScript, Go" },
-      { category: "Databases", all: "Postgres" }
-    ],
     experience: [
       {
         name: "Analytical Engines",
@@ -396,11 +408,11 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       const found = await caller.resume.readById({ resumeId })
 
-      expect(found.skill.map((group) => group.category)).toEqual([
-        "Languages",
-        "Databases"
+      // The skills come off the account rather than off the draft: they are
+      // not the caller's to supply any more than the history is.
+      expect(skillGroupsOf(found)).toEqual([
+        { label: "Languages", items: ["TypeScript", "Go"] }
       ])
-      expect(found.skill[0]?.all).toBe("TypeScript, Go")
       expect(found.contact.email).toBe("ada@example.com")
       expect(found.contact.fullName).toBe("Ada Lovelace")
     })
@@ -426,9 +438,8 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       const found = await caller.resume.readById({ resumeId })
 
-      expect(found.skill.map((group) => group.category)).toEqual([
-        "Languages",
-        "Databases"
+      expect(skillGroupsOf(found)).toEqual([
+        { label: "Languages", items: ["TypeScript", "Go"] }
       ])
       expect(found.contact.location).toBe("London, UK")
       expect(found.contact.fullName).toBe("Ada Lovelace")
@@ -476,7 +487,15 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         "Experience",
         "Education"
       ])
-      expect(found.sections.every((row) => row.content === null)).toBe(true)
+      // Skills carries its own content now; the two with typed rows do not.
+      expect(
+        found.sections
+          .filter((row) => row.kind !== "skills")
+          .every((row) => row.content === null)
+      ).toBe(true)
+      expect(skillGroupsOf(found)).toEqual([
+        { label: "Languages", items: ["TypeScript", "Go"] }
+      ])
     })
   })
 
@@ -523,33 +542,38 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(row?.userId).toBe(fixture.owner.userId)
     })
 
-    it("writes a skill group, splitting the line back into entries", async () => {
+    it("writes a skill group through its section's content", async () => {
       const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
-      const [group] = (await caller.resume.readById({ resumeId })).skill
+      const skills = (await caller.resume.readById({ resumeId })).sections.find(
+        (row) => row.kind === "skills"
+      )
 
       await caller.resume.updateField({
         resumeId,
-        path: `skill.${group!.id}.all`,
+        path: `section.${skills!.id}.content.groups.0.items`,
         value: "Rust, Zig"
       })
 
-      const [row] = await db.select().from(skill).where(eq(skill.id, group!.id))
+      const found = await caller.resume.readById({ resumeId })
 
-      expect(row?.all).toEqual(["Rust", "Zig"])
-      expect((await caller.resume.readById({ resumeId })).skill[0]?.all).toBe(
-        "Rust, Zig"
-      )
+      // The line the panel edits is stored as the entries it names — a
+      // trailing comma names nothing, and neither does a run of spaces.
+      expect(skillGroupsOf(found)).toEqual([
+        { label: "Languages", items: ["Rust", "Zig"] }
+      ])
     })
 
     it("leaves the account's master skills alone", async () => {
       const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
-      const [group] = (await caller.resume.readById({ resumeId })).skill
+      const skills = (await caller.resume.readById({ resumeId })).sections.find(
+        (row) => row.kind === "skills"
+      )
 
       await caller.resume.updateField({
         resumeId,
-        path: `skill.${group!.id}.category`,
+        path: `section.${skills!.id}.content.groups.0.label`,
         value: "Tailored"
       })
 
@@ -558,17 +582,18 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(profile.skills[0]?.category).toBe("Languages")
     })
 
-    it("rejects a skill row belonging to another resume", async () => {
+    it("rejects a skills section belonging to another resume", async () => {
       const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
       const { resumeId: otherId } = await caller.resume.create(draft())
-      const [theirs] = (await caller.resume.readById({ resumeId: otherId }))
-        .skill
+      const theirs = (
+        await caller.resume.readById({ resumeId: otherId })
+      ).sections.find((row) => row.kind === "skills")
 
       await expect(
         caller.resume.updateField({
           resumeId,
-          path: `skill.${theirs!.id}.category`,
+          path: `section.${theirs!.id}.content.groups.0.label`,
           value: "leaked"
         })
       ).rejects.toThrow(/not found/i)
@@ -588,8 +613,9 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       const found = await caller.resume.readById({ resumeId })
 
-      expect(found.skill.map((group) => group.category)).toEqual(["Refreshed"])
-      expect(found.skill[0]?.all).toBe("Fortran")
+      expect(skillGroupsOf(found)).toEqual([
+        { label: "Refreshed", items: ["Fortran"] }
+      ])
       expect(found.contact.location).toBe("London, UK")
     })
 
@@ -606,9 +632,8 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       const untouched = await caller.resume.readById({ resumeId: otherId })
 
-      expect(untouched.skill.map((group) => group.category)).toEqual([
-        "Languages",
-        "Databases"
+      expect(skillGroupsOf(untouched)).toEqual([
+        { label: "Languages", items: ["TypeScript", "Go"] }
       ])
     })
 
@@ -660,23 +685,24 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       ])
     })
 
-    it("reorders skill groups", async () => {
+    /**
+     * Skills is not a row list any more, and the schema is where that is
+     * enforced: the procedures take a section name, and there is no longer one
+     * called `skills` for a caller to name. Its groups are moved the way any
+     * section's content is.
+     */
+    it("refuses skills, which is not a row list", async () => {
       const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
-      const groups = (await caller.resume.readById({ resumeId })).skill
 
-      await caller.resume.reorderRows({
-        resumeId,
-        section: "skills",
-        rowIds: [groups[1]!.id, groups[0]!.id]
-      })
-
-      const found = await caller.resume.readById({ resumeId })
-
-      expect(found.skill.map((group) => group.category)).toEqual([
-        "Databases",
-        "Languages"
-      ])
+      await expect(
+        caller.resume.reorderRows({
+          resumeId,
+          // @ts-expect-error — the point of the assertion
+          section: "skills",
+          rowIds: [createId()]
+        })
+      ).rejects.toThrow()
     })
 
     it("refuses a row from another resume, and moves nothing", async () => {
@@ -1172,21 +1198,18 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(added.position).toBe(2)
     })
 
-    it("appends an empty school and an empty skill group", async () => {
+    it("appends an empty school", async () => {
       const { caller, resumeId } = await withResume()
 
       const school = await caller.resume.addRow({
         resumeId,
         section: "education"
       })
-      const group = await caller.resume.addRow({ resumeId, section: "skills" })
 
       const found = await caller.resume.readById({ resumeId })
 
       expect(found.education.at(-1)?.id).toBe(school.rowId)
       expect(found.education.at(-1)?.degree).toBe("")
-      expect(found.skill.at(-1)?.id).toBe(group.rowId)
-      expect(found.skill.at(-1)?.all).toBe("")
     })
 
     it("adds the row to this resume only", async () => {
@@ -1203,7 +1226,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect((await caller.profile.read()).experience).toHaveLength(0)
     })
 
-    it("removes a job, a school and a skill group", async () => {
+    it("removes a job and a school", async () => {
       const { caller, resumeId } = await withResume()
       const before = await caller.resume.readById({ resumeId })
 
@@ -1217,12 +1240,6 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         section: "education",
         rowId: before.education[0]!.id
       })
-      await caller.resume.removeRow({
-        resumeId,
-        section: "skills",
-        rowId: before.skill[0]!.id
-      })
-
       const found = await caller.resume.readById({ resumeId })
 
       expect(found.experience.map((job) => job.name)).toEqual([
@@ -1231,7 +1248,6 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(found.education.map((entry) => entry.name)).toEqual([
         "Somerville College"
       ])
-      expect(found.skill.map((group) => group.category)).toEqual(["Databases"])
     })
 
     it("refuses a row belonging to another resume, and removes nothing", async () => {
@@ -1313,7 +1329,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       expect(await caller.resume.list()).toHaveLength(2)
 
-      for (const table of [work, school, skill, contact]) {
+      for (const table of [work, school, contact]) {
         expect(
           await db.select().from(table).where(eq(table.resumeId, resumeId))
         ).toHaveLength(0)

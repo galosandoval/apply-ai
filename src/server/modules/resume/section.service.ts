@@ -44,16 +44,27 @@ export type NewSection = {
   content: AnySectionContent | null
 }
 
+/** One category of skills, as the Skills section stores it. */
+export type SkillGroup = { label: string; items: string[] }
+
 /**
- * The sections every resume starts with.
+ * The sections every resume starts with, with the account's skills already in
+ * the one that holds them.
  *
  * What they are and what order they come in is `coreSectionDefaults`, shared
- * with the renderer's fallback — core and custom sections cannot drift if there
- * is only one list.
+ * with the renderer's fallback — the defaults and the renderer cannot drift if
+ * there is only one list.
+ *
+ * Skills arrives as *content* rather than as rows of its own: it is an ordinary
+ * content-bearing section now, and the account's copy is snapshotted into it
+ * the way contact details are snapshotted into `contact`.
  */
-export const coreSectionList: NewSection[] = coreSectionDefaults.map(
-  (section) => ({ ...section, content: null })
-)
+export function defaultSections(skillGroups: SkillGroup[]): NewSection[] {
+  return coreSectionDefaults.map((section) => ({
+    ...section,
+    content: section.kind === "skills" ? { groups: skillGroups } : null
+  }))
+}
 
 /**
  * Rows for a new resume's sections, numbered from the order given.
@@ -130,7 +141,8 @@ type RequestedSection = { label: string; entries: string[] }
  * second Summary would be: the resume has one of each.
  */
 export function sectionsFromGeneration(
-  requested: RequestedSection[]
+  requested: RequestedSection[],
+  skillGroups: SkillGroup[]
 ): NewSection[] {
   const taken = new Set<string>()
 
@@ -160,7 +172,7 @@ export function sectionsFromGeneration(
       .filter((entry) => entry.placement === placement)
       .map((entry) => entry.section)
 
-  return [...at("above"), ...coreSectionList, ...at("below")]
+  return [...at("above"), ...defaultSections(skillGroups), ...at("below")]
 }
 
 /** Appends a custom section, empty, at the end of the resume. */

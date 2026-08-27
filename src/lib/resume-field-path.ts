@@ -30,14 +30,12 @@ export const editableColumns = {
   resume: ["profession"],
   experience: ["name", "title", "startDate", "endDate"],
   education: ["name", "degree", "startDate", "endDate", "description"],
-  skill: ["category", "all"],
   contact: ["fullName", "email", "location", "phone", "linkedIn", "portfolio"]
 } as const
 
 export type ResumeColumn = (typeof editableColumns.resume)[number]
 export type ExperienceColumn = (typeof editableColumns.experience)[number]
 export type EducationColumn = (typeof editableColumns.education)[number]
-export type SkillColumn = (typeof editableColumns.skill)[number]
 export type ContactColumn = (typeof editableColumns.contact)[number]
 
 export type ResumeFieldTarget =
@@ -55,7 +53,6 @@ export type ResumeFieldTarget =
       row: string
       column: EducationColumn
     }
-  | { section: "skill"; kind: "column"; row: string; column: SkillColumn }
   | { section: "contact"; kind: "column"; column: ContactColumn }
   | { section: "section"; kind: "label"; row: string }
   | {
@@ -70,7 +67,7 @@ export type ResumeFieldTarget =
  * holds a single copy of. Every one of them is a list keyed by row id, so a
  * caller can index the resume by the section name alone.
  */
-export const rowSections = ["experience", "education", "skill"] as const
+export const rowSections = ["experience", "education"] as const
 
 export type RowSection = (typeof rowSections)[number]
 

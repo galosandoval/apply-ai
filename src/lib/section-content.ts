@@ -17,12 +17,24 @@ import { moveItem } from "./move-item"
 /**
  * Core kinds keep their typed rows — a `work` row's company, dates and bullets
  * are what make a resume machine-readable, so their structure is not the user's
- * to restructure. Only `custom` carries `content`.
+ * to restructure. Every other kind carries `content`.
+ *
+ * Skills used to be here and is not any more. Its categories were never the
+ * machine-readable claim that a date range or an employer is — they are a way
+ * of arranging short strings, which is exactly what a `groupedList` is for. So
+ * it became a section like the ones a user adds, and the catalog offers it.
  */
-export const coreSectionKinds = ["experience", "education", "skills"] as const
+export const coreSectionKinds = ["experience", "education"] as const
 
 export type CoreSectionKind = (typeof coreSectionKinds)[number]
-export type SectionKind = CoreSectionKind | "custom"
+
+/**
+ * `skills` is content-bearing like `custom`, and is a kind of its own only so
+ * that it can still be *found*: a resume refreshed from the account has to know
+ * which section its skills go back into, and a label the user is free to rename
+ * cannot answer that. It is provenance, not storage.
+ */
+export type SectionKind = CoreSectionKind | "custom" | "skills"
 
 export function isCoreSectionKind(kind: string): kind is CoreSectionKind {
   return (coreSectionKinds as readonly string[]).includes(kind)
@@ -37,7 +49,9 @@ export const sectionComponentTypes = [
   "twoColumn",
   "list",
   "tagList",
-  "iconList"
+  "iconList",
+  "meter",
+  "groupedList"
 ] as const
 
 export type SectionComponentType = (typeof sectionComponentTypes)[number]
@@ -58,11 +72,11 @@ export function isSectionComponentType(
  * sections is drawn from those and never reads this.
  */
 export const coreSectionDefaults: {
-  kind: CoreSectionKind
+  kind: SectionKind
   label: string
   componentType: SectionComponentType
 }[] = [
-  { kind: "skills", label: "Skills", componentType: "list" },
+  { kind: "skills", label: "Skills", componentType: "groupedList" },
   { kind: "experience", label: "Experience", componentType: "twoColumn" },
   { kind: "education", label: "Education", componentType: "twoColumn" }
 ]
@@ -80,10 +94,35 @@ const twoColumnContent = z.object({
 
 const listContent = z.object({ items: z.array(z.string()) })
 
+/**
+ * A list whose items are filed under named groups — the shape Skills draws as.
+ *
+ * Separate from `list` rather than a grouped version of it because the two are
+ * edited differently, and that difference is the whole point of each. A flat
+ * list's items are sentences, so each gets its own field; a group's items are
+ * short names, so they read and edit as one comma-separated line. One shape
+ * doing both would give an achievement a comma-split it cannot survive.
+ */
+const groupedListContent = z.object({
+  groups: z.array(z.object({ label: z.string(), items: z.array(z.string()) }))
+})
+
 const tagListContent = z.object({ tags: z.array(z.string()) })
 
 const iconListContent = z.object({
   icons: z.array(z.object({ icon: z.string(), text: z.string() }))
+})
+
+/**
+ * A labelled level, drawn as a bar. `level` is a percentage rather than a
+ * star count so the shape is one number wide however a style chooses to draw
+ * it — five stars is a bar rounded to fifths, and a bar is not a star count
+ * rounded to anything.
+ */
+const meterContent = z.object({
+  meters: z.array(
+    z.object({ label: z.string(), level: z.number().min(0).max(100) })
+  )
 })
 
 export type SectionContent = {
@@ -92,6 +131,8 @@ export type SectionContent = {
   list: z.infer<typeof listContent>
   tagList: z.infer<typeof tagListContent>
   iconList: z.infer<typeof iconListContent>
+  meter: z.infer<typeof meterContent>
+  groupedList: z.infer<typeof groupedListContent>
 }
 
 export type AnySectionContent = SectionContent[SectionComponentType]
@@ -109,6 +150,8 @@ export type SectionContentTarget =
   | { componentType: "tagList"; index: number }
   | { componentType: "twoColumn"; index: number; side: "left" | "right" }
   | { componentType: "iconList"; index: number; field: "icon" | "text" }
+  | { componentType: "meter"; index: number; field: "label" | "level" }
+  | { componentType: "groupedList"; index: number; field: "label" | "items" }
 
 type ContentTargetIn<Type extends SectionComponentType> = Extract<
   SectionContentTarget,
@@ -422,6 +465,123 @@ const sectionComponents: {
           }
         : null
     }
+  },
+
+  meter: {
+    field: "meters",
+    schema: meterContent,
+    empty: () => ({ meters: [] }),
+    parse: (tail) => {
+      const index = toIndex(tail[0])
+      const leaf = tail[1]
+
+      if (index === null || tail.length !== 2) return null
+
+      return leaf === "label" || leaf === "level"
+        ? { componentType: "meter", index, field: leaf }
+        : null
+    },
+    format: (target) => `meters.${target.index}.${target.field}`,
+    read: (content, target) => {
+      const entry = content.meters[target.index]
+
+      if (!entry) return null
+
+      return target.field === "label" ? entry.label : String(entry.level)
+    },
+    fields: () => [],
+    collection: collectionOf({
+      noun: "level",
+      get: (content) => content.meters,
+      set: (_content, meters) => ({ meters }),
+      empty: () => ({ label: "", level: 50 }),
+      fields: (entry, index) => [
+        {
+          label: "Name",
+          target: { componentType: "meter", index, field: "label" },
+          value: entry.label,
+          input: "text"
+        },
+        {
+          label: "Level (0-100)",
+          target: { componentType: "meter", index, field: "level" },
+          value: String(entry.level),
+          input: "text"
+        }
+      ]
+    }),
+    // A level arrives as the string the panel edits, so it is clamped rather
+    // than refused: half-typed input is a number on its way somewhere, and a
+    // rejected write would strand the field mid-keystroke.
+    replace: (content, target, value) => {
+      const entry = content.meters[target.index]
+
+      if (!entry) return null
+
+      const next =
+        target.field === "label"
+          ? { ...entry, label: value }
+          : { ...entry, level: toLevel(value) }
+
+      return { meters: replace(content.meters, target.index, next) }
+    }
+  },
+
+  groupedList: {
+    field: "groups",
+    schema: groupedListContent,
+    empty: () => ({ groups: [] }),
+    parse: (tail) => {
+      const index = toIndex(tail[0])
+      const leaf = tail[1]
+
+      if (index === null || tail.length !== 2) return null
+
+      return leaf === "label" || leaf === "items"
+        ? { componentType: "groupedList", index, field: leaf }
+        : null
+    },
+    format: (target) => `groups.${target.index}.${target.field}`,
+    read: (content, target) => {
+      const group = content.groups[target.index]
+
+      if (!group) return null
+
+      return target.field === "label" ? group.label : toItemLine(group.items)
+    },
+    fields: () => [],
+    collection: collectionOf({
+      noun: "group",
+      get: (content) => content.groups,
+      set: (_content, groups) => ({ groups }),
+      empty: () => ({ label: "", items: [] }),
+      fields: (group, index) => [
+        {
+          label: "Category",
+          target: { componentType: "groupedList", index, field: "label" },
+          value: group.label,
+          input: "text"
+        },
+        {
+          label: "Items, separated by commas",
+          target: { componentType: "groupedList", index, field: "items" },
+          value: toItemLine(group.items),
+          input: "text"
+        }
+      ]
+    }),
+    replace: (content, target, value) => {
+      const group = content.groups[target.index]
+
+      if (!group) return null
+
+      const next =
+        target.field === "label"
+          ? { ...group, label: value }
+          : { ...group, items: fromItemLine(value) }
+
+      return { groups: replace(content.groups, target.index, next) }
+    }
   }
 }
 
@@ -631,6 +791,30 @@ function applyToCollection(
  */
 function toIndex(token: string | undefined) {
   return token && /^\d+$/.test(token) ? Number(token) : null
+}
+
+/**
+ * A group's items as the one line the panel edits, and back.
+ *
+ * The split lives here, beside the shape that stores the array, rather than in
+ * the renderer and the service both — two copies of "what separates two
+ * skills" is how a trailing comma comes to name a skill in one of them.
+ */
+const toItemLine = (items: string[]) => items.join(", ")
+
+const fromItemLine = (line: string) =>
+  line
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+/** A level as a whole percentage, clamping anything unreadable to zero. */
+function toLevel(value: string) {
+  const parsed = Number(value.trim())
+
+  return Number.isFinite(parsed)
+    ? Math.min(100, Math.max(0, Math.round(parsed)))
+    : 0
 }
 
 function replaceString(values: string[], index: number, value: string) {

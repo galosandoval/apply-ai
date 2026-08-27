@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 import {
   afterAll,
   beforeAll,
@@ -229,18 +229,21 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
       jobDescription: posting
     })
 
-    const [snapshotSkill] = await db
+    // Skills is a content-bearing section now, so the account's copy is
+    // snapshotted into the section rather than into rows of its own.
+    const [skillsSection] = await db
       .select()
-      .from(skill)
-      .where(eq(skill.resumeId, resumeId))
+      .from(section)
+      .where(and(eq(section.resumeId, resumeId), eq(section.kind, "skills")))
 
     const [snapshotContact] = await db
       .select()
       .from(contact)
       .where(eq(contact.resumeId, resumeId))
 
-    expect(snapshotSkill?.category).toBe("Languages")
-    expect(snapshotSkill?.all).toEqual(["TypeScript", "Go"])
+    expect(skillsSection?.content).toEqual({
+      groups: [{ label: "Languages", items: ["TypeScript", "Go"] }]
+    })
     expect(snapshotContact?.fullName).toBe("Ada Lovelace")
     expect(snapshotContact?.location).toBe("London, UK")
   })
@@ -264,12 +267,19 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
       .from(resume)
       .where(eq(resume.userId, fixture.stranger))
 
-    const [snapshotSkill] = await db
+    const [skillsSection] = await db
       .select()
-      .from(skill)
-      .where(eq(skill.resumeId, strangersResumes[0]!.id))
+      .from(section)
+      .where(
+        and(
+          eq(section.resumeId, strangersResumes[0]!.id),
+          eq(section.kind, "skills")
+        )
+      )
 
-    expect(snapshotSkill?.category).toBe("Stranger's")
+    expect(skillsSection?.content).toEqual({
+      groups: [{ label: "Stranger's", items: ["COBOL"] }]
+    })
   })
 
   describe("the section allowlist", () => {

@@ -54,7 +54,6 @@ const data: ResumeDocumentData = {
     linkedIn: "",
     portfolio: ""
   },
-  skill: [{ id: "s1", category: "Languages", all: "TypeScript, Go" }],
   experience: [
     {
       id: "w1",
@@ -164,8 +163,16 @@ async function measure(page: Page, style: ResumeStyle, sheet: string) {
       getComputedStyle(document.querySelector(".resume-document")!).fontSize
     ),
     name: parseFloat(getComputedStyle(document.querySelector("h1")!).fontSize),
+    /*
+      The space after a section, which is now owned by the block that closes
+      one rather than by a `<section>` element wrapped around the lot — a
+      document is a list of blocks, and nothing containing a whole section
+      survived the change. The utility is the element's own declaration of
+      which rhythm step it holds.
+    */
     section: parseFloat(
-      getComputedStyle(document.querySelector("section")!).paddingBottom
+      getComputedStyle(document.querySelector(".pb-resume-section")!)
+        .paddingBottom
     )
   }))
 }

@@ -1,11 +1,17 @@
-import { type ReactNode } from "react"
+import { type CSSProperties, type ReactNode } from "react"
 import {
   isResumeIconName,
   ResumeIcon,
   type ResumeIconName
 } from "~/components/resume-icon"
+import {
+  type ResumeBlock,
+  type ResumeBlockDraft,
+  type ResumeBlockKind,
+  withBlockKeys
+} from "~/lib/resume-blocks"
 import { renderResumeMarkdown } from "~/lib/resume-markdown"
-import { selectable, type SelectHandle } from "~/lib/resume-selection"
+import { type SelectHandle } from "~/lib/resume-selection"
 import {
   isSectionComponentType,
   parseSectionContent,
@@ -13,7 +19,7 @@ import {
 } from "~/lib/section-content"
 
 /**
- * The five shapes a resume section can draw as — the whole rendering system.
+ * The six shapes a resume section can draw as — the whole rendering system.
  *
  * A section type is a *configuration* of one of these, never a renderer of its
  * own: a custom section is a user-created instance, and a core section is a
@@ -22,7 +28,7 @@ import {
  *
  * Everything that varies per shape lives in one entry of `shapeSpecs` — how a
  * stored payload becomes it, when it counts as empty, and what draws it. Adding
- * a sixth shape is one registry entry, not a hunt for every switch on the type.
+ * a seventh shape is one registry entry, not a hunt for every switch on the type.
  *
  * Adding one is still a deliberate act: every shape multiplies the work in the
  * editor and in the style, so the set stays small on purpose.
@@ -59,26 +65,49 @@ export type SectionShape =
   | { componentType: "list"; groups: ListGroup[] }
   | { componentType: "tagList"; tags: { key: string; label: ReactNode }[] }
   | { componentType: "iconList"; icons: IconEntry[] }
+  | { componentType: "meter"; meters: MeterEntry[] }
+  | { componentType: "groupedList"; groups: ListGroup[] }
 
 export type TwoColumnRow = {
-  key: string
   left: ReactNode
+  /** The identity line: the employer or school, the role or degree. */
   right: ReactNode
+  /**
+   * What follows the identity line, one block at a time.
+   *
+   * A row is a *sequence* of blocks rather than one subtree, which is what lets
+   * a nine-bullet job split between two of its bullets instead of moving whole
+   * to the next sheet. Every part draws in the same two-column frame, so the
+   * page cannot tell where the entry stopped and its body began.
+   */
+  body?: EntryPart[]
   /**
    * What clicking this row selects, when the document is being edited.
    *
    * Absent everywhere else, which is what keeps selection out of the PDF: a
    * shape drawn without a handle emits no click target and no outline.
+   *
+   * Carried by every block of the row, not just the first: clicking the fourth
+   * bullet of a job selects the job, wherever that bullet has landed.
    */
   select?: SelectHandle | null
 }
 
+/** One block of an entry's body, and what kind of thing it is. */
+export type EntryPart = { kind: ResumeBlockKind; node: ReactNode }
+
 /** A flat list is one group with no label. */
 export type ListGroup = {
-  key: string
   label?: ReactNode
   items: ReactNode[]
   select?: SelectHandle | null
+}
+
+/** A labelled level. `level` is a percentage, already clamped on the way in. */
+export type MeterEntry = {
+  key: string
+  label: ReactNode
+  level: number
 }
 
 /**
@@ -97,6 +126,10 @@ export type IconEntry = {
  * They carry no styling — the utilities beside them do — but they are the
  * stable name for "this is a two-column row" in rendered markup, which is what
  * makes the structural invariants assertable without a DOM.
+ *
+ * `row` marks one *block* drawn in the two-column frame, not one entry: an
+ * entry is several of them now, and each draws the same frame so that a bullet
+ * stays under its own dates wherever it lands.
  */
 const marker = {
   row: "resume-two-column-row",
@@ -118,7 +151,13 @@ type ShapeIn<Type extends SectionComponentType> = Extract<
 type ShapeSpec<Type extends SectionComponentType> = {
   fromContent: (content: unknown) => ShapeIn<Type> | null
   isEmpty: (shape: ShapeIn<Type>) => boolean
-  Body: (props: { shape: ShapeIn<Type>; mode: RenderMode }) => ReactNode
+  /**
+   * The shape as the sequence of blocks it contributes to the document.
+   *
+   * A shape still decides what its content looks like; what it no longer
+   * decides is that its content is one indivisible thing.
+   */
+  toBlocks: (shape: ShapeIn<Type>, mode: RenderMode) => ResumeBlockDraft[]
 }
 
 const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
@@ -129,7 +168,12 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       return parsed && { componentType: "richText", markdown: parsed.markdown }
     },
     isEmpty: (shape) => !shape.markdown.trim(),
-    Body: ({ shape }) => <RichText markdown={shape.markdown} />
+    toBlocks: (shape) =>
+      renderResumeMarkdown(shape.markdown).map((node) => ({
+        kind: "paragraph",
+        space: "inline",
+        node
+      }))
   },
 
   twoColumn: {
@@ -139,8 +183,7 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       return (
         parsed && {
           componentType: "twoColumn",
-          rows: parsed.rows.map((row, index) => ({
-            key: String(index),
+          rows: parsed.rows.map((row) => ({
             left: row.left,
             right: row.right
           }))
@@ -148,7 +191,7 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       )
     },
     isEmpty: (shape) => !shape.rows.length,
-    Body: ({ shape, mode }) => <TwoColumn mode={mode} rows={shape.rows} />
+    toBlocks: (shape, mode) => shape.rows.flatMap((row) => rowBlocks(row, mode))
   },
 
   list: {
@@ -159,14 +202,17 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       // Grouped custom lists wait on a content payload that can carry a label —
       // the section schema is not this spec's to change.
       return (
-        parsed && {
-          componentType: "list",
-          groups: [{ key: "items", items: parsed.items }]
-        }
+        parsed && { componentType: "list", groups: [{ items: parsed.items }] }
       )
     },
     isEmpty: (shape) => !shape.groups.some((group) => group.items.length),
-    Body: ({ shape, mode }) => <List groups={shape.groups} mode={mode} />
+    toBlocks: (shape, mode) =>
+      shape.groups.filter(isDrawn).map((group) => ({
+        kind: "listGroup",
+        space: "inline",
+        select: group.select,
+        node: <ListEntry group={group} mode={mode} />
+      }))
   },
 
   tagList: {
@@ -184,7 +230,9 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       )
     },
     isEmpty: (shape) => !shape.tags.length,
-    Body: ({ shape }) => <TagList tags={shape.tags} />
+    toBlocks: (shape) => [
+      { kind: "tagRow", space: "none", node: <TagList tags={shape.tags} /> }
+    ]
   },
 
   iconList: {
@@ -203,7 +251,62 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       )
     },
     isEmpty: (shape) => !shape.icons.length,
-    Body: ({ shape }) => <IconList icons={shape.icons} />
+    toBlocks: (shape) => [
+      { kind: "iconRow", space: "none", node: <IconList icons={shape.icons} /> }
+    ]
+  },
+
+  meter: {
+    fromContent: (content) => {
+      const parsed = parseSectionContent("meter", content)
+
+      return (
+        parsed && {
+          componentType: "meter",
+          meters: parsed.meters.map((entry, index) => ({
+            key: String(index),
+            label: entry.label,
+            level: entry.level
+          }))
+        }
+      )
+    },
+    isEmpty: (shape) => !shape.meters.length,
+    // One block per level rather than one for the set: a list of eight
+    // languages is as splittable as a list of eight bullets, and a bar is
+    // never separated from the name it measures.
+    toBlocks: (shape) =>
+      shape.meters.map((entry) => ({
+        kind: "meterRow",
+        space: "inline",
+        node: <Meter entry={entry} key={entry.key} />
+      }))
+  },
+
+  groupedList: {
+    fromContent: (content) => {
+      const parsed = parseSectionContent("groupedList", content)
+
+      return (
+        parsed && {
+          componentType: "groupedList",
+          groups: parsed.groups.map((group) => ({
+            label: group.label,
+            items: group.items
+          }))
+        }
+      )
+    },
+    isEmpty: (shape) => !shape.groups.some((group) => group.items.length),
+    // One block per group, category and items together: a category separated
+    // from the skills it names is a heading for nothing.
+    toBlocks: (shape, mode) =>
+      shape.groups.filter(isDrawn).map((group) => ({
+        kind: "listGroup",
+        space: "inline",
+        select: group.select,
+        node: <ListEntry group={group} mode={mode} />
+      }))
   }
 }
 
@@ -240,46 +343,94 @@ export function customSectionShape(
 }
 
 /**
- * One section: its heading, its rule, and its content in the shape it draws as.
+ * One section as the blocks it contributes to the document, in order.
+ *
+ * Its heading and its rule are one block; the rest is however many its shape
+ * draws as. Nothing wraps them — a `<section>` element around the lot would be
+ * an element that has to span two sheets of paper the moment the section does,
+ * and a block that cannot be moved on its own is the thing this replaces.
  *
  * An empty section is a visible placeholder in the editor and nothing at all in
  * the document — a blank section in the editor would be a zero-height element
  * with nothing to click, and a placeholder in a finished PDF is worse than a
  * gap.
  */
-export function ResumeSection({
+export function sectionBlocks({
+  sectionId,
   label,
   shape,
   render,
   select
 }: {
+  sectionId: string
   label: ReactNode
   shape: SectionShape
   render: RenderOptions
   /** Selecting the section itself — its name, its place, its entries. */
   select?: SelectHandle | null
-}) {
-  const { isEmpty, Body } = specFor(shape.componentType)
+}): ResumeBlock[] {
+  const { isEmpty, toBlocks } = specFor(shape.componentType)
   const empty = isEmpty(shape)
-  const heading = selectable(select)
 
-  if (empty && !render.isEditor) return null
+  if (empty && !render.isEditor) return []
 
-  return (
-    <section className="pb-resume-section">
-      {/*
-        The heading and its rule stay with the content that follows them:
-        `break-after: avoid` is what stops a section title stranding alone at
-        the foot of a page with its first entry overleaf.
+  const drafts = [
+    headingBlock(label),
+    ...(empty ? [placeholderBlock()] : toBlocks(shape, render.mode))
+  ]
 
-        The heading is also the section's own click target: clicking a job
-        selects the job, so selecting the section it sits in needs somewhere of
-        its own to click.
-      */}
-      <div
-        className={`break-inside-avoid break-after-avoid pb-resume-heading ${heading.className}`}
-        {...heading.attributes}
-      >
+  return withBlockKeys(sectionId, closingSection(ownedBy(select, drafts)))
+}
+
+/**
+ * A block that selects nothing of its own is selected by its section.
+ *
+ * A shape whose content is addressed a row at a time — a job, a school, a
+ * skills group — answers for its own blocks, and the innermost target wins as
+ * it always has. Everything else is the section: a rich-text paragraph and a
+ * tag row are edited *through* the section panel, so a box drawn around the
+ * heading alone stops at the rule while the panel edits the text under it. It
+ * also makes that content clickable, where before a click on a paragraph fell
+ * through to the page and cleared the selection.
+ */
+function ownedBy(
+  select: SelectHandle | null | undefined,
+  drafts: ResumeBlockDraft[]
+): ResumeBlockDraft[] {
+  return drafts.map((draft) => ({ ...draft, select: draft.select ?? select }))
+}
+
+/**
+ * The gap between one section and the next, given to the block that ends the
+ * first — whichever kind it turned out to be.
+ *
+ * It used to be padding on the section element, which is exactly the kind of
+ * spacing a parent can no longer own: there is no element left that contains a
+ * whole section, and there could not be one that spans two pages.
+ */
+function closingSection(drafts: ResumeBlockDraft[]): ResumeBlockDraft[] {
+  return drafts.map((draft, index) =>
+    index === drafts.length - 1 ? { ...draft, space: "section" } : draft
+  )
+}
+
+/**
+ * The section's title and its rule, as one block.
+ *
+ * They are never separated, and `break-after-avoid` on the block asks the same
+ * of the content that follows — a heading stranded at the foot of a page
+ * introduces nothing.
+ *
+ * It selects nothing of its own, so — like every other block a shape does not
+ * address a row at a time — it is selected by its section. Clicking a job
+ * still selects the job: the innermost target wins.
+ */
+function headingBlock(label: ReactNode): ResumeBlockDraft {
+  return {
+    kind: "heading",
+    space: "none",
+    node: (
+      <div className="pb-resume-heading">
         <h2 className="resume-heading text-resume-heading text-resume-accent">
           {label}
         </h2>
@@ -293,25 +444,52 @@ export function ResumeSection({
           <hr className="resume-rule" />
         </div>
       </div>
-
-      {empty ? (
-        <p className={`${marker.placeholder} text-resume-muted`}>
-          Nothing here yet
-        </p>
-      ) : (
-        <Body mode={render.mode} shape={shape} />
-      )}
-    </section>
-  )
+    )
+  }
 }
 
-/** Bold, links and bullet lists. Everything else is text — see the parser. */
-function RichText({ markdown }: { markdown: string }) {
-  return (
-    <div className="space-y-resume-inline">
-      {renderResumeMarkdown(markdown)}
-    </div>
-  )
+/** What an empty section looks like in the editor, and only there. */
+function placeholderBlock(): ResumeBlockDraft {
+  return {
+    kind: "paragraph",
+    space: "none",
+    node: (
+      <p className={`${marker.placeholder} text-resume-muted`}>
+        Nothing here yet
+      </p>
+    )
+  }
+}
+
+/**
+ * One entry as its blocks: the identity line, then whatever its body is made
+ * of — one bullet at a time for a job, one description for a school, nothing at
+ * all for a custom row.
+ *
+ * Every block draws in the same two-column frame, so a bullet that has landed
+ * on the next page still lines up under where its dates would have been.
+ */
+function rowBlocks(row: TwoColumnRow, mode: RenderMode): ResumeBlockDraft[] {
+  const parts: EntryPart[] = [
+    { kind: "entry", node: row.right },
+    ...(row.body ?? [])
+  ]
+
+  return parts.map((part, index) => ({
+    kind: part.kind,
+    // The gap before the next entry belongs to this entry's last block: two
+    // entries on two different sheets have no parent left to space them apart.
+    space: index === parts.length - 1 ? "entry" : "none",
+    select: row.select,
+    node: (
+      <TwoColumnFrame
+        isLead={index === 0}
+        left={row.left}
+        mode={mode}
+        right={part.node}
+      />
+    )
+  }))
 }
 
 /**
@@ -320,83 +498,80 @@ function RichText({ markdown }: { markdown: string }) {
  * The columns stack in reflow rather than narrowing: two columns inside a 390px
  * viewport is how a date range ends up one character wide. Reading order is the
  * same either way, so the stack costs the document nothing.
+ *
+ * Only the entry's first block fills the left column; the rest draw it empty so
+ * that their content stays in the same gutter. Stacked, there is no gutter to
+ * hold, so a continuation draws no left column at all rather than an empty row
+ * of one.
  */
-function TwoColumn({ rows, mode }: { rows: TwoColumnRow[]; mode: RenderMode }) {
+function TwoColumnFrame({
+  left,
+  right,
+  mode,
+  isLead
+}: {
+  left: ReactNode
+  right: ReactNode
+  mode: RenderMode
+  /** Whether this is the block the entry opens with. */
+  isLead: boolean
+}) {
   const isPage = mode === "page"
 
-  return (
-    <div className="space-y-resume-entry">
-      {rows.map((row) => (
-        <TwoColumnEntry isPage={isPage} key={row.key} row={row} />
-      ))}
-    </div>
-  )
-}
-
-function TwoColumnEntry({
-  row,
-  isPage
-}: {
-  row: TwoColumnRow
-  isPage: boolean
-}) {
-  const select = selectable(row.select)
+  // Page mode holds the gutter open even where there is nothing in it, so a
+  // bullet stays under its own dates. Stacked, there is no gutter to hold.
+  const drawsGutter = isPage || isLead
 
   return (
     <div
-      className={`${marker.row} break-inside-avoid ${
+      className={`${marker.row} ${
         isPage ? "flex gap-resume-entry" : "flex flex-col gap-resume-inline"
-      } ${select.className}`}
-      {...select.attributes}
+      }`}
     >
       {/*
         Stacked on a phone the left column has no column to be in, so it earns
         its separation from the entry name's weight instead of from the gutter.
       */}
-      <div
-        className={
-          isPage ? "w-resume-left-column shrink-0" : "resume-entry-name"
-        }
-      >
-        {row.left}
-      </div>
+      {drawsGutter && (
+        <div
+          className={
+            isPage ? "w-resume-left-column shrink-0" : "resume-entry-name"
+          }
+        >
+          {isLead && left}
+        </div>
+      )}
 
-      <div className="min-w-0 flex-1">{row.right}</div>
+      <div className="min-w-0 flex-1">{right}</div>
     </div>
   )
 }
 
 /**
- * Grouped or flat entries.
+ * Whether a group is drawn at all.
+ *
+ * An empty group is nothing in the document — but where it can be selected it
+ * stays on the page, or a group added a moment ago has nothing to click.
+ */
+function isDrawn(group: ListGroup) {
+  return Boolean(group.items.length || group.select)
+}
+
+/**
+ * One group of a list — grouped or flat — as the one block it is.
  *
  * A group with a label is the shape Skills draws as; a group without one is a
  * plain bulleted list. This is the one home a list of things gets — rich text
  * may contain a bullet list because markdown does, but the app never offers
  * one there.
+ *
+ * The whole group is one block, category and skills together, so a category is
+ * never separated from the skills it names.
  */
-function List({ groups, mode }: { groups: ListGroup[]; mode: RenderMode }) {
-  return (
-    <div className="space-y-resume-inline">
-      {groups.map((group) => (
-        <ListEntry group={group} key={group.key} mode={mode} />
-      ))}
-    </div>
-  )
-}
-
 function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
-  const select = selectable(group.select)
-
-  // An empty group is nothing in the document — but where it can be selected
-  // it stays on the page, or a group added a moment ago has nothing to click.
-  if (!group.items.length && !group.select) return null
-
   if (!group.label) {
     return (
-      <ul
-        className={`list-disc break-inside-avoid pl-resume-bullet ${select.className}`}
-        {...select.attributes}
-      >
+      <ul className="list-disc pl-resume-bullet">
         {group.items.map((item, index) => (
           <li key={index}>{item}</li>
         ))}
@@ -406,12 +581,11 @@ function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
 
   return (
     <div
-      className={`break-inside-avoid ${
+      className={
         mode === "page"
           ? "flex gap-resume-inline"
           : "flex flex-col gap-resume-inline"
-      } ${select.className}`}
-      {...select.attributes}
+      }
     >
       <h3 className="resume-entry-name whitespace-nowrap">{group.label}</h3>
 
@@ -444,6 +618,35 @@ function TagList({ tags }: { tags: { key: string; label: ReactNode }[] }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * A name and the level it was given, drawn as a bar.
+ *
+ * The number itself is never printed. A resume that claims "Spanish: 80%" is
+ * making a precise claim it cannot support; a bar reads as the approximation
+ * it is, which is the only honest thing a self-assessed level can be.
+ *
+ * `aria-hidden` on the track because the bar is decoration for a value the
+ * label already carries — a screen reader gets the name, not a percentage the
+ * document declines to state in print.
+ */
+function Meter({ entry }: { entry: MeterEntry }) {
+  return (
+    <div className="flex items-center gap-resume-entry">
+      <span className="w-resume-left-column shrink-0">{entry.label}</span>
+
+      <div
+        aria-hidden
+        className="h-resume-meter min-w-0 flex-1 rounded-resume-tag bg-resume-tag-surface"
+      >
+        <div
+          className="resume-meter-fill h-full rounded-resume-tag bg-resume-accent"
+          style={{ "--resume-meter-level": `${entry.level}%` } as CSSProperties}
+        />
+      </div>
+    </div>
   )
 }
 

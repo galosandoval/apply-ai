@@ -15,28 +15,26 @@ import { type KeyboardEvent, type MouseEvent } from "react"
  */
 
 /** The lists a resume addresses a row at a time, as a path names them. */
-export type RowListName = "experience" | "education" | "skill"
+export type RowListName = "experience" | "education"
 
 export type ResumeSelection =
   /** The name, profession and contact details, which the resume owns one of. */
   | { kind: "header" }
   /** A section itself — its name, its place, and whether it is on the page. */
   | { kind: "section"; sectionId: string }
-  /** One job, school or skill group inside a core section. */
+  /** One job or school inside a core section. */
   | { kind: "row"; list: RowListName; rowId: string }
 
 /**
  * A core section's kind, the key its rows live under, and what one of them is
  * called where the user is offered one.
  *
- * `key` is what the resume holds them under and what a field path calls them,
- * which is not always what the section is called: Skills is a section, and one
- * `skill` row is a group inside it.
+ * `key` and the section's kind agree now that Skills is no longer a core
+ * section — it was the one place they differed.
  */
 export const coreRowLists = {
   experience: { key: "experience", noun: "job" },
-  education: { key: "education", noun: "school" },
-  skills: { key: "skill", noun: "skill group" }
+  education: { key: "education", noun: "school" }
 } as const satisfies Record<string, { key: RowListName; noun: string }>
 
 export type CoreRowList = (typeof coreRowLists)[keyof typeof coreRowLists]
@@ -46,16 +44,6 @@ export function rowListFor(kind: string): CoreRowList | null {
   return kind in coreRowLists
     ? coreRowLists[kind as keyof typeof coreRowLists]
     : null
-}
-
-/**
- * What the row procedures call a list.
- *
- * A path addresses one `skill` row; the procedures take the section it belongs
- * to, which is `skills`. The gap is real and this is the one place it lives.
- */
-export function apiNameFor(list: RowListName) {
-  return list === "skill" ? "skills" : list
 }
 
 /**
@@ -90,7 +78,20 @@ export function isSameSelection(
  * `null` is the read-only document — the PDF, and the parseability check — where
  * nothing is selectable and no selection markup is emitted at all.
  */
-export type SelectHandle = { isSelected: boolean; onSelect: () => void }
+export type SelectHandle = {
+  /**
+   * What this handle selects, as `selectionKey` writes it.
+   *
+   * The document is a list of blocks and one job is several of them, so the
+   * outline is drawn around the *run* of adjacent blocks that select the same
+   * thing rather than around each one. This is what says two blocks are that
+   * same thing — an outline per bullet is five boxes where the user selected
+   * one job.
+   */
+  key: string
+  isSelected: boolean
+  onSelect: () => void
+}
 
 /**
  * The class and the attributes that make an element selectable.
