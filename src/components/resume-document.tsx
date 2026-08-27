@@ -19,7 +19,8 @@ import {
   type ResumeSelection,
   rowListFor,
   selectable,
-  type SelectHandle
+  type SelectHandle,
+  selectionKey
 } from "~/lib/resume-selection"
 import {
   type CoreSectionKind,
@@ -156,9 +157,7 @@ export function ResumeDocument({
       className={documentClassName(mode, toResumeStyle(data.style))}
       style={accentOverride(data.accent)}
     >
-      {documentBlocks(doc, sections).map((block) => (
-        <ResumeBlockElement block={block} key={block.key} />
-      ))}
+      <BlockFlow blocks={documentBlocks(doc, sections)} />
     </div>
   )
 }
@@ -180,10 +179,93 @@ function documentBlocks(doc: Doc, sections: ResumeDocumentSection[]) {
       opening that section rather than continuing anything.
     */
     ...withBlockKeys("header", [
-      { kind: "header", space: "none", node: <Header doc={doc} /> }
+      {
+        kind: "header",
+        space: "none",
+        select: handleFor(doc, { kind: "header" }),
+        node: <Header doc={doc} />
+      }
     ]),
     ...sections.flatMap((section) => sectionBlocksFor(doc, section))
   ]
+}
+
+/**
+ * The blocks in order, with each run of them that selects the same thing drawn
+ * inside one click target.
+ *
+ * A job is several blocks, and an outline per block is five boxes stacked down
+ * the page where the user selected one job. The run is what the editor draws
+ * around, so selection looks the way it did when an entry was a single element
+ * — and a run is computed rather than nested, so it can be a *page's* worth of
+ * a job once a job is allowed to span two of them.
+ *
+ * A read-only document has no handles, so it has no runs and no extra element:
+ * what the PDF prints is the blocks themselves.
+ */
+function BlockFlow({ blocks }: { blocks: ResumeBlock[] }) {
+  return (
+    <>
+      {selectionRuns(blocks).map((run) =>
+        run.select ? (
+          <SelectableRun key={run.blocks[0]?.key} run={run} />
+        ) : (
+          run.blocks.map((block) => (
+            <ResumeBlockElement block={block} key={block.key} />
+          ))
+        )
+      )}
+    </>
+  )
+}
+
+/** Adjacent blocks that select the same thing, in document order. */
+type SelectionRun = { select: SelectHandle | null; blocks: ResumeBlock[] }
+
+function selectionRuns(blocks: ResumeBlock[]): SelectionRun[] {
+  const runs: SelectionRun[] = []
+
+  for (const block of blocks) {
+    const open = runs.at(-1)
+
+    // Blocks of one entry are contiguous by construction, so "same thing as
+    // the block before it" is the whole test — no run can be reopened later.
+    if (open && open.select?.key === (block.select?.key ?? undefined)) {
+      open.blocks.push(block)
+      continue
+    }
+
+    runs.push({ select: block.select ?? null, blocks: [block] })
+  }
+
+  return runs
+}
+
+/**
+ * One run, as the thing the editor outlines.
+ *
+ * The gap the run's last block owns is moved onto the run, so the outline ends
+ * where the content does rather than a rhythm step below it. The geometry is
+ * the same either way — the padding is in the same place in the flow — which
+ * is why the read-only render can skip this element entirely.
+ */
+function SelectableRun({ run }: { run: SelectionRun }) {
+  const select = selectable(run.select)
+  const last = run.blocks.at(-1)
+
+  return (
+    <div
+      className={`${select.className} ${runSpaceClass[last?.space ?? "none"]}`}
+      {...select.attributes}
+    >
+      {run.blocks.map((block) => (
+        <ResumeBlockElement
+          block={block === last ? { ...block, space: "none" } : block}
+          key={block.key}
+        />
+      ))}
+    </div>
+  )
 }
 
 /** The space a block owns after itself, as the padding that draws it. */
@@ -192,6 +274,23 @@ const blockSpaceClass: Record<ResumeBlockSpace, string> = {
   inline: "pb-resume-inline",
   entry: "pb-resume-entry",
   section: "pb-resume-section"
+}
+
+/**
+ * The same space, on a run, as margin.
+ *
+ * An outline is drawn outside the padding and inside the margin, so a run that
+ * held its gap as padding would draw the editor's selection box a rhythm step
+ * below where the content ends. The gap between two entries was margin before
+ * the document was a block list, and it stays margin here. Both maps are
+ * spelled out because a class name assembled at runtime is a class name the
+ * compiler never sees.
+ */
+const runSpaceClass: Record<ResumeBlockSpace, string> = {
+  none: "",
+  inline: "mb-resume-inline",
+  entry: "mb-resume-entry",
+  section: "mb-resume-section"
 }
 
 /**
@@ -275,6 +374,7 @@ function handleFor(doc: Doc, selection: ResumeSelection): SelectHandle | null {
   if (!state) return null
 
   return {
+    key: selectionKey(selection),
     isSelected: isSameSelection(state.selected, selection),
     onSelect: () => state.onSelect(selection)
   }
@@ -487,7 +587,6 @@ function splitSkills(all: string) {
 
 function Header({ doc }: { doc: Doc }) {
   const { data } = doc
-  const select = selectable(handleFor(doc, { kind: "header" }))
 
   const contactFields = [
     data.contact.location,
@@ -498,10 +597,7 @@ function Header({ doc }: { doc: Doc }) {
   ].filter(Boolean)
 
   return (
-    <div
-      className={`flex flex-col items-center pb-resume-inline ${select.className}`}
-      {...select.attributes}
-    >
+    <div className="flex flex-col items-center pb-resume-inline">
       <div className="justify-self-center">
         <h1 className="resume-name text-resume-name text-resume-accent">
           <Text doc={doc} value={data.contact.fullName} />

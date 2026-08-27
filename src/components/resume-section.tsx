@@ -11,7 +11,7 @@ import {
   withBlockKeys
 } from "~/lib/resume-blocks"
 import { renderResumeMarkdown } from "~/lib/resume-markdown"
-import { selectable, type SelectHandle } from "~/lib/resume-selection"
+import { type SelectHandle } from "~/lib/resume-selection"
 import {
   isSectionComponentType,
   parseSectionContent,
@@ -201,6 +201,7 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       shape.groups.filter(isDrawn).map((group) => ({
         kind: "listGroup",
         space: "inline",
+        select: group.select,
         node: <ListEntry group={group} mode={mode} />
       }))
   },
@@ -348,16 +349,12 @@ function headingBlock(
   label: ReactNode,
   select?: SelectHandle | null
 ): ResumeBlockDraft {
-  const heading = selectable(select)
-
   return {
     kind: "heading",
     space: "none",
+    select,
     node: (
-      <div
-        className={`pb-resume-heading ${heading.className}`}
-        {...heading.attributes}
-      >
+      <div className="pb-resume-heading">
         <h2 className="resume-heading text-resume-heading text-resume-accent">
           {label}
         </h2>
@@ -407,13 +404,13 @@ function rowBlocks(row: TwoColumnRow, mode: RenderMode): ResumeBlockDraft[] {
     // The gap before the next entry belongs to this entry's last block: two
     // entries on two different sheets have no parent left to space them apart.
     space: index === parts.length - 1 ? "entry" : "none",
+    select: row.select,
     node: (
       <TwoColumnFrame
         isLead={index === 0}
         left={row.left}
         mode={mode}
         right={part.node}
-        select={row.select}
       />
     )
   }))
@@ -435,18 +432,15 @@ function TwoColumnFrame({
   left,
   right,
   mode,
-  isLead,
-  select
+  isLead
 }: {
   left: ReactNode
   right: ReactNode
   mode: RenderMode
   /** Whether this is the block the entry opens with. */
   isLead: boolean
-  select?: SelectHandle | null
 }) {
   const isPage = mode === "page"
-  const handle = selectable(select)
 
   // Page mode holds the gutter open even where there is nothing in it, so a
   // bullet stays under its own dates. Stacked, there is no gutter to hold.
@@ -456,8 +450,7 @@ function TwoColumnFrame({
     <div
       className={`${marker.row} ${
         isPage ? "flex gap-resume-entry" : "flex flex-col gap-resume-inline"
-      } ${handle.className}`}
-      {...handle.attributes}
+      }`}
     >
       {/*
         Stacked on a phone the left column has no column to be in, so it earns
@@ -500,14 +493,9 @@ function isDrawn(group: ListGroup) {
  * never separated from the skills it names.
  */
 function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
-  const select = selectable(group.select)
-
   if (!group.label) {
     return (
-      <ul
-        className={`list-disc pl-resume-bullet ${select.className}`}
-        {...select.attributes}
-      >
+      <ul className="list-disc pl-resume-bullet">
         {group.items.map((item, index) => (
           <li key={index}>{item}</li>
         ))}
@@ -517,12 +505,11 @@ function ListEntry({ group, mode }: { group: ListGroup; mode: RenderMode }) {
 
   return (
     <div
-      className={`${
+      className={
         mode === "page"
           ? "flex gap-resume-inline"
           : "flex flex-col gap-resume-inline"
-      } ${select.className}`}
-      {...select.attributes}
+      }
     >
       <h3 className="resume-entry-name whitespace-nowrap">{group.label}</h3>
 

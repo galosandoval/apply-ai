@@ -377,6 +377,14 @@ Three things follow, and each of them is a thing that used to live one level up:
   children that have ended up on different sheets, and there is no element left
   that contains a whole section. Each block owns the gap _after_ itself, so a
   block arriving at the top of a page brings no gap with it.
+- **Selection moved up to a run of blocks.** The handle is carried by the
+  block rather than drawn inside it, and the renderer wraps each _run_ of
+  adjacent blocks that select the same thing in one click target. An outline
+  per block is five stacked boxes where the user selected one job. A run is
+  computed rather than nested, so it can later be one page's worth of a job
+  that spans two — which no wrapper element could have been. The gap after a
+  run is margin, not padding: an outline is drawn outside the padding and
+  inside the margin, and the box has to end where the content does.
 - **A bullet is its own list.** One `<ul>` per bullet rather than one holding
   the job's nine, because an element cannot be in two places and a job split
   across a boundary asks exactly that of it. Every bullet is still a real list

@@ -1,4 +1,5 @@
 import { type ReactNode } from "react"
+import { type SelectHandle } from "~/lib/resume-selection"
 
 /**
  * The document as an ordered list of blocks.
@@ -61,6 +62,15 @@ export type ResumeBlockDraft = {
   kind: ResumeBlockKind
   space: ResumeBlockSpace
   node: ReactNode
+  /**
+   * What clicking this block selects, when the document is being edited.
+   *
+   * Held here rather than drawn inside the node because one job is several
+   * blocks and the outline belongs around all of them at once — see
+   * `SelectHandle`. Absent everywhere selection is: the read-only document
+   * emits no click target and no outline at all.
+   */
+  select?: SelectHandle | null
 }
 
 export type ResumeBlock = ResumeBlockDraft & {

@@ -90,7 +90,20 @@ export function isSameSelection(
  * `null` is the read-only document — the PDF, and the parseability check — where
  * nothing is selectable and no selection markup is emitted at all.
  */
-export type SelectHandle = { isSelected: boolean; onSelect: () => void }
+export type SelectHandle = {
+  /**
+   * What this handle selects, as `selectionKey` writes it.
+   *
+   * The document is a list of blocks and one job is several of them, so the
+   * outline is drawn around the *run* of adjacent blocks that select the same
+   * thing rather than around each one. This is what says two blocks are that
+   * same thing — an outline per bullet is five boxes where the user selected
+   * one job.
+   */
+  key: string
+  isSelected: boolean
+  onSelect: () => void
+}
 
 /**
  * The class and the attributes that make an element selectable.
