@@ -27,7 +27,6 @@ import { resume } from "~/server/db/schema"
 /** Every component that draws part of the resume document. */
 const documentSources = [
   "src/components/resume-document.tsx",
-  "src/components/resume-page-boundary.tsx",
   "src/components/resume-section.tsx",
   "src/components/resume-icon.tsx",
   "src/lib/resume-markdown.tsx"
@@ -281,12 +280,17 @@ describe("the page geometry", async () => {
   )
 
   /**
-   * Where a token is declared: the selector it sits under and that rule's body.
+   * A rule's body, given the offset of its opening brace.
    *
-   * A rule body has no nested braces in this stylesheet, so the brace either
-   * side of the declaration is its own — which is the whole parser this needs.
+   * A rule body has no nested braces in this stylesheet, so the next `}` is its
+   * own — which is the whole parser this needs.
    */
-  const declarationSite = (token: string) => {
+  function bodyAt(opens: number) {
+    return opens === -1 ? "" : css.slice(opens + 1, css.indexOf("}", opens))
+  }
+
+  /** Where a token is declared: the selector it sits under and that rule's body. */
+  function declarationSite(token: string) {
     const at = css.indexOf(`${token}:`)
 
     if (at === -1) return { selector: "", body: "" }
@@ -295,17 +299,23 @@ describe("the page geometry", async () => {
 
     return {
       selector: (css.slice(0, opens).trimEnd().split("\n").pop() ?? "").trim(),
-      body: css.slice(opens + 1, css.indexOf("}", at))
+      body: bodyAt(opens)
     }
   }
 
   /** A rule body, found by its selector rather than by a token inside it. */
-  const bodyForSelector = (selector: string) =>
-    css.slice(css.indexOf(`${selector} {`)).split("}")[0] ?? ""
+  function bodyForSelector(selector: string) {
+    const at = css.indexOf(`${selector} {`)
 
-  /** What a token is set to, on one line. */
-  const declaredValue = (token: string) =>
-    new RegExp(`${token}:\\s*([^;]+);`).exec(css)?.[1]?.replace(/\s+/g, " ")
+    return at === -1 ? "" : bodyAt(css.indexOf("{", at))
+  }
+
+  /** What a token is set to, in the rule that declares it. */
+  function declaredValue(token: string) {
+    return new RegExp(`${token}:\\s*([^;]+);`)
+      .exec(declarationSite(token).body)?.[1]
+      ?.replace(/\s+/g, " ")
+  }
 
   /*
     A page has two dimensions and sheets have space between them. Only the width
