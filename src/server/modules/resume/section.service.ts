@@ -121,9 +121,11 @@ const generatedSectionAllowlist = new Map<
   [
     "Strengths",
     {
-      componentType: "list",
+      componentType: "tagList",
       placement: "below",
-      content: (entries) => ({ items: entries })
+      // Short capability phrases, drawn as marks a reader takes in at a
+      // glance rather than a second, weaker Experience.
+      content: (entries) => ({ tags: entries })
     }
   ]
 ])
