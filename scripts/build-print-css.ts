@@ -1,6 +1,6 @@
 import autoprefixer from "autoprefixer"
-import { readFile, writeFile } from "node:fs/promises"
-import { join } from "node:path"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { dirname, join } from "node:path"
 import postcss from "postcss"
 import tailwindcss from "tailwindcss"
 import { embedFonts } from "../src/server/modules/profile/embed-fonts"
@@ -40,6 +40,10 @@ async function buildPrintCss() {
   // `public/fonts` holds the faces, so this resolves against files that exist
   // before the build rather than after it.
   const embedded = await embedFonts(css)
+
+  // `src/generated` is gitignored build output, so a fresh checkout — a CI
+  // runner, a Vercel build — has no such directory to write into.
+  await mkdir(dirname(output), { recursive: true })
 
   await writeFile(
     output,
