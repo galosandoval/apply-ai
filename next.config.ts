@@ -1,6 +1,9 @@
 /** Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. */
 import "./src/env"
 import type { NextConfig } from "next"
+import createNextIntlPlugin from "next-intl/plugin"
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 
 const config: NextConfig = {
   reactStrictMode: true,
@@ -44,23 +47,7 @@ const config: NextConfig = {
       "./node_modules/@napi-rs/canvas/**",
       "./node_modules/@napi-rs/canvas-*/**"
     ]
-  },
-
-  redirects: async () => {
-    return [
-      {
-        source: "/",
-        destination: "/dashboard",
-        permanent: false,
-        has: [
-          {
-            type: "cookie",
-            key: "better-auth.session_token"
-          }
-        ]
-      }
-    ]
   }
 }
 
-export default config
+export default withNextIntl(config)

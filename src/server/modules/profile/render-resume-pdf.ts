@@ -57,6 +57,10 @@ export async function measurePrintedFlow(
  * arrived at on its own, and the two cannot drift apart. The cost is one extra
  * `setContent` inside a browser that is already launched.
  *
+ * Throws rather than falls back when there is nothing to measure: printing the
+ * flow instead would hand the user the very document this route exists to stop
+ * producing, and it would do it silently.
+ *
  * The margin comes with the sheets. Each page element carries the style's page
  * padding on all four sides, so `page.pdf` is asked for a zero margin on all
  * four — which is what gives page two the margins page one used to get for free
@@ -77,30 +81,31 @@ export async function renderResumePdf(data: ResumeDocumentData) {
     const measurement = await measurePrintedFlow(page, data)
 
     /*
-      A measurement means sheets: the same blocks, dealt onto paper by the same
-      `paginate` the editor calls, and printed instead of the flow.
+      Nothing to measure is not a document this route can print. The markup it
+      just set always contains the document element, so a null here is the
+      measurer failing to reach the DOM at all — and the only thing left to
+      print is the unpaginated flow, which is precisely the bug this route was
+      changed to fix: every page after the first hard against the paper edge.
 
-      Nothing to measure means the flow already rendered prints as well as it
-      ever did — a blank page is the worse answer. It is also the bug this route
-      was changed to fix, arrived at silently, so it says so: every page after
-      the first would print hard against the paper edge, and nothing else
-      anywhere would report it.
+      A failed download the user can see and retry is the better answer. Printed
+      anyway, it is a resume that looks wrong to whoever the user sent it to,
+      with nothing but a server log to say so.
     */
-    if (measurement) {
-      const { pages } = paginate(measurement.blocks, {
-        contentHeight: measurement.contentHeight
-      })
-
-      await page.setContent(await resumePdfDocument(data, printCss, pages), {
-        waitUntil: "load"
-      })
-
-      await page.evaluate(() => document.fonts.ready)
-    } else {
-      console.warn(
-        "renderResumePdf: nothing to measure — printing the unpaginated flow."
+    if (!measurement) {
+      throw new Error(
+        "renderResumePdf: the document measured as nothing — refusing to print an unpaginated resume."
       )
     }
+
+    const { pages } = paginate(measurement.blocks, {
+      contentHeight: measurement.contentHeight
+    })
+
+    await page.setContent(await resumePdfDocument(data, printCss, pages), {
+      waitUntil: "load"
+    })
+
+    await page.evaluate(() => document.fonts.ready)
 
     return await page.pdf({
       format: "A4",

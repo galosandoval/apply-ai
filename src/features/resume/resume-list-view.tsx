@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { Link } from "~/i18n/navigation"
 import toast from "react-hot-toast"
 import { Button } from "~/components/ui/button"
 import { appPath } from "~/lib/path"

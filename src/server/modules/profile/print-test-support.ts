@@ -1,4 +1,4 @@
-import { chromium } from "playwright-core"
+import { chromium, type Page } from "playwright-core"
 
 /**
  * Whether a browser is here to print in — the guard both real-browser suites
@@ -38,4 +38,27 @@ export async function hasPrintBrowser(suite: string): Promise<boolean> {
   }
 
   return available
+}
+
+/**
+ * One browser, one page, closed however the case ends.
+ *
+ * The lifecycle is here rather than in each case because every hand-rolled
+ * `try/finally` is another chance to leak a Chromium into the suite's run, and
+ * a suite that leaks one is a suite whose next case starts slower and whose CI
+ * box eventually stops answering.
+ *
+ * Shared with `hasPrintBrowser` for the same reason that one is shared: two
+ * copies drift, and the copy that stops closing is the one nobody reads.
+ */
+export async function inPrintBrowser<T>(
+  run: (page: Page) => Promise<T>
+): Promise<T> {
+  const browser = await chromium.launch()
+
+  try {
+    return await run(await browser.newPage())
+  } finally {
+    await browser.close()
+  }
 }

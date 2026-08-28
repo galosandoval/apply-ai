@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger
 } from "./ui/dialog"
-import { useRouter } from "next/navigation"
+import { useRouter } from "~/i18n/navigation"
 import { signIn, signUp } from "~/lib/auth-client"
 import { Form, FormField } from "./ui/form"
 import { MyInput } from "./my-input"

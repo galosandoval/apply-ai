@@ -200,12 +200,9 @@ export function measureResumeDocument(
 
   measured.sort((left, right) => left.order - right.order)
 
-  const blocks: PaginationBlock[] = measured.map((block) => ({
-    key: block.key,
-    sectionId: block.sectionId,
-    kind: block.kind,
-    height: block.height
-  }))
-
-  return { blocks, contentHeight: contentHeight() }
+  // Returned with `order` still on them. It is what the sort needed and nothing
+  // downstream reads it, but a second array built only to drop a field is work
+  // the type system does not ask for: `PaginationBlock` is satisfied by the
+  // wider shape as it stands.
+  return { blocks: measured, contentHeight: contentHeight() }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter } from "~/i18n/navigation"
 import { type ChangeEvent, type FormEvent, useState } from "react"
 import { PromptInput } from "~/components/prompt-input"
 import { appPath } from "~/lib/path"

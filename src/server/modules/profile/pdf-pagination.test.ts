@@ -1,9 +1,9 @@
-import { chromium, type Page } from "playwright-core"
+import { type Page } from "playwright-core"
 import { describe, expect, it } from "vitest"
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { printCss as css } from "~/generated/print-css"
 import { paginate } from "~/lib/paginate"
-import { hasPrintBrowser } from "./print-test-support"
+import { hasPrintBrowser, inPrintBrowser } from "./print-test-support"
 import { measurePrintedFlow } from "./render-resume-pdf"
 import { resumePdfDocument } from "./resume-html"
 
@@ -65,22 +65,6 @@ const long: ResumeDocumentData = {
 }
 
 /**
- * One browser, one page, closed however the case ends.
- *
- * The lifecycle is here rather than in each case because three `try/finally`
- * blocks are three chances to leak a Chromium into the suite's run.
- */
-async function inPrintBrowser<T>(run: (page: Page) => Promise<T>): Promise<T> {
-  const browser = await chromium.launch()
-
-  try {
-    return await run(await browser.newPage())
-  } finally {
-    await browser.close()
-  }
-}
-
-/**
  * The route's own measure pass, driven against a real browser.
  *
  * `measurePrintedFlow` rather than the same three calls spelt again: a test
@@ -88,7 +72,7 @@ async function inPrintBrowser<T>(run: (page: Page) => Promise<T>): Promise<T> {
  * for changed underneath it, which is the drift this whole change exists to
  * stop.
  */
-async function measured(page: Page, data: ResumeDocumentData) {
+async function measureOrFail(page: Page, data: ResumeDocumentData) {
   const measurement = await measurePrintedFlow(page, data)
 
   // Not an assertion about the document: a null measurement is the browser
@@ -101,7 +85,9 @@ async function measured(page: Page, data: ResumeDocumentData) {
 
 describe.skipIf(!hasBrowser)("the print's measurement pass", () => {
   it("reads every block of the drawn document", async () => {
-    const measurement = await inPrintBrowser((page) => measured(page, short))
+    const measurement = await inPrintBrowser((page) =>
+      measureOrFail(page, short)
+    )
 
     // Every block the flow drew, with a real height and a real identity: an
     // empty list is what a measurement that failed to reach the DOM returns,
@@ -117,7 +103,9 @@ describe.skipIf(!hasBrowser)("the print's measurement pass", () => {
   }, 30_000)
 
   it("prints a document that fits on one sheet as one sheet", async () => {
-    const measurement = await inPrintBrowser((page) => measured(page, short))
+    const measurement = await inPrintBrowser((page) =>
+      measureOrFail(page, short)
+    )
 
     const { pages } = paginate(measurement.blocks, {
       contentHeight: measurement.contentHeight
@@ -126,9 +114,9 @@ describe.skipIf(!hasBrowser)("the print's measurement pass", () => {
     expect(pages).toHaveLength(1)
   }, 30_000)
 
-  it("breaks a longer document onto sheets that each carry the margin", async () => {
-    const sheets = await inPrintBrowser(async (page) => {
-      const measurement = await measured(page, long)
+  it("breaks a longer document onto the sheets the assignment asked for", async () => {
+    const { drawn, assigned } = await inPrintBrowser(async (page) => {
+      const measurement = await measureOrFail(page, long)
 
       const { pages } = paginate(measurement.blocks, {
         contentHeight: measurement.contentHeight
@@ -141,31 +129,96 @@ describe.skipIf(!hasBrowser)("the print's measurement pass", () => {
       })
       await page.evaluate(() => document.fonts.ready)
 
-      const drawn = await page.evaluate(() =>
-        [...document.querySelectorAll<HTMLElement>("[data-resume-page]")].map(
-          (sheet) => {
-            const style = getComputedStyle(sheet)
-
-            return {
-              top: Number.parseFloat(style.paddingTop),
-              bottom: Number.parseFloat(style.paddingBottom),
-              left: Number.parseFloat(style.paddingLeft),
-              right: Number.parseFloat(style.paddingRight)
-            }
-          }
-        )
-      )
-
-      expect(drawn).toHaveLength(pages.length)
-
-      return drawn
+      return { drawn: await sheetsOf(page), assigned: pages }
     })
+
+    // The sheets are the assignment, block for block and in order. Counting
+    // them is not enough: a renderer that drew the right number of pages and
+    // dealt the blocks itself would pass that and still be the drift this
+    // change exists to stop. The heading a continued page repeats carries no
+    // block key, so it does not appear here — see `ContinuedHeading`.
+    expect(drawn.map((sheet) => sheet.keys)).toEqual(
+      assigned.map((page) => page.blocks)
+    )
 
     // The margin is the sheet's own padding on every page, not page one's head
     // start from the document's padding — which is the whole bug.
-    for (const sheet of sheets) {
-      expect(sheet.top).toBeGreaterThan(0)
-      expect(sheet).toEqual(sheets[0])
+    //
+    // Asserted against the resolved page-space tokens rather than against
+    // "greater than zero": the preview draws its sheets from those same tokens,
+    // so a padding that stopped answering to them is the preview and the print
+    // disagreeing, and a token that regressed to a hairline would pass a
+    // non-zero test while printing a resume with no margins at all.
+    const { x, y } = drawn[0]!.pageSpace
+
+    expect(y).toBeGreaterThan(0)
+    expect(x).toBeGreaterThan(0)
+
+    // To the pixel rather than exactly: the padding is resolved by layout and
+    // the token by a probe, and the two round the same `calc` independently.
+    for (const sheet of drawn) {
+      expect(sheet.padding.top).toBeCloseTo(y, 0)
+      expect(sheet.padding.bottom).toBeCloseTo(y, 0)
+      expect(sheet.padding.left).toBeCloseTo(x, 0)
+      expect(sheet.padding.right).toBeCloseTo(x, 0)
     }
   }, 60_000)
 })
+
+/**
+ * Every sheet as drawn: what it padded itself by, and which blocks it holds.
+ *
+ * The page-space tokens come back resolved beside the padding, measured the way
+ * `measureResumeDocument` resolves its own token — a box of that height, put
+ * into the document that declares it and asked how tall it came out. A custom
+ * property read off `getComputedStyle` is handed back as its unsubstituted
+ * `calc`, and comparing padding against a number written here instead would be
+ * a second copy of the page's geometry: exactly the drift this suite exists to
+ * catch, reintroduced in the test.
+ */
+function sheetsOf(page: Page) {
+  return page.evaluate(() => {
+    const root = document.querySelector<HTMLElement>(".resume-document")!
+
+    function resolve(token: string): number {
+      const probe = document.createElement("div")
+
+      probe.style.position = "absolute"
+      probe.style.visibility = "hidden"
+      probe.style.width = "0"
+      probe.style.height = `var(${token})`
+
+      root.append(probe)
+
+      const height = probe.getBoundingClientRect().height
+
+      probe.remove()
+
+      return height
+    }
+
+    const pageSpace = {
+      x: resolve("--resume-space-page-x"),
+      y: resolve("--resume-space-page-y")
+    }
+
+    return [
+      ...document.querySelectorAll<HTMLElement>("[data-resume-page]")
+    ].map((sheet) => {
+      const style = getComputedStyle(sheet)
+
+      return {
+        pageSpace,
+        padding: {
+          top: Number.parseFloat(style.paddingTop),
+          bottom: Number.parseFloat(style.paddingBottom),
+          left: Number.parseFloat(style.paddingLeft),
+          right: Number.parseFloat(style.paddingRight)
+        },
+        keys: [
+          ...sheet.querySelectorAll<HTMLElement>("[data-resume-block]")
+        ].map((block) => block.dataset.resumeBlock ?? "")
+      }
+    })
+  })
+}

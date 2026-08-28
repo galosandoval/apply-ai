@@ -1,9 +1,9 @@
-import { chromium, type Page } from "playwright-core"
+import { type Page } from "playwright-core"
 import { describe, expect, it } from "vitest"
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { type ResumeStyle } from "~/lib/resume-style"
 import { printCss as css } from "~/generated/print-css"
-import { hasPrintBrowser } from "./print-test-support"
+import { hasPrintBrowser, inPrintBrowser } from "./print-test-support"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -66,10 +66,7 @@ describe.skipIf(!hasBrowser)("the printed document", () => {
   it.each(Object.entries(expected))(
     "renders %s in its own embedded face, fetching nothing",
     async (style, { family, drawsRules }) => {
-      const browser = await chromium.launch()
-
-      try {
-        const page = await browser.newPage()
+      await inPrintBrowser(async (page) => {
         const requested: string[] = []
 
         page.on("request", (request) => requested.push(request.url()))
@@ -112,9 +109,7 @@ describe.skipIf(!hasBrowser)("the printed document", () => {
         // employer name instead of wrapping — a bug only the browser can see,
         // because the markup for it is identical either way.
         expect(await overflowing(page)).toEqual([])
-      } finally {
-        await browser.close()
-      }
+      })
     },
     30_000
   )
@@ -158,10 +153,7 @@ async function measure(page: Page, style: ResumeStyle, sheet: string) {
 
 describe.skipIf(!hasBrowser)("the type scale", () => {
   it("moves with the style rather than being fixed on the root", async () => {
-    const browser = await chromium.launch()
-
-    try {
-      const page = await browser.newPage()
+    await inPrintBrowser(async (page) => {
       const classic = await measure(page, "classic", css!)
       const standard = await measure(page, "standard", css!)
       const modern = await measure(page, "modern", css!)
@@ -177,9 +169,7 @@ describe.skipIf(!hasBrowser)("the type scale", () => {
       const shapes = [classic, standard, modern].map((at) => JSON.stringify(at))
 
       expect(new Set(shapes).size).toBe(3)
-    } finally {
-      await browser.close()
-    }
+    })
   }, 30_000)
 })
 
