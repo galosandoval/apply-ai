@@ -132,9 +132,11 @@ Vercel, from `development` — push and it builds. `vercel.json` runs migrations
 before the build, so a bad migration fails the deploy instead of the app.
 
 The PDF route prints with a real Chromium, which the Vercel runtime does not
-have: `@sparticuz/chromium` ships in the function bundle. See
-[docs/deploy-vercel.md](docs/deploy-vercel.md) for the environment variables and
-the parts that are easy to get wrong.
+have: `@sparticuz/chromium` ships in the function bundle.
+
+The same four variables from Configuration are set in the Vercel project, and
+`src/env.ts` validates them at build time — a missing one fails the deploy
+rather than the first request.
 
 <!-- ROADMAP -->
 

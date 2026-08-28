@@ -15,7 +15,12 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string().min(1)
         : z.string().min(1).optional(),
-    /** Origin the app is served from. better-auth signs callbacks against it. */
+    /**
+     * Origin the app is served from. better-auth signs callbacks against it,
+     * and rejects any request whose `Origin` header differs — so this is the
+     * exact scheme and host the browser lands on, no trailing slash, no path.
+     * Never `VERCEL_URL`: that changes every deployment.
+     */
     APP_URL: z.string().url(),
     OPENAI_API_KEY: z.string().min(1)
   },
