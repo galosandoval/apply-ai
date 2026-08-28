@@ -65,6 +65,20 @@ export type ResumeBlockDraft = {
   space: ResumeBlockSpace
   node: ReactNode
   /**
+   * Drawn for the editor and nowhere else — so measured by nothing.
+   *
+   * An empty section is a visible placeholder under a heading in the editor and
+   * absent entirely from the print. Both are real blocks with real height on
+   * screen, and a page charged for them is a page that breaks where the PDF
+   * will not and a page count the printed document does not have. The length of
+   * a resume is the one fact a stack of sheets exists to tell the truth about,
+   * so the editor's own furniture is not allowed to move it.
+   *
+   * The blocks are still drawn, still selectable and still in document order.
+   * They are only left out of the arithmetic.
+   */
+  editorOnly?: boolean
+  /**
    * What clicking this block selects, when the document is being edited.
    *
    * Held here rather than drawn inside the node because one job is several

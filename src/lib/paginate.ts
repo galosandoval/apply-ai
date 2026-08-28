@@ -186,3 +186,34 @@ function trailingHeadings(current: MeasuredBlock[]): MeasuredBlock[] {
 function usableHeight(height: number): number {
   return Number.isFinite(height) ? Math.max(0, height) : 0
 }
+
+/**
+ * Whether two assignments say the same thing about the same document.
+ *
+ * The renderer measures the document it has just drawn, so it paginates far
+ * more often than the answer changes — every keystroke and every hover over a
+ * style button produces a fresh result, and almost all of them agree with the
+ * one already held. Storing an agreeing result would redraw the document for
+ * nothing, and the redraw is what a measure-render-measure loop turns into an
+ * oscillation. This is the test that stops it.
+ *
+ * Page order, block order and the continued heading all count: each of them is
+ * something the reader would see change.
+ */
+export function isSamePagination(
+  left: PaginatedPage[],
+  right: PaginatedPage[]
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((page, index) => isSamePage(page, right[index]))
+  )
+}
+
+function isSamePage(left: PaginatedPage, right: PaginatedPage | undefined) {
+  return (
+    left.continuedFrom === right?.continuedFrom &&
+    left.blocks.length === right.blocks.length &&
+    left.blocks.every((key, index) => key === right.blocks[index])
+  )
+}

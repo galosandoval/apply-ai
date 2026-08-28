@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type PaginationBlock, paginate } from "./paginate"
+import { isSamePagination, type PaginationBlock, paginate } from "./paginate"
 
 /**
  * The break policy, exercised without a browser.
@@ -359,5 +359,64 @@ describe("paginate — degenerate input", () => {
     paginate(blocks, { contentHeight: 100 })
 
     expect(blocks).toEqual(before)
+  })
+})
+
+/*
+  The renderer measures the document it just drew, so it re-paginates far more
+  often than the answer actually changes: every keystroke, every hover over a
+  style button. Storing an assignment that agrees with the one held would
+  re-render the document for nothing, which is the flicker this comparison
+  exists to have stopped.
+*/
+describe("isSamePagination", () => {
+  const page = (blocks: string[], continuedFrom: string | null = null) => ({
+    blocks,
+    continuedFrom
+  })
+
+  it("holds a fresh result equal to the one it was computed from", () => {
+    const blocks = [heading("h", 40, "experience"), block("a", 120)]
+    const first = paginate(blocks, { contentHeight: 300 })
+    const second = paginate(blocks, { contentHeight: 300 })
+
+    expect(isSamePagination(first.pages, second.pages)).toBe(true)
+  })
+
+  it("separates assignments with a different number of pages", () => {
+    expect(isSamePagination([page(["a"])], [page(["a"]), page(["b"])])).toBe(
+      false
+    )
+  })
+
+  it("separates assignments that put a block on a different page", () => {
+    const left = [page(["a", "b"]), page(["c"])]
+    const right = [page(["a"]), page(["b", "c"])]
+
+    expect(isSamePagination(left, right)).toBe(false)
+  })
+
+  it("separates a page that continues a section from one that starts it", () => {
+    expect(isSamePagination([page(["a"], "experience")], [page(["a"])])).toBe(
+      false
+    )
+  })
+
+  it("separates two pages continued from different sections", () => {
+    expect(
+      isSamePagination([page(["a"], "experience")], [page(["a"], "education")])
+    ).toBe(false)
+  })
+
+  /*
+    Order is the assignment. Two pages holding the same keys in a different
+    order is a document that reads differently, not the same one.
+  */
+  it("separates pages whose blocks are in a different order", () => {
+    expect(isSamePagination([page(["a", "b"])], [page(["b", "a"])])).toBe(false)
+  })
+
+  it("holds two empty assignments equal", () => {
+    expect(isSamePagination([], [])).toBe(true)
   })
 })

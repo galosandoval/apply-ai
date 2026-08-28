@@ -423,6 +423,12 @@ describe("the other component shapes", () => {
   })
 })
 
+/** Each block's opening tag, in document order. */
+const blockTags = (html: string) =>
+  [...html.matchAll(/<div[^>]*data-resume-block="[^"]*"[^>]*>/g)].map(
+    ([tag]) => tag
+  )
+
 describe("empty sections", () => {
   const empty = withSections([
     section({
@@ -444,6 +450,41 @@ describe("empty sections", () => {
 
     expect(html).toContain("Summary")
     expect(html).toContain("resume-section-placeholder")
+  })
+
+  /*
+    The placeholder and the heading over it are editor furniture: the print has
+    neither. Measured, they would charge a page for height the PDF never draws,
+    and the editor would announce a page count the document does not have — the
+    one fact a stack of sheets exists to tell the truth about.
+  */
+  it("marks a placeholder and its heading as drawn for the editor only", async () => {
+    const html = await renderResumeHtml(empty, { isEditor: true })
+
+    const marked = blockTags(html).filter((tag) =>
+      tag.includes('data-resume-editor-only="true"')
+    )
+
+    // The section's heading and its placeholder, and not the header above them.
+    expect(marked).toHaveLength(2)
+    expect(marked[0]).toContain('data-resume-block-kind="heading"')
+    expect(marked[1]).toContain('data-resume-block-kind="paragraph"')
+  })
+
+  it("marks nothing editor-only in a section that has content", async () => {
+    const filled = withSections([
+      section({
+        id: "r",
+        label: "Summary",
+        componentType: "richText",
+        content: { markdown: "Something worth reading." }
+      })
+    ])
+
+    const html = await renderResumeHtml(filled, { isEditor: true })
+
+    expect(blockTags(html).length).toBeGreaterThan(0)
+    expect(html).not.toContain("data-resume-editor-only")
   })
 })
 

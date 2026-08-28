@@ -376,10 +376,18 @@ export function sectionBlocks({
 
   if (empty && !render.isEditor) return []
 
-  const drafts = [
-    headingBlock(label),
-    ...(empty ? [placeholderBlock()] : toBlocks(shape, render.mode))
-  ]
+  /*
+    An empty section is a heading over a placeholder, and neither is in the
+    print — so neither is measured. The heading is marked along with the
+    placeholder because a heading over nothing is as absent from the PDF as the
+    placeholder is: `sectionBlocks` returns no blocks at all outside the editor.
+  */
+  const drafts = empty
+    ? [
+        { ...headingBlock(label), editorOnly: true },
+        { ...placeholderBlock(), editorOnly: true }
+      ]
+    : [headingBlock(label), ...toBlocks(shape, render.mode)]
 
   return withBlockKeys(sectionId, closingSection(ownedBy(select, drafts)))
 }

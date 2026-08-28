@@ -727,23 +727,4 @@
       margin-bottom: 0;
     }
   }
-
-  /*
-    Where each page would end, drawn over a document that is still one sheet.
-
-    Editor chrome rather than part of the document, so the colour is a plain
-    value here and not a resume token: the styles are what the printed page
-    looks like, and this is never printed. What it does read from the tokens is
-    the page height, so the mark it draws cannot disagree with the sheet it
-    claims to be marking.
-  */
-  .resume-page-rule {
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(var(--resume-page-height) - 1px),
-      rgba(220, 38, 38, 0.5) calc(var(--resume-page-height) - 1px),
-      rgba(220, 38, 38, 0.5) var(--resume-page-height)
-    );
-  }
 }

@@ -501,9 +501,12 @@ const runSpaceClass: Record<ResumeBlockSpace, string> = {
  * how a nine-bullet role comes to waste most of a page. The block is the unit
  * that is never cut, and it is deliberately smaller than an entry.
  *
- * The key and the kind are in the markup because measurement happens over the
- * rendered document — in the editor's DOM and in the PDF's browser — and a
- * height is worth nothing without the block it was taken from.
+ * The key, the kind and the section are in the markup because measurement
+ * happens over the rendered document — in the editor's DOM and in the PDF's
+ * browser — and a height is worth nothing without the block it was taken from.
+ * The section is there because a break is decided per section as well as per
+ * block: a page that opens mid-section is charged for the heading redrawn at
+ * the top of it.
  */
 function ResumeBlockElement({ block }: { block: ResumeBlock }) {
   const className = [
@@ -519,6 +522,8 @@ function ResumeBlockElement({ block }: { block: ResumeBlock }) {
       className={className}
       data-resume-block={block.key}
       data-resume-block-kind={block.kind}
+      data-resume-editor-only={block.editorOnly ? "true" : undefined}
+      data-resume-section={block.sectionId}
     >
       {block.node}
     </div>

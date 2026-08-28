@@ -132,7 +132,7 @@ const everyShape: ResumeDocumentData = {
 function documentBlocks(html: string) {
   const opens = [
     ...html.matchAll(
-      /<div class="([^"]*)" data-resume-block="([^"]*)" data-resume-block-kind="([^"]*)">/g
+      /<div class="([^"]*)" data-resume-block="([^"]*)" data-resume-block-kind="([^"]*)" data-resume-section="([^"]*)">/g
     )
   ]
 

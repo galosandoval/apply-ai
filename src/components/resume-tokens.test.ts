@@ -370,13 +370,6 @@ describe("the page geometry", async () => {
     expect(derived).toContain("var(--resume-space-page-y)")
   })
 
-  it("draws the editor's page boundary from the page height", () => {
-    const rule = bodyForSelector(".resume-page-rule")
-
-    expect(rule, ".resume-page-rule is missing").not.toBe("")
-    expect(rule).toContain("var(--resume-page-height)")
-  })
-
   /*
     A sheet is a page element now, so the two facts that make a stack of them
     read as paper are CSS rather than markup: the space between sheets, and its
