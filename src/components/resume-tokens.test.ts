@@ -199,7 +199,6 @@ describe("the style overlays", async () => {
         "--resume-heading-case",
         "--resume-rule-weight",
         "--resume-left-column-width",
-        "--resume-date-align",
         "--resume-ink-accent"
       ]) {
         expect(block, `${name} does not set ${token}`).toContain(token)
@@ -371,25 +370,78 @@ describe("the page geometry", async () => {
     expect(derived).toContain("var(--resume-space-page-y)")
   })
 
-  it("draws the editor's page boundary from the page height", () => {
-    const rule = bodyForSelector(".resume-page-rule")
+  /*
+    A sheet is a page element now, so the two facts that make a stack of them
+    read as paper are CSS rather than markup: the space between sheets, and its
+    absence in print. Held here because both are geometry the styles own — a
+    component that spelt either out would be a document the overlays cannot
+    respace and a print that keeps a gap that has nothing to show.
+  */
+  it("puts the gap between sheets on the page element, from the token", () => {
+    const sheet = bodyForSelector(".resume-page-sheet:not(:last-child)")
 
-    expect(rule, ".resume-page-rule is missing").not.toBe("")
-    expect(rule).toContain("var(--resume-page-height)")
+    expect(sheet, "the between-sheets rule is missing").not.toBe("")
+    expect(sheet).toContain("var(--resume-page-gap)")
+  })
+
+  it("ends each sheet but the last with a forced break, and no gap in print", () => {
+    expect(bodyForSelector(".resume-page-sheet:not(:last-child)")).toContain(
+      "break-after: page"
+    )
+
+    // The gap is the app's background between two pieces of paper. On paper
+    // the sheets are already separate, so what would be left is a margin the
+    // print has to find room for — which is a third page for two pages of
+    // content.
+    const printed =
+      /@media print \{\s*\.resume-page-sheet:not\(:last-child\) \{([^}]*)\}/.exec(
+        css
+      )?.[1] ?? ""
+
+    expect(printed, "the between-sheets rule has no print value").not.toBe("")
+    expect(printed).toContain("margin-bottom: 0")
   })
 
   /*
-    The stylesheet is the one copy. A component that spelt the height out again
-    would be a page the styles cannot resize and a boundary that could drift
-    from the sheet it claims to mark.
+    Both between-sheets rules stop short of the last sheet. A trailing margin is
+    a gap below nothing, and a trailing forced break is the blank final page
+    Chromium prints for it — a two-page resume that comes out three pages long.
   */
+  it("leaves the last sheet no trailing gap and no trailing break", () => {
+    const every = bodyForSelector(".resume-page-sheet")
+
+    expect(every, ".resume-page-sheet is missing").not.toBe("")
+    expect(every).not.toContain("margin-bottom")
+    expect(every).not.toContain("break-after")
+  })
+
+  /*
+    A sheet is positioned so the stack can be ordered in reverse — see `Sheet`.
+    Without it a block too tall for its page paints under the next sheet's
+    background, which is the clipping the document is built not to do, arrived
+    at by paint order rather than by `overflow-hidden`.
+  */
+  it("positions a sheet so an overflow can paint over the page below", () => {
+    const sheet = bodyForSelector(".resume-page-sheet")
+
+    expect(sheet).toContain("position: relative")
+    expect(sheet).toContain("var(--resume-page-order")
+  })
+
   it("leaves no A4 literal in any component", async () => {
     const paths = (
       await readdir(join(process.cwd(), "src"), {
         recursive: true
       })
     )
-      .filter((path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path))
+      .filter(
+        (path) =>
+          /\.tsx?$/.test(path) &&
+          !/\.test\.tsx?$/.test(path) &&
+          // `src/generated` is compiled output, not a component. The print
+          // stylesheet resolves the token, so of course the height is in it.
+          !/^generated[\\/]/.test(path)
+      )
       .map((path) => join("src", path))
 
     const offenders: string[] = []

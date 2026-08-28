@@ -2,7 +2,7 @@ import { chromium, type Page } from "playwright-core"
 import { describe, expect, it } from "vitest"
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { type ResumeStyle } from "~/lib/resume-style"
-import { findCompiledCss } from "./compiled-css"
+import { printCss as css } from "~/generated/print-css"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -20,27 +20,34 @@ import { resumePdfDocument } from "./resume-html"
  * is embedded and in use, and that the page fetched nothing to get it.
  */
 
-// The very sheet the PDF route reads, not a second copy of how to find it.
-const css = await findCompiledCss()
-
 /**
  * Skipping is a local convenience, and only that.
  *
- * Without a build there is nothing to print, so `npm test` on a clean checkout
- * skips rather than failing for the wrong reason. But a suite that silently
- * asserts nothing is worse than no suite: this is the only thing standing
- * between the print and a system fallback. `npm run test:pdf` builds first and
- * sets this, which turns the skip into a failure.
+ * The sheet is no longer what can be missing — `pretest` generates it, so it is
+ * always there. Chromium is: `playwright-core` ships no browser, and a checkout
+ * that has never run `npx playwright install` should skip rather than fail for
+ * the wrong reason.
+ *
+ * But a suite that silently asserts nothing is worse than no suite, and this is
+ * the only thing standing between the print and a system fallback. So
+ * `REQUIRE_PDF_TESTS=1` — set by `npm run test:pdf`, and worth setting in CI —
+ * turns the skip into a failure.
  */
-if (!css && process.env.REQUIRE_PDF_TESTS === "1") {
+const hasBrowser = await chromium
+  .launch()
+  .then((browser) => browser.close())
+  .then(() => true)
+  .catch(() => false)
+
+if (!hasBrowser && process.env.REQUIRE_PDF_TESTS === "1") {
   throw new Error(
-    "REQUIRE_PDF_TESTS=1 but nothing is built — run `next build` before this suite."
+    "REQUIRE_PDF_TESTS=1 but no browser launched — run `npx playwright install chromium`."
   )
 }
 
-if (!css) {
+if (!hasBrowser) {
   console.warn(
-    "pdf-fonts.test.ts: skipped, no build under .next/static. `npm run test:pdf` runs it."
+    "pdf-fonts.test.ts: skipped, no Chromium. `npx playwright install chromium` enables it."
   )
 }
 
@@ -83,7 +90,7 @@ const expected: Record<ResumeStyle, { family: string; drawsRules: boolean }> = {
   modern: { family: "Manrope Variable", drawsRules: false }
 }
 
-describe.skipIf(!css)("the printed document", () => {
+describe.skipIf(!hasBrowser)("the printed document", () => {
   it.each(Object.entries(expected))(
     "renders %s in its own embedded face, fetching nothing",
     async (style, { family, drawsRules }) => {
@@ -177,7 +184,7 @@ async function measure(page: Page, style: ResumeStyle, sheet: string) {
   }))
 }
 
-describe.skipIf(!css)("the type scale", () => {
+describe.skipIf(!hasBrowser)("the type scale", () => {
   it("moves with the style rather than being fixed on the root", async () => {
     const browser = await chromium.launch()
 

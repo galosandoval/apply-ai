@@ -52,6 +52,10 @@ type MeasuredBlock = { block: PaginationBlock; height: number }
  *
  * - A block taller than a whole page gets a page to itself and overflows.
  *   Dropping or cutting it is the failure this function exists to have stopped.
+ * - A page that opens mid-section is charged for the heading the renderer
+ *   redraws at the top of it. The repeat is real height on a real page, and a
+ *   page budgeted as though it were not there is a page that is one heading too
+ *   full every time a section spans a break.
  * - A heading is never the last block on a page. It travels to the next page
  *   with the block it announces, and where no arrangement can give both a page
  *   they fit on, they overflow together rather than come apart — an overflowing
@@ -74,6 +78,33 @@ export function paginate(
 
   /** Sections with a block on a page already sealed — see `seal`. */
   const openedSections = new Set<string>()
+
+  /**
+   * What each section's heading costs, by the first one the document draws.
+   *
+   * The renderer repeats that same block at the top of a continued page, so it
+   * is the same height by construction. A section with no heading is absent and
+   * costs nothing, which is a page that opens straight into its content.
+   */
+  const headingHeights = new Map<string, number>()
+
+  for (const block of blocks) {
+    if (block.kind === "heading" && !headingHeights.has(block.sectionId)) {
+      headingHeights.set(block.sectionId, usableHeight(block.height))
+    }
+  }
+
+  /**
+   * The height a page loses to the heading redrawn above `first`.
+   *
+   * Nothing unless `first` is content of a section already opened on an earlier
+   * page — which is the same test `seal` makes to decide `continuedFrom`, asked
+   * one page earlier so the budget knows before the page is filled.
+   */
+  const continuationCost = (first: PaginationBlock | undefined) =>
+    first?.kind === "content" && openedSections.has(first.sectionId)
+      ? (headingHeights.get(first.sectionId) ?? 0)
+      : 0
 
   /**
    * Ends a page and records what it opened, so the page after it can tell
@@ -119,6 +150,11 @@ export function paginate(
       }
     }
 
+    // A fresh page pays for its continued heading before its first block lands
+    // on it, so everything measured against `contentHeight` after this is
+    // measured against what is actually left.
+    if (current.length === 0) used = continuationCost(block)
+
     current.push(measured)
     used += measured.height
   }
@@ -149,4 +185,35 @@ function trailingHeadings(current: MeasuredBlock[]): MeasuredBlock[] {
  */
 function usableHeight(height: number): number {
   return Number.isFinite(height) ? Math.max(0, height) : 0
+}
+
+/**
+ * Whether two assignments say the same thing about the same document.
+ *
+ * The renderer measures the document it has just drawn, so it paginates far
+ * more often than the answer changes — every keystroke and every hover over a
+ * style button produces a fresh result, and almost all of them agree with the
+ * one already held. Storing an agreeing result would redraw the document for
+ * nothing, and the redraw is what a measure-render-measure loop turns into an
+ * oscillation. This is the test that stops it.
+ *
+ * Page order, block order and the continued heading all count: each of them is
+ * something the reader would see change.
+ */
+export function isSamePagination(
+  left: PaginatedPage[],
+  right: PaginatedPage[]
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((page, index) => isSamePage(page, right[index]))
+  )
+}
+
+function isSamePage(left: PaginatedPage, right: PaginatedPage | undefined) {
+  return (
+    left.continuedFrom === right?.continuedFrom &&
+    left.blocks.length === right.blocks.length &&
+    left.blocks.every((key, index) => key === right.blocks[index])
+  )
 }

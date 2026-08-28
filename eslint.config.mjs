@@ -8,7 +8,9 @@ export default tseslint.config(
       "node_modules/**",
       "migrations/**",
       "playwright-report/**",
-      "test-results/**"
+      "test-results/**",
+      // Compiled output, not source — see `scripts/build-print-css.ts`.
+      "src/generated/**"
     ]
   },
   ...nextCoreWebVitals,

@@ -1,4 +1,4 @@
-import { Fragment } from "react"
+import { Fragment, type ReactNode } from "react"
 import {
   customSectionShape,
   type EntryPart,
@@ -9,10 +9,12 @@ import {
   type TwoColumnRow
 } from "~/components/resume-section"
 import {
+  inDocumentOrder,
   type ResumeBlock,
   type ResumeBlockSpace,
   withBlockKeys
 } from "~/lib/resume-blocks"
+import { type PaginatedPage } from "~/lib/paginate"
 import {
   isSameSelection,
   type ResumeSelection,
@@ -128,11 +130,24 @@ export function ResumeDocument({
   data,
   mode = "page",
   isEditor = false,
+  pages,
   selection
 }: {
   data: ResumeDocumentData
   mode?: RenderMode
   isEditor?: boolean
+  /**
+   * Where the breaks fall, from `paginate` — or nothing, for the flow.
+   *
+   * Without it the document is one continuous run of blocks, which is what the
+   * PDF measures on its first pass and what the structural tests read. With it
+   * the same blocks are dealt onto sheets of paper. The renderer decides
+   * nothing about where a break lands; it is handed the answer.
+   *
+   * Ignored in reflow. A phone is not a page, and a stack of A4 sheets on one
+   * is a document nobody can read — see `RenderMode`.
+   */
+  pages?: PaginatedPage[]
   selection?: DocumentSelection
 }) {
   const doc: Doc = { data, render: { mode, isEditor }, selection }
@@ -143,6 +158,12 @@ export function ResumeDocument({
     (left, right) => left.position - right.position
   )
 
+  const blocks = documentBlocks(doc, sections)
+
+  // The assignment only applies where there is paper to apply it to: reflow is
+  // a phone, and a stack of A4 sheets on one is a document nobody can read.
+  const activePages = mode === "page" && pages ? pages : null
+
   return (
     /*
       Normal flow, not a fixed page height with `overflow-hidden`: content past
@@ -150,12 +171,194 @@ export function ResumeDocument({
       still has a printable width in page mode; height is whatever the content
       needs. What one sheet has room for is `--resume-page-content-height`, for
       whoever asks.
+
+      An assignment turns that flow into a stack of sheets, and the sheets do
+      have the height — but still nothing that hides what does not fit. A page
+      visibly too full is a bug the user can see; a page that quietly ate a
+      paragraph is not.
     */
     <div
-      className={documentClassName(mode, toResumeStyle(data.style))}
+      className={documentClassName(
+        mode,
+        toResumeStyle(data.style),
+        activePages !== null
+      )}
       style={accentOverride(data.accent)}
     >
-      <BlockFlow blocks={documentBlocks(doc, sections)} />
+      {activePages ? (
+        <PageStack blocks={blocks} pages={activePages} />
+      ) : (
+        <BlockFlow blocks={blocks} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * The paper itself: its background and the margin printed inside it.
+ *
+ * One copy, because a page and the continuous document are the same paper —
+ * respelt in two places it is a sheet that could quietly stop matching the
+ * flow the PDF measured.
+ */
+const paperClassName = "bg-resume-paper px-resume-page-x py-resume-page-y"
+
+/**
+ * One sheet of paper, as a class list.
+ *
+ * Exactly A4 in both dimensions — the height is a token like the width has
+ * always been, so a page is the size of the thing it will be printed on rather
+ * than the size of whatever happens to be on it. The margin is padding *inside*
+ * the sheet, on all four sides, because the border box is the paper.
+ *
+ * Nothing here hides an overflow, deliberately: read the comment in
+ * `ResumeDocument` about the page that used to clip. `relative` is what makes
+ * that promise true rather than merely unhidden — see `Sheet`. The gap to the
+ * next sheet and the break that ends it are `.resume-page-sheet` in
+ * `global.css`, which a utility cannot say.
+ */
+const pageClassName = `resume-page resume-page-sheet ${paperClassName} relative h-resume-page w-resume-page rounded-resume-page`
+
+/**
+ * The document dealt onto sheets, one element per assigned page.
+ *
+ * A page holds the blocks it was assigned and nothing else, looked up by key —
+ * the assignment travels as keys rather than as blocks so that it stays cheap
+ * to compare against the last one, and a key that no longer names a block is a
+ * block that was edited away between the measurement and this render, which
+ * drops out rather than throwing.
+ */
+function PageStack({
+  blocks,
+  pages
+}: {
+  blocks: ResumeBlock[]
+  pages: PaginatedPage[]
+}) {
+  const byKey = new Map(blocks.map((block) => [block.key, block]))
+  const assigned = new Set(pages.flatMap((page) => page.blocks))
+  const unassigned = blocks.filter((block) => !assigned.has(block.key))
+  const total = pages.length + (unassigned.length > 0 ? 1 : 0)
+
+  return (
+    <>
+      {pages.map((page, index) => (
+        <Sheet
+          blocks={page.blocks.flatMap((key) => byKey.get(key) ?? [])}
+          heading={
+            page.continuedFrom &&
+            continuationHeading(blocks, page.continuedFrom)
+          }
+          index={index}
+          key={page.blocks[0] ?? `empty:${index}`}
+          total={total}
+        />
+      ))}
+
+      {/*
+        Whatever the assignment did not name, on a sheet of its own.
+
+        An assignment is a measurement of a document as it was a moment ago, and
+        a block added since is a block no page claims. Drawing them is the same
+        choice the overflowing page is: a resume with an unexpected last page is
+        a document the user can see is wrong, and one that quietly lost a job is
+        not. The next measurement replaces the assignment and the page goes.
+
+        It is marked, because it is not one of the pages that were assigned: a
+        parser counting the assignment against the markup would otherwise find
+        one page more than it asked for and have no way to tell which.
+      */}
+      {unassigned.length > 0 && (
+        <Sheet
+          blocks={unassigned}
+          index={pages.length}
+          isUnassigned
+          total={total}
+        />
+      )}
+    </>
+  )
+}
+
+/**
+ * One page element: a sheet of paper with blocks on it.
+ *
+ * One component rather than two near-identical elements, because an assigned
+ * page and the sheet that catches what the assignment missed are the same piece
+ * of paper — spelt twice, they are two sheets that can quietly stop matching.
+ *
+ * `--resume-page-order` stacks the sheets in reverse: the first page paints
+ * above the second, the second above the third. Without it a block too tall for
+ * its page runs *under* the next sheet's opaque background, which is the
+ * clipping the document comment forbids, arrived at by paint order instead of
+ * by `overflow-hidden`. Reversed, the overflow lands on top of the page below
+ * and is a bug the user can see — which is the whole point.
+ *
+ * It is markup rather than style because it counts the sheets, and CSS cannot;
+ * `.resume-page-sheet` in `global.css` is what reads it.
+ */
+function Sheet({
+  blocks,
+  heading,
+  index,
+  isUnassigned = false,
+  total
+}: {
+  blocks: ResumeBlock[]
+  heading?: ReactNode
+  index: number
+  isUnassigned?: boolean
+  total: number
+}) {
+  return (
+    <div
+      className={pageClassName}
+      data-resume-page={index}
+      data-resume-page-unassigned={isUnassigned ? "true" : undefined}
+      style={{ "--resume-page-order": total - index } as React.CSSProperties}
+    >
+      {heading}
+
+      <BlockFlow blocks={blocks} />
+    </div>
+  )
+}
+
+/**
+ * The heading of the section a page picks up part-way through, redrawn.
+ *
+ * The same title and the same rule in the same tokens, so a reader arriving at
+ * the top of page two knows what they are looking at. The native mechanism for
+ * this is a table `thead`, and a layout table is on the permanent exclusion
+ * list — see `docs/resume-style.md`. So the heading is repeated from the
+ * assignment instead.
+ *
+ * It carries no block key. The key is what a measurement is filed under, and
+ * two elements answering to one key is a height measured twice; this element is
+ * a repeat of a block rather than a block. `data-resume-continued` is how a
+ * parser — or a test — tells it from a genuine second section of the same name,
+ * and the title itself is left alone: appending "(continued)" would be the
+ * renderer editing the user's own section name.
+ *
+ * The height it costs is not free, and `paginate` reserves it: a page that
+ * opens mid-section is measured with one heading already on it.
+ */
+function continuationHeading(blocks: ResumeBlock[], sectionId: string) {
+  const heading = blocks.find(
+    (block) => block.sectionId === sectionId && block.kind === "heading"
+  )
+
+  // A section drawn without a heading has none to repeat, which is a page that
+  // opens straight into its content — the same thing the flow does.
+  if (!heading) return null
+
+  return (
+    <div
+      className="break-inside-avoid break-after-avoid"
+      data-resume-block-kind="heading"
+      data-resume-continued="true"
+    >
+      {heading.node}
     </div>
   )
 }
@@ -169,7 +372,7 @@ export function ResumeDocument({
  * is the property the nesting could not have.
  */
 function documentBlocks(doc: Doc, sections: ResumeDocumentSection[]) {
-  return [
+  return inDocumentOrder([
     /*
       The header is its own one-block section. It belongs to no section the
       user owns, and every block has to name one — so it names the same thing
@@ -185,7 +388,7 @@ function documentBlocks(doc: Doc, sections: ResumeDocumentSection[]) {
       }
     ]),
     ...sections.flatMap((section) => sectionBlocksFor(doc, section))
-  ]
+  ])
 }
 
 /**
@@ -299,9 +502,15 @@ const runSpaceClass: Record<ResumeBlockSpace, string> = {
  * how a nine-bullet role comes to waste most of a page. The block is the unit
  * that is never cut, and it is deliberately smaller than an entry.
  *
- * The key and the kind are in the markup because measurement happens over the
- * rendered document — in the editor's DOM and in the PDF's browser — and a
- * height is worth nothing without the block it was taken from.
+ * The key, the kind, the section and the order are in the markup because
+ * measurement happens over the rendered document — in the editor's DOM and in
+ * the PDF's browser — and a height is worth nothing without the block it was
+ * taken from. The section is there because a break is decided per section as
+ * well as per block: a page that opens mid-section is charged for the heading
+ * redrawn at the top of it. The order is there because the drawn order is the
+ * last assignment's, not the document's — see `inDocumentOrder`.
+ *
+ * `readResumeBlock` below is the only thing that reads any of it back.
  */
 function ResumeBlockElement({ block }: { block: ResumeBlock }) {
   const className = [
@@ -317,14 +526,74 @@ function ResumeBlockElement({ block }: { block: ResumeBlock }) {
       className={className}
       data-resume-block={block.key}
       data-resume-block-kind={block.kind}
+      data-resume-block-order={block.order}
+      data-resume-editor-only={block.editorOnly ? "true" : undefined}
+      data-resume-section={block.sectionId}
     >
       {block.node}
     </div>
   )
 }
 
+/** Where a measurer finds the document, its sheets and the blocks on them. */
+export const resumeDocumentSelector = ".resume-document"
+export const resumePageSelector = "[data-resume-page]"
+export const resumeBlockSelector = "[data-resume-block]"
+
+/** The token holding what one sheet has room for, declared on the document. */
+export const resumePageContentHeightToken = "--resume-page-content-height"
+
+/** What one drawn block says about itself. */
+export type DrawnResumeBlock = {
+  key: string
+  sectionId: string
+  kind: "heading" | "content"
+  /** Its place in the document, which is not its place on the paper. */
+  order: number
+  isEditorOnly: boolean
+}
+
 /**
- * The page, or the phone, in one of three styles.
+ * One drawn block's identity, read back off the element that carries it.
+ *
+ * Here rather than beside the measurer because this is where the attributes are
+ * written: spelt on both sides of the module boundary, a rename is a silent
+ * break — every block reads as unidentifiable, drops out of the measurement,
+ * and the document lands on a leftover sheet with no error anywhere.
+ *
+ * An element missing any of it is not a block this can answer for, and is left
+ * out rather than filed under an empty name: a measurement filed under `""`
+ * collides silently with every other one. The heading a continued page repeats
+ * has no key at all — it is a repeat of a block rather than a block, and
+ * `paginate` already budgets for it — so it falls out here.
+ */
+export function readResumeBlock(element: HTMLElement): DrawnResumeBlock | null {
+  const {
+    resumeBlock: key,
+    resumeSection: sectionId,
+    resumeBlockKind: kind,
+    resumeBlockOrder: order,
+    resumeEditorOnly: editorOnly
+  } = element.dataset
+
+  // `Number.isFinite` rather than a truth test: the header is order zero, and
+  // dropping the first block of every document is not the sort of thing a
+  // measurement complains about — it just quietly draws it on the wrong sheet.
+  const position = Number(order)
+
+  if (!key || !sectionId || !Number.isFinite(position)) return null
+
+  return {
+    key,
+    sectionId,
+    kind: kind === "heading" ? "heading" : "content",
+    order: position,
+    isEditorOnly: Boolean(editorOnly)
+  }
+}
+
+/**
+ * The page, the stack of pages, or the phone — in one of three styles.
  *
  * Both are one class that re-values tokens — everything below reads the same
  * tokens, which is why the two modes cannot disagree about what the document
@@ -332,16 +601,30 @@ function ResumeBlockElement({ block }: { block: ResumeBlock }) {
  * fourth direction is an overlay in `global.css` and a name in
  * `~/lib/resume-style`; nothing in this file changes.
  *
- * Each mode carries its own marker class. `resume-page` names the A4 page and
+ * Each mode carries its own marker class. `resume-page` names an A4 page and
  * nothing else, so an assertion about the page is not also an assertion about
- * the phone.
+ * the phone. Paginated, the pages are below this element and carry it one
+ * each; the document itself is only what holds them.
  */
-function documentClassName(mode: RenderMode, style: ResumeStyle) {
-  const shared = `resume-document ${resumeStyleClass(style)} bg-resume-paper px-resume-page-x py-resume-page-y text-resume-body`
+function documentClassName(
+  mode: RenderMode,
+  style: ResumeStyle,
+  isPaginated: boolean
+) {
+  const shared = `resume-document ${resumeStyleClass(style)} text-resume-body`
 
-  return mode === "page"
-    ? `${shared} resume-page w-resume-page rounded-resume-page`
-    : `${shared} resume-reflow w-full`
+  if (mode !== "page") return `${shared} ${paperClassName} resume-reflow w-full`
+
+  /*
+    A stack of pages is not itself a page. Each sheet carries the paper, the
+    margin, the corners and the `resume-page` marker; what shows between them is
+    the app's own background, which is the whole reason a second page reads as a
+    second page at a glance. Unpaginated, the document is still the one sheet it
+    always was, and still the thing `resume-page` names.
+  */
+  return isPaginated
+    ? shared
+    : `${shared} ${paperClassName} resume-page w-resume-page rounded-resume-page`
 }
 
 /**

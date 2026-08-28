@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run db:migrate && npm run build",
+  "functions": {
+    "src/app/api/resume/pdf/route.ts": {
+      "memory": 2048
+    }
+  }
+}

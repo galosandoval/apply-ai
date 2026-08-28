@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type PaginationBlock, paginate } from "./paginate"
+import { isSamePagination, type PaginationBlock, paginate } from "./paginate"
 
 /**
  * The break policy, exercised without a browser.
@@ -248,6 +248,57 @@ describe("paginate — continued sections", () => {
 
     expect(pages[1]?.continuedFrom).toBe("contact")
   })
+
+  /*
+    The renderer redraws the heading at the top of a continued page, so that
+    heading is real height on a real page. Budgeted as though it were not there,
+    every continued page comes out one heading too full — and a page too full is
+    an overflow the user sees, which is the failure this whole area exists to
+    have stopped.
+  */
+  it("charges a continued page for the heading redrawn on it", () => {
+    const blocks = [
+      heading("h", 50, "experience"),
+      ...[1, 2, 3, 4, 5, 6].map((n) => block(`b${n}`, 80))
+    ]
+
+    // 250 fits the heading and two bullets, or three bullets on their own. A
+    // continued page gets two, because the repeated heading takes the third
+    // bullet's room.
+    expect(keysPerPage(blocks, 250)).toEqual([
+      ["h", "b1", "b2"],
+      ["b3", "b4"],
+      ["b5", "b6"]
+    ])
+  })
+
+  it("charges nothing to a page that opens a section of its own", () => {
+    const blocks = [
+      heading("summary-heading", 50, "summary"),
+      block("summary", 150, { sectionId: "summary" }),
+      heading("skills-heading", 50, "skills"),
+      ...[1, 2].map((n) => block(`skill-${n}`, 100, { sectionId: "skills" }))
+    ]
+
+    // The second page starts its own section, so nothing is redrawn above it
+    // and all 250 of its height is content.
+    expect(keysPerPage(blocks, 250)).toEqual([
+      ["summary-heading", "summary"],
+      ["skills-heading", "skill-1", "skill-2"]
+    ])
+  })
+
+  it("charges nothing for a continued section drawn without a heading", () => {
+    const blocks = [1, 2, 3, 4].map((n) =>
+      block(`contact-${n}`, 100, { sectionId: "contact" })
+    )
+
+    // No heading to repeat is no height to reserve: both pages hold two.
+    expect(keysPerPage(blocks, 250)).toEqual([
+      ["contact-1", "contact-2"],
+      ["contact-3", "contact-4"]
+    ])
+  })
 })
 
 describe("paginate — degenerate input", () => {
@@ -308,5 +359,59 @@ describe("paginate — degenerate input", () => {
     paginate(blocks, { contentHeight: 100 })
 
     expect(blocks).toEqual(before)
+  })
+})
+
+// The flicker this comparison exists to have stopped is argued where it is
+// called from — see the doc on `isSamePagination` itself.
+describe("isSamePagination", () => {
+  const page = (blocks: string[], continuedFrom: string | null = null) => ({
+    blocks,
+    continuedFrom
+  })
+
+  it("holds a fresh result equal to the one it was computed from", () => {
+    const blocks = [heading("h", 40, "experience"), block("a", 120)]
+    const first = paginate(blocks, { contentHeight: 300 })
+    const second = paginate(blocks, { contentHeight: 300 })
+
+    expect(isSamePagination(first.pages, second.pages)).toBe(true)
+  })
+
+  it("separates assignments with a different number of pages", () => {
+    expect(isSamePagination([page(["a"])], [page(["a"]), page(["b"])])).toBe(
+      false
+    )
+  })
+
+  it("separates assignments that put a block on a different page", () => {
+    const left = [page(["a", "b"]), page(["c"])]
+    const right = [page(["a"]), page(["b", "c"])]
+
+    expect(isSamePagination(left, right)).toBe(false)
+  })
+
+  it("separates a page that continues a section from one that starts it", () => {
+    expect(isSamePagination([page(["a"], "experience")], [page(["a"])])).toBe(
+      false
+    )
+  })
+
+  it("separates two pages continued from different sections", () => {
+    expect(
+      isSamePagination([page(["a"], "experience")], [page(["a"], "education")])
+    ).toBe(false)
+  })
+
+  /*
+    Order is the assignment. Two pages holding the same keys in a different
+    order is a document that reads differently, not the same one.
+  */
+  it("separates pages whose blocks are in a different order", () => {
+    expect(isSamePagination([page(["a", "b"])], [page(["b", "a"])])).toBe(false)
+  })
+
+  it("holds two empty assignments equal", () => {
+    expect(isSamePagination([], [])).toBe(true)
   })
 })

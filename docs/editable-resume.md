@@ -18,20 +18,21 @@ Editing is **selection and panel**: the document is a read-only live preview,
 clicking it selects something, and a panel beside it edits that thing's fields.
 Nothing is typed into the document itself.
 
-| Module                                      | Owns                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------ |
-| `src/components/resume-document.tsx`        | The one template. Props in, markup out; builds the block list.           |
-| `src/components/resume-section.tsx`         | The seven shapes a section can draw as, and the blocks each contributes. |
-| `src/lib/resume-blocks.ts`                  | What a block is: its kinds, its key, the space it owns.                  |
-| `src/lib/resume-selection.ts`               | What can be selected, and what makes an element selectable.              |
-| `src/lib/section-content.ts`                | What a section is and may hold — shared by client and server.            |
-| `src/lib/resume-field-path.ts`              | The grammar for addressing one editable string.                          |
-| `src/lib/resume-markdown.tsx`               | The markdown subset: render, strip, and the three toolbar operations.    |
-| `src/lib/paginate.ts`                       | Where the page breaks go, as a pure function.                            |
-| `src/features/resume/use-resume-editor.ts`  | The query, the debounced autosave, and every structural mutation.        |
-| `src/features/resume/resume-panel-model.ts` | Pure: a resume and a selection in, a description of a panel out.         |
-| `src/features/resume/resume-field-lens.ts`  | Pure: how one addressed field is read out of the cache and written back. |
-| `src/features/resume/resume-panel.tsx`      | Renders a `PanelModel` and nothing else.                                 |
+| Module                                         | Owns                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `src/components/resume-document.tsx`           | The one template. Props in, markup out; builds the block list.           |
+| `src/components/resume-section.tsx`            | The seven shapes a section can draw as, and the blocks each contributes. |
+| `src/lib/resume-blocks.ts`                     | What a block is: its kinds, its key, the space it owns.                  |
+| `src/lib/resume-selection.ts`                  | What can be selected, and what makes an element selectable.              |
+| `src/lib/section-content.ts`                   | What a section is and may hold — shared by client and server.            |
+| `src/lib/resume-field-path.ts`                 | The grammar for addressing one editable string.                          |
+| `src/lib/resume-markdown.tsx`                  | The markdown subset: render, strip, and the three toolbar operations.    |
+| `src/lib/paginate.ts`                          | Where the page breaks go, as a pure function.                            |
+| `src/features/resume/use-resume-editor.ts`     | The query, the debounced autosave, and every structural mutation.        |
+| `src/features/resume/use-resume-pagination.ts` | The measure-paginate-draw loop, and nothing else.                        |
+| `src/features/resume/resume-panel-model.ts`    | Pure: a resume and a selection in, a description of a panel out.         |
+| `src/features/resume/resume-field-lens.ts`     | Pure: how one addressed field is read out of the cache and written back. |
+| `src/features/resume/resume-panel.tsx`         | Renders a `PanelModel` and nothing else.                                 |
 
 ## The document
 
@@ -125,10 +126,74 @@ Four things follow, and each used to live one level up:
 `paginate` (`src/lib/paginate.ts`) is the pure function that turns measured
 block heights into page assignments: greedy in document order, a block taller
 than a page gets its own page and overflows rather than being dropped, and a
-heading is never the last block on a page. Nothing calls it yet — measurement
-and the page as an element are the tickets after this one. It is a pure
-function precisely so a break can be proved from a test rather than from a
-screenshot.
+heading is never the last block on a page. It is a pure function precisely so a
+break can be proved from a test rather than from a screenshot.
+
+`useResumePagination` (`src/features/resume/use-resume-pagination.ts`) is the
+part that has to touch a rendered page. The document renders unpaginated on the
+first pass, every block's height is read off the DOM, `paginate` is handed those
+heights, and the assignment it returns is drawn as a stack of sheets. Each
+page's content column is the same width as the unpaginated flow, so no height
+changes between the two passes and the loop settles after one round trip.
+
+Three things make it settle rather than oscillate:
+
+- **An assignment that agrees with the one held is not stored.** `paginate`
+  returns a fresh object every time and almost all of them say the same thing;
+  `isSamePagination` is the test that turns an agreeing result into no render,
+  and therefore into no further measurement.
+- **A block's measured height stops at the sheet it is drawn on.** The gap
+  between two pieces of paper is a margin on the sheet. Charged to the last
+  block on that sheet it would make the second measurement disagree with the
+  first, and the two would trade assignments forever. The margin a block _is_
+  charged for is the one its selection run owns on its behalf — see below —
+  because that gap really does fall under it in both renders.
+- **The effect has no dependency list.** A change to the document's data, to its
+  style (the hover preview restyles without saving) and to the render mode all
+  arrive as a render and nothing else does, so "after a render" is the trigger.
+  A list would be a second copy of that fact to keep in agreement with the
+  first, and the guard above is what makes the list unnecessary.
+
+**A render is not the only thing that moves a line onto another page.** A web
+font arriving and the pane being resized both re-lay the document out with
+nothing to re-render, so a `ResizeObserver` on the document and
+`document.fonts.ready` each ask for another measurement. Neither carries an
+answer of its own — they only start the loop again, and the guard above throws
+the result away when it agrees, which is almost every time.
+
+**The order a block is measured in comes from the list, not from the paper.**
+The document is drawn in the _assignment's_ order, and an assignment is always
+one edit behind the document: a block added since belongs to no page, so it is
+drawn on the leftover sheet at the end, past every section that follows it.
+Measured in drawn order it would be filed there; the next measurement would
+agree with the first, and the wrong order would hold until the editor was
+remounted. So `inDocumentOrder` stamps each block with its place in the whole
+document, the renderer draws that into the markup, and the measurement sorts by
+it. Block keys are positional within a section, which is what makes the drawn
+order and the document's order diverge in the first place.
+
+What one sheet has room for is resolved by putting a box of
+`var(--resume-page-content-height)` into the document and asking how tall it came
+out — a custom property is handed back unresolved, and doing the `calc` in
+JavaScript would be a copy of the page's geometry that can drift from the
+padding the sheet is actually drawn with.
+
+**The editor's own furniture is measured as nothing.** An empty section is a
+heading over a "Nothing here yet" placeholder in the editor and absent entirely
+from the print, so `ResumeBlockDraft.editorOnly` marks both and measurement
+gives them a height of zero. Charged for, they would break a page where the PDF
+does not and report a page count the printed document does not have — the one
+fact a stack of sheets exists to tell the truth about. Zero rather than skipped:
+a block no assignment names is drawn on a leftover sheet at the end of the
+document, away from the section it belongs to. The cost is that a page holding
+several empty sections draws a little past its own foot, which is the visible
+kind of wrong this area consistently prefers.
+
+Measurement is deliberately thin and is not tested in isolation: there is no
+policy in it. All the policy is in `paginate`, which is tested exhaustively.
+
+**Reflow does not paginate at all.** A phone is not a page; the document renders
+as one continuous flow and the machinery is not engaged.
 
 ## Selection
 
@@ -244,10 +309,18 @@ needs a second template tree and cannot use Tailwind, which puts the document
 back to having two definitions of itself.
 
 The one cost of `setContent` is that the shell needs the compiled Tailwind CSS
-inlined. It is read off `.next/static` at request time (`compiled-css.ts`)
-rather than hand-maintained, so it cannot drift from what the app ships. The
-fonts are embedded into that sheet as data URIs, because a print has no origin
-and no network.
+inlined, with the fonts embedded into it as data URIs — a print has no origin
+and no network, so neither a `<link>` nor a `url(/fonts/…)` resolves.
+
+That sheet is compiled at build time by `scripts/build-print-css.ts` into
+`src/generated/print-css.ts`, which the route imports like any other module. It
+runs the real Tailwind over the real config and entrypoint rather than being
+hand-maintained, so it still cannot drift from what the app ships.
+
+It used to be read off `.next/static` at request time instead. That tied
+printing to a filesystem holding this build's output — true on a container,
+false on a host that serves static assets from a CDN — and re-encoded half a
+megabyte of base64 on every cold start.
 
 ## What is tested, and where
 
@@ -344,10 +417,11 @@ user can see, and a page that silently ate a paragraph is not.
 
 ### Reversed along the way
 
-| Decision         | Then                          | Now                                                                  |
-| ---------------- | ----------------------------- | -------------------------------------------------------------------- |
-| Edit interaction | Inline field swap             | Selection and panel (#50) — the document is a read-only live preview |
-| Persistence      | Autosave on blur              | Debounced autosave plus commit on blur                               |
-| Rich text        | Plain text only               | A constrained markdown subset                                        |
-| Entry breaking   | `break-inside-avoid` per job  | Per block (#62) — keeping a job whole is what moves it whole         |
-| PDF engine       | Puppeteer + a querystring URL | Playwright's Chromium + `setContent` over the same React component   |
+| Decision         | Then                            | Now                                                                  |
+| ---------------- | ------------------------------- | -------------------------------------------------------------------- |
+| Edit interaction | Inline field swap               | Selection and panel (#50) — the document is a read-only live preview |
+| Persistence      | Autosave on blur                | Debounced autosave plus commit on blur                               |
+| Rich text        | Plain text only                 | A constrained markdown subset                                        |
+| Entry breaking   | `break-inside-avoid` per job    | Per block (#62) — keeping a job whole is what moves it whole         |
+| Page boundary    | A red rule ruled over one sheet | Real sheets (#66) — the length of a resume is visible at a glance    |
+| PDF engine       | Puppeteer + a querystring URL   | Playwright's Chromium + `setContent` over the same React component   |

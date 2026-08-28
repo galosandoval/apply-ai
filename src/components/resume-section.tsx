@@ -376,10 +376,15 @@ export function sectionBlocks({
 
   if (empty && !render.isEditor) return []
 
-  const drafts = [
-    headingBlock(label),
-    ...(empty ? [placeholderBlock()] : toBlocks(shape, render.mode))
-  ]
+  // An empty section is a heading over a placeholder, and the line above says
+  // the print has neither — so both are marked, and neither is measured. See
+  // `ResumeBlockDraft.editorOnly`.
+  const drafts = empty
+    ? [
+        { ...headingBlock(label), editorOnly: true },
+        { ...placeholderBlock(), editorOnly: true }
+      ]
+    : [headingBlock(label), ...toBlocks(shape, render.mode)]
 
   return withBlockKeys(sectionId, closingSection(ownedBy(select, drafts)))
 }

@@ -4,6 +4,7 @@ import {
   type ResumeDocumentData
 } from "~/components/resume-document"
 import { type RenderMode } from "~/components/resume-section"
+import { type PaginatedPage } from "~/lib/paginate"
 
 /**
  * Loaded through a non-literal specifier on purpose.
@@ -43,11 +44,24 @@ export async function renderResumeHtml(
   data: ResumeDocumentData,
   {
     mode = "page",
-    isEditor = false
-  }: { mode?: RenderMode; isEditor?: boolean } = {}
+    isEditor = false,
+    pages
+  }: {
+    mode?: RenderMode
+    isEditor?: boolean
+    /**
+     * Where the breaks fall, from `paginate` — or nothing, for the flow.
+     *
+     * Both renders are wanted. The PDF prints the unpaginated document once to
+     * measure it, then again with the assignment those measurements produced,
+     * and the parseability check reads the flow because a stack of sheets says
+     * nothing about a document a machine reads end to end.
+     */
+    pages?: PaginatedPage[]
+  } = {}
 ) {
   return await renderToStaticMarkup(
-    <ResumeDocument data={data} isEditor={isEditor} mode={mode} />
+    <ResumeDocument data={data} isEditor={isEditor} mode={mode} pages={pages} />
   )
 }
 

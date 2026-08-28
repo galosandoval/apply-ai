@@ -4,19 +4,18 @@ import { useParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { ResumeDocument } from "~/components/resume-document"
-import { type RenderMode } from "~/components/resume-section"
 import { Button } from "~/components/ui/button"
 import { useResumeRenderMode } from "~/components/use-resume-render-mode"
 import {
   type ResumeStyle,
   resumeStyleCatalog,
-  resumeStyleClass,
   resumeStyleStamp,
   resumeStyles
 } from "~/lib/resume-style"
 import { type DownloadPdfSchema } from "~/server/db/crud-schema"
 import { ResumePanel } from "~/features/resume/resume-panel"
 import { toDocumentData } from "~/features/resume/resume-field-lens"
+import { useResumePagination } from "~/features/resume/use-resume-pagination"
 import {
   type SaveState,
   useResumeEditor
@@ -44,6 +43,7 @@ function Editor({ resumeId }: { resumeId: string }) {
   const editor = useResumeEditor(resumeId)
   const { mode } = useResumeRenderMode()
   const [pane, setPane] = useState<Pane>("edit")
+  const { documentRef, pages } = useResumePagination(mode)
 
   if (editor.errorMessage) {
     return (
@@ -105,11 +105,21 @@ function Editor({ resumeId }: { resumeId: string }) {
           }`}
           onClick={editor.onClearSelection}
         >
-          <PageBoundary mode={mode} style={editor.previewStyle ?? editor.style}>
+          {/*
+            `h-fit` so a short document is a short sheet rather than one
+            stretched down the scroller, and so the stack ends where its last
+            page does.
+          */}
+          <div className="h-fit" ref={documentRef}>
             {/*
               The previewed direction is stamped over the saved one for as long
               as the pointer is on its button — and only here. The PDF above
               prints what is stored, so a hover cannot leak into a download.
+
+              `pages` is the assignment the last measurement produced, and the
+              document is drawn as a stack of sheets from it. On the very first
+              pass there is none, so the document renders as one continuous flow
+              — which is the render that gets measured.
             */}
             <ResumeDocument
               data={{
@@ -120,55 +130,16 @@ function Editor({ resumeId }: { resumeId: string }) {
               }}
               isEditor
               mode={mode}
+              pages={pages}
               selection={{
                 selected: editor.selected,
                 onSelect: editor.onSelect
               }}
             />
-          </PageBoundary>
+          </div>
         </div>
       </div>
     </main>
-  )
-}
-
-/**
- * The page boundary, drawn over the document.
- *
- * The document no longer clips at one page, which means overflow is silent
- * rather than destructive. This is where it becomes something the user can see
- * before they send it rather than after.
- *
- * Page mode only: reflow is not a page, so a rule at every page height through
- * it would mark a boundary that does not exist. Judging the print on a phone is
- * what the PDF preview is for.
- *
- * The rule itself is `.resume-page-rule` in `global.css`, reading the page
- * height as a token rather than holding its own copy of A4. The overlay is a
- * sibling of the document rather than a descendant, so it carries the style
- * class too: a `var()` resolves on the element it is written on, and without it
- * a style that re-valued the height would move the page and not the mark.
- */
-function PageBoundary({
-  children,
-  mode,
-  style
-}: {
-  children: React.ReactNode
-  mode: RenderMode
-  style: ResumeStyle
-}) {
-  return (
-    <div className="relative h-fit">
-      {children}
-
-      {mode === "page" && (
-        <div
-          aria-hidden
-          className={`resume-page-rule ${resumeStyleClass(style)} pointer-events-none absolute inset-0`}
-        />
-      )}
-    </div>
   )
 }
 

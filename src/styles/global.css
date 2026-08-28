@@ -182,11 +182,11 @@
     /*
       The space between one sheet and the next.
 
-      Not padding and not a margin the page carries: it is the app's background
-      showing through between two pieces of paper, which is the whole reason a
-      second page reads as a second page at a glance. Nothing reads it yet —
-      the stack of pages that will, and the print rule that has to collapse it
-      because the sheets are then actually separate, are both still to come.
+      The app's background showing through between two pieces of paper, which
+      is the whole reason a second page reads as a second page at a glance.
+      Read by `.resume-page-sheet`, which is also where it collapses for print
+      — on paper the sheets are actually separate and there is nothing between
+      them to show.
     */
     --resume-page-gap: 1.5rem;
 
@@ -252,7 +252,6 @@
     */
     --resume-group-mark-weight: 1px;
 
-    --resume-date-align: left;
     --resume-date-weight: 400;
 
     /*
@@ -403,7 +402,6 @@
     --resume-group-mark-weight: 0.75pt;
 
     --resume-left-column-width: 8rem;
-    --resume-date-align: right;
 
     --resume-rhythm: 0.95;
 
@@ -455,7 +453,6 @@
 
     /* Wide enough that a full "Sep 2016 - May 2018" holds one line in Geist. */
     --resume-left-column-width: 8.75rem;
-    --resume-date-align: left;
 
     --resume-rhythm: 1;
 
@@ -512,7 +509,6 @@
       thing all three styles agree on is that colour carries none.
     */
     --resume-left-column-width: 7rem;
-    --resume-date-align: left;
     --resume-date-scale: 0.9;
 
     --resume-rhythm: 1.3;
@@ -546,7 +542,6 @@
       reflow, which they already did.
     */
     --resume-date-weight: var(--resume-entry-name-weight);
-    --resume-date-align: left;
 
     --resume-space-page-x: calc(var(--resume-space-step) * 4);
     --resume-space-page-y: calc(var(--resume-space-step) * 6);
@@ -686,27 +681,50 @@
   .resume-dates {
     font-size: var(--resume-text-date);
     line-height: var(--resume-leading-date);
-    text-align: var(--resume-date-align);
     font-weight: var(--resume-date-weight);
     color: var(--resume-ink-date);
   }
 
   /*
-    Where each page would end, drawn over a document that is still one sheet.
+    One sheet in a stack of them.
 
-    Editor chrome rather than part of the document, so the colour is a plain
-    value here and not a resume token: the styles are what the printed page
-    looks like, and this is never printed. What it does read from the tokens is
-    the page height, so the mark it draws cannot disagree with the sheet it
-    claims to be marking.
+    Positioned, so that the sheets can be stacked in reverse and a block too
+    tall for its page paints *over* the page below rather than under it — see
+    `Sheet` in `resume-document.tsx`, which sets the order. The z-index is
+    markup rather than style because it counts the sheets, and CSS cannot.
   */
-  .resume-page-rule {
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(var(--resume-page-height) - 1px),
-      rgba(220, 38, 38, 0.5) calc(var(--resume-page-height) - 1px),
-      rgba(220, 38, 38, 0.5) var(--resume-page-height)
-    );
+  .resume-page-sheet {
+    position: relative;
+    z-index: var(--resume-page-order, 0);
+  }
+
+  /*
+    What separates one sheet from the next.
+
+    The gap is the app's background between two pieces of paper — a margin
+    rather than padding, because it is space *around* the sheet and the sheet's
+    own padding is the print margin. In print there is nothing between two
+    pages to show, so the gap collapses and the break does the separating: the
+    element boundary and the sheet boundary become the same boundary, which is
+    the point of drawing pages at all.
+
+    Both are between-sheets rules, so neither reaches the last sheet. A trailing
+    margin is a gap below nothing, and a trailing `break-after: page` is the
+    blank final page Chromium prints for it — a two-page resume that comes out
+    of the PDF three pages long.
+
+    `break-after` is unconditional rather than print-only. On screen it costs
+    nothing — there are no pages to break onto — and a rule that only exists
+    inside a media query is a rule the print is the first thing to test.
+  */
+  .resume-page-sheet:not(:last-child) {
+    margin-bottom: var(--resume-page-gap);
+    break-after: page;
+  }
+
+  @media print {
+    .resume-page-sheet:not(:last-child) {
+      margin-bottom: 0;
+    }
   }
 }
