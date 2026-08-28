@@ -1,12 +1,46 @@
+import { type Page } from "playwright-core"
 import {
   type ResumeDocumentData,
   resumeMeasurementContract
 } from "~/components/resume-document"
 import { printCss } from "~/generated/print-css"
-import { measureResumeDocument } from "~/lib/measure-resume-document"
+import {
+  measureResumeDocument,
+  type ResumeMeasurement
+} from "~/lib/measure-resume-document"
 import { paginate } from "~/lib/paginate"
 import { launchPrintBrowser } from "./launch-print-browser"
 import { resumePdfDocument } from "./resume-html"
+
+/**
+ * The print's first pass: the continuous flow, drawn and measured.
+ *
+ * Exported because a test drives it against a real browser — the measurement
+ * reaches Chromium as source over CDP, and whether it survives that trip is
+ * the one thing neither `paginate`'s arithmetic nor the markup string can say.
+ * A test that spelt this sequence itself would go on passing while the print it
+ * stands for changed underneath it.
+ *
+ * `null` when there is no document to measure, which is not the same answer as
+ * a document that measured as empty.
+ */
+export async function measurePrintedFlow(
+  page: Page,
+  data: ResumeDocumentData
+): Promise<ResumeMeasurement | null> {
+  await page.setContent(await resumePdfDocument(data, printCss), {
+    waitUntil: "load"
+  })
+
+  // The faces are inline, so nothing is fetched — but `font-display: swap`
+  // still renders one frame in the fallback, and both the measurement and
+  // `page.pdf` will happily take that frame. This is the wait for the real face
+  // to be in use, and it has to happen before the heights are read: a document
+  // measured in the fallback breaks in the wrong place.
+  await page.evaluate(() => document.fonts.ready)
+
+  return page.evaluate(measureResumeDocument, resumeMeasurementContract)
+}
 
 /**
  * Prints a resume to PDF.
@@ -24,9 +58,9 @@ import { resumePdfDocument } from "./resume-html"
  * `setContent` inside a browser that is already launched.
  *
  * The margin comes with the sheets. Each page element carries the style's page
- * padding on all four sides, so the print options pass none — which is what
- * gives page two the margins page one used to get for free from the document's
- * own padding.
+ * padding on all four sides, so `page.pdf` is asked for a zero margin on all
+ * four — which is what gives page two the margins page one used to get for free
+ * from the document's own padding.
  *
  * Where the browser comes from is `launch-print-browser.ts`'s problem — it
  * differs per host, and nothing else here does.
@@ -40,25 +74,18 @@ export async function renderResumePdf(data: ResumeDocumentData) {
 
   try {
     const page = await browser.newPage()
+    const measurement = await measurePrintedFlow(page, data)
 
-    await page.setContent(await resumePdfDocument(data, printCss), {
-      waitUntil: "load"
-    })
+    /*
+      A measurement means sheets: the same blocks, dealt onto paper by the same
+      `paginate` the editor calls, and printed instead of the flow.
 
-    // The faces are inline, so nothing is fetched — but `font-display: swap`
-    // still renders one frame in the fallback, and both the measurement and
-    // `page.pdf` will happily take that frame. This is the wait for the real
-    // face to be in use, and it has to happen before the heights are read: a
-    // document measured in the fallback breaks in the wrong place.
-    await page.evaluate(() => document.fonts.ready)
-
-    const measurement = await page.evaluate(
-      measureResumeDocument,
-      resumeMeasurementContract
-    )
-
-    // No document to measure means nothing to assign, and the flow already
-    // rendered prints as well as it ever did. A blank page is the worse answer.
+      Nothing to measure means the flow already rendered prints as well as it
+      ever did — a blank page is the worse answer. It is also the bug this route
+      was changed to fix, arrived at silently, so it says so: every page after
+      the first would print hard against the paper edge, and nothing else
+      anywhere would report it.
+    */
     if (measurement) {
       const { pages } = paginate(measurement.blocks, {
         contentHeight: measurement.contentHeight
@@ -69,6 +96,10 @@ export async function renderResumePdf(data: ResumeDocumentData) {
       })
 
       await page.evaluate(() => document.fonts.ready)
+    } else {
+      console.warn(
+        "renderResumePdf: nothing to measure — printing the unpaginated flow."
+      )
     }
 
     return await page.pdf({

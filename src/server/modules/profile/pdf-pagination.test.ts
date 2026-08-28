@@ -1,13 +1,10 @@
-import { chromium } from "playwright-core"
+import { chromium, type Page } from "playwright-core"
 import { describe, expect, it } from "vitest"
-import {
-  type ResumeDocumentData,
-  resumeMeasurementContract
-} from "~/components/resume-document"
+import { type ResumeDocumentData } from "~/components/resume-document"
 import { printCss as css } from "~/generated/print-css"
-import { measureResumeDocument } from "~/lib/measure-resume-document"
 import { paginate } from "~/lib/paginate"
 import { hasPrintBrowser } from "./print-test-support"
+import { measurePrintedFlow } from "./render-resume-pdf"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -67,73 +64,74 @@ const long: ResumeDocumentData = {
   }))
 }
 
-/** What the route does between its two `setContent` calls, over one document. */
-async function assign(data: ResumeDocumentData) {
+/**
+ * One browser, one page, closed however the case ends.
+ *
+ * The lifecycle is here rather than in each case because three `try/finally`
+ * blocks are three chances to leak a Chromium into the suite's run.
+ */
+async function inPrintBrowser<T>(run: (page: Page) => Promise<T>): Promise<T> {
   const browser = await chromium.launch()
 
   try {
-    const page = await browser.newPage()
-
-    await page.setContent(await resumePdfDocument(data, css), {
-      waitUntil: "load"
-    })
-    await page.evaluate(() => document.fonts.ready)
-
-    const measurement = await page.evaluate(
-      measureResumeDocument,
-      resumeMeasurementContract
-    )
-
-    return { measurement, browser, page }
-  } catch (error) {
+    return await run(await browser.newPage())
+  } finally {
     await browser.close()
-    throw error
   }
+}
+
+/**
+ * The route's own measure pass, driven against a real browser.
+ *
+ * `measurePrintedFlow` rather than the same three calls spelt again: a test
+ * that re-enacted the sequence would go on passing while the print it stands
+ * for changed underneath it, which is the drift this whole change exists to
+ * stop.
+ */
+async function measured(page: Page, data: ResumeDocumentData) {
+  const measurement = await measurePrintedFlow(page, data)
+
+  // Not an assertion about the document: a null measurement is the browser
+  // failing to run the measurer at all, and every case below would then be
+  // asserting against the wrong thing.
+  expect(measurement, "the browser measured no document").not.toBeNull()
+
+  return measurement!
 }
 
 describe.skipIf(!hasBrowser)("the print's measurement pass", () => {
   it("reads every block of the drawn document", async () => {
-    const { measurement, browser } = await assign(short)
+    const measurement = await inPrintBrowser((page) => measured(page, short))
 
-    try {
-      expect(measurement).not.toBeNull()
+    // Every block the flow drew, with a real height and a real identity: an
+    // empty list is what a measurement that failed to reach the DOM returns,
+    // and it paginates to nothing rather than to an error.
+    expect(measurement.blocks.length).toBeGreaterThan(3)
+    expect(measurement.contentHeight).toBeGreaterThan(0)
 
-      // Every block the flow drew, with a real height and a real identity: an
-      // empty list is what a measurement that failed to reach the DOM returns,
-      // and it paginates to nothing rather than to an error.
-      expect(measurement!.blocks.length).toBeGreaterThan(3)
-      expect(measurement!.contentHeight).toBeGreaterThan(0)
-
-      for (const block of measurement!.blocks) {
-        expect(block.key).not.toBe("")
-        expect(block.sectionId).not.toBe("")
-        expect(block.height).toBeGreaterThan(0)
-      }
-    } finally {
-      await browser.close()
+    for (const block of measurement.blocks) {
+      expect(block.key).not.toBe("")
+      expect(block.sectionId).not.toBe("")
+      expect(block.height).toBeGreaterThan(0)
     }
   }, 30_000)
 
   it("prints a document that fits on one sheet as one sheet", async () => {
-    const { measurement, browser } = await assign(short)
+    const measurement = await inPrintBrowser((page) => measured(page, short))
 
-    try {
-      const { pages } = paginate(measurement!.blocks, {
-        contentHeight: measurement!.contentHeight
-      })
+    const { pages } = paginate(measurement.blocks, {
+      contentHeight: measurement.contentHeight
+    })
 
-      expect(pages).toHaveLength(1)
-    } finally {
-      await browser.close()
-    }
+    expect(pages).toHaveLength(1)
   }, 30_000)
 
   it("breaks a longer document onto sheets that each carry the margin", async () => {
-    const { measurement, browser, page } = await assign(long)
+    const sheets = await inPrintBrowser(async (page) => {
+      const measurement = await measured(page, long)
 
-    try {
-      const { pages } = paginate(measurement!.blocks, {
-        contentHeight: measurement!.contentHeight
+      const { pages } = paginate(measurement.blocks, {
+        contentHeight: measurement.contentHeight
       })
 
       expect(pages.length).toBeGreaterThan(1)
@@ -143,7 +141,7 @@ describe.skipIf(!hasBrowser)("the print's measurement pass", () => {
       })
       await page.evaluate(() => document.fonts.ready)
 
-      const sheets = await page.evaluate(() =>
+      const drawn = await page.evaluate(() =>
         [...document.querySelectorAll<HTMLElement>("[data-resume-page]")].map(
           (sheet) => {
             const style = getComputedStyle(sheet)
@@ -158,16 +156,16 @@ describe.skipIf(!hasBrowser)("the print's measurement pass", () => {
         )
       )
 
-      expect(sheets).toHaveLength(pages.length)
+      expect(drawn).toHaveLength(pages.length)
 
-      // The margin is the sheet's own padding on every page, not page one's
-      // head start from the document's padding — which is the whole bug.
-      for (const sheet of sheets) {
-        expect(sheet.top).toBeGreaterThan(0)
-        expect(sheet).toEqual(sheets[0])
-      }
-    } finally {
-      await browser.close()
+      return drawn
+    })
+
+    // The margin is the sheet's own padding on every page, not page one's head
+    // start from the document's padding — which is the whole bug.
+    for (const sheet of sheets) {
+      expect(sheet.top).toBeGreaterThan(0)
+      expect(sheet).toEqual(sheets[0])
     }
   }, 60_000)
 })

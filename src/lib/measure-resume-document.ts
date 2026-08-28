@@ -117,9 +117,7 @@ export function measureResumeDocument(
    * top margin, so there is no collapsing to reason about.
    */
   function heightWithTrailingSpace(element: HTMLElement): number {
-    const sheet =
-      element.closest<HTMLElement>(contract.pageSelector) ??
-      (root as HTMLElement)
+    const sheet = element.closest<HTMLElement>(contract.pageSelector) ?? root
 
     let height = element.getBoundingClientRect().height
     let node: HTMLElement | null = element

@@ -538,12 +538,12 @@ function ResumeBlockElement({ block }: { block: ResumeBlock }) {
 }
 
 /** Where a measurer finds the document, its sheets and the blocks on them. */
-export const resumeDocumentSelector = ".resume-document"
-export const resumePageSelector = "[data-resume-page]"
-export const resumeBlockSelector = "[data-resume-block]"
+const resumeDocumentSelector = ".resume-document"
+const resumePageSelector = "[data-resume-page]"
+const resumeBlockSelector = "[data-resume-block]"
 
 /** The token holding what one sheet has room for, declared on the document. */
-export const resumePageContentHeightToken = "--resume-page-content-height"
+const resumePageContentHeightToken = "--resume-page-content-height"
 
 /**
  * Everything a measurer needs to read this file's markup back.
