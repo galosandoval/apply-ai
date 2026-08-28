@@ -9,6 +9,7 @@
     "pretest": "npm run generate:css",
     "pretypecheck": "npm run generate:css",
     "build": "next build",
+    "db:migrate": "node scripts/migrate.mjs",
     "db:push": "drizzle-kit push",
     "drop": "drizzle-kit drop",
     "generate": "drizzle-kit generate",

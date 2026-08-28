@@ -5,6 +5,11 @@ primary_region = "sjc"
 [build]
   dockerfile = "Dockerfile"
 
+# Once per deploy, on its own machine, before the new release takes traffic —
+# not once per boot, which would race concurrent machines against each other.
+[deploy]
+  release_command = "node scripts/migrate.mjs"
+
 [env]
   PORT = "3000"
 

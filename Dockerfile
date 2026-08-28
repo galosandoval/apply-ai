@@ -20,8 +20,8 @@ WORKDIR /app
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# The build no longer opens a database connection — migrations run at boot, in
-# `src/instrumentation.ts` — so no DATABASE_URL is needed here.
+# The build never opens a database connection — migrations run once per deploy,
+# from the Fly release command — so no DATABASE_URL is needed here.
 ENV SKIP_ENV_VALIDATION=1
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
@@ -38,8 +38,12 @@ ENV HOSTNAME=0.0.0.0
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-# Applied on boot by the instrumentation hook, so they have to ship.
+# `fly.toml`'s release_command runs `scripts/migrate.mjs` from this image, so
+# the migrations, the script, and the migrator itself all have to ship. The
+# standalone trace covers `pg` but not the migrator, which nothing imports.
 COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
+COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
 
 EXPOSE 3000
 
