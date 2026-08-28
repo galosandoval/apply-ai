@@ -1,6 +1,6 @@
-import { chromium } from "playwright-core"
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { printCss } from "~/generated/print-css"
+import { launchPrintBrowser } from "./launch-print-browser"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -10,12 +10,15 @@ import { resumePdfDocument } from "./resume-html"
  * never navigates: no round trip, no session to forward, and no requirement
  * that the server be able to reach its own public URL.
  *
+ * Where the browser comes from is `launch-print-browser.ts`'s problem — it
+ * differs per host, and nothing else here does.
+ *
  * `printCss` carries the sheet and its faces as one string, compiled at build
  * time — see `scripts/build-print-css.ts`. Nothing is read from disk here, so
  * printing does not care what the host's filesystem looks like.
  */
 export async function renderResumePdf(data: ResumeDocumentData) {
-  const browser = await chromium.launch()
+  const browser = await launchPrintBrowser()
 
   try {
     const page = await browser.newPage()

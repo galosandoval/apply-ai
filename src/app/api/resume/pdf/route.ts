@@ -3,8 +3,14 @@ import { getServerAuthSession } from "~/server/auth"
 import { downloadPdfSchema } from "~/server/db/crud-schema"
 import { renderResumePdf } from "~/server/modules/profile/render-resume-pdf"
 
-/** Chromium and the filesystem read of the built stylesheet need a real Node. */
+/** Chromium needs a real Node runtime; the edge runtime cannot spawn it. */
 export const runtime = "nodejs"
+
+/**
+ * A cold instance unpacks Chromium to /tmp before it can print, which the
+ * default 10s does not cover. Vercel's Hobby ceiling is 60s; Pro allows more.
+ */
+export const maxDuration = 60
 
 /** Launching a browser is expensive enough that it doesn't run for strangers. */
 export async function POST(req: NextRequest) {

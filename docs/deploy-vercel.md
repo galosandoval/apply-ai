@@ -1,13 +1,13 @@
 # Deploying to Vercel
 
-**Status: in progress.** Two of the four prerequisites are done. Until the rest
-are, [deploy-fly.md](./deploy-fly.md) is the path that works — keep it.
+**Status: in progress.** Three of the four prerequisites are done. Until the
+last one is, [deploy-fly.md](./deploy-fly.md) is the path that works — keep it.
 
 | # | Prerequisite | Status |
 | --- | --- | --- |
 | 1 | Print stylesheet compiled at build time, not read off `.next/static` | **Done** — verified against a real build and real Chromium |
 | 2 | Migrations moved off the boot hook | **Done** — one run per deploy, on both hosts |
-| 3 | Chromium available to the PDF route | Not started |
+| 3 | Chromium available to the PDF route | **Done** in code — bundle size and cold-start time are unproven until a real deploy |
 | 4 | Pooled database connection | Not started |
 
 ## Why this needed work at all
@@ -81,34 +81,44 @@ deploy, on its own machine before the new release takes traffic. That is why
 migrator, which no longer has an importer in the app. If Fly is ever retired,
 those three lines go with it.
 
-## 3. Chromium — pending
+## 3. Chromium — done in code
 
 **Why:** `playwright-core` ships no browser, and Vercel's runtime has none.
 
-The plan is `@sparticuz/chromium`, a Lambda-compatible build, bundled into the
-function. `render-resume-pdf.ts:18` is the only coupling point:
+`src/server/modules/profile/launch-print-browser.ts` is now the only place that
+knows where a browser comes from. It picks one of three, in order:
 
-```ts
-const browser = await chromium.launch({
-  executablePath: await sparticuz.executablePath(),
-  args: sparticuz.args
-})
-```
+1. `BROWSER_WS_ENDPOINT` if set — `connectOverCDP` against a hosted browser.
+2. `@sparticuz/chromium` when `VERCEL` is set — a Lambda-compatible build,
+   shipped in the function and unpacked to `/tmp` on the first print.
+3. Plain `chromium.launch()` otherwise — Fly's image and every dev machine
+   already have a matching browser where Playwright looks for it.
 
-Things to get right:
+Everything else about the print is host-independent, which is why this is one
+small module and not a branch inside `render-resume-pdf.ts`.
 
-- **Bundle size.** Vercel's limit is 250MB uncompressed. Chromium is the bulk
-  of it, plus ~905KB of stylesheet. If it does not fit, swap `launch` for
-  `connectOverCDP` against a hosted browser (Browserbase, Browserless) — that
-  one line is the whole difference, because `setContent` never navigates.
-- **Memory and duration.** A cold Chromium print needs both. Set `maxDuration`
-  and the memory size on the route, and confirm the ceiling your plan allows.
-- **`serverExternalPackages`** in `next.config.ts` already keeps
-  `playwright-core` unbundled; `@sparticuz/chromium` needs the same treatment.
-- **`outputFileTracingIncludes`** currently pulls in `playwright-core` for this
-  route. Revisit once the launch path changes.
+What that cost, and what is still unproven:
 
-The fonts need nothing here — they are baked into the stylesheet by step 1.
+- **Bundle size.** `@sparticuz/chromium` is 67MB of compressed browser. A
+  `VERCEL=1` build traces to 141MB total against Vercel's 250MB limit, so it
+  fits — but that measurement is `.next/standalone` locally, not the real
+  function. If a deploy is rejected for size, set `BROWSER_WS_ENDPOINT` to a
+  hosted browser (Browserbase, Browserless) and drop the dependency. That path
+  is only viable because `setContent` never navigates: the remote browser needs
+  no route back to this server.
+- **Cold start.** Unpacking Chromium is not fast. The route sets
+  `maxDuration = 60` (Hobby's ceiling) and `vercel.json` asks for 2048MB. Both
+  are guesses until a real cold print is timed — if the plan refuses the memory
+  size, the deploy fails loudly, which is the good failure.
+- **`setGraphicsMode = false`** skips unpacking swiftshader, ~40MB of software
+  GL that a page of text and rules never touches.
+- **Build wiring.** `@sparticuz/chromium` is in `serverExternalPackages`, and
+  `outputFileTracingIncludes` pulls it in **only when `VERCEL` is set** — the
+  Fly image has its own Chromium, and 67MB in `.next/standalone` would be dead
+  weight there.
+
+The fonts need nothing here — they are baked into the stylesheet by step 1, and
+sparticuz's own font pack goes unused.
 
 ## 4. Database — pending
 
@@ -140,6 +150,9 @@ skipped only during the build (`SKIP_ENV_VALIDATION=1`).
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. Rotating it invalidates every session. |
 | `APP_URL` | The stable production origin, no trailing slash. `src/server/auth.ts` uses it as better-auth's `baseURL`. **Do not derive it from `VERCEL_URL`** — that is per-deployment, so callbacks would be signed against a URL that changes every push. |
 | `OPENAI_API_KEY` | Used by the resume generation and PDF import routes. |
+
+`BROWSER_WS_ENDPOINT` is optional too — set it only to print on a hosted
+browser instead of the bundled one.
 
 `MIGRATION_DATABASE_URL` is optional: set it to the **unpooled** endpoint if the
 integration's own unpooled variable is named something `scripts/migrate.mjs`
@@ -174,8 +187,9 @@ failure instead of a skip.
 | --- | --- | --- |
 | Build fails in `prebuild` | The stylesheet generator threw | Reproduce with `npm run generate:css` |
 | PDF renders unstyled or in the wrong font | The generated sheet did not ship | Confirm `src/generated/print-css.ts` exists after build; run `npm run test:pdf` |
-| PDF route times out | Cold Chromium exceeded the limit | Raise `maxDuration` and memory, or move to a hosted browser |
-| Deploy rejected for bundle size | Chromium plus dependencies over 250MB | Move to `connectOverCDP` against a hosted browser |
+| PDF route times out | Cold Chromium exceeded the limit | Raise `maxDuration` and the memory in `vercel.json`, or set `BROWSER_WS_ENDPOINT` |
+| Deploy rejected for bundle size | Chromium plus dependencies over 250MB | Set `BROWSER_WS_ENDPOINT` and drop `@sparticuz/chromium` |
+| `Could not find Chromium` on Vercel | The trace did not ship it | `VERCEL` must be set at build time for `outputFileTracingIncludes` to include it |
 | `too many connections` | Unpooled endpoint | Point `DATABASE_URL` at Neon's pooled endpoint |
 | Migration errors on deploy | DDL through the pooler | Set `MIGRATION_DATABASE_URL` to the unpooled endpoint |
 | Sign-in succeeds, session drops | `APP_URL` ≠ the real origin | Exact https origin, no trailing slash |

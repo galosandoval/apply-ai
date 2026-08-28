@@ -165,8 +165,16 @@ fly secrets set KEY=value       # updating a secret redeploys the machine
 | `self-signed certificate` / SSL error at boot | Provider requires TLS | Append `?sslmode=require` to `DATABASE_URL` |
 | Sign-in appears to succeed but the session drops | `APP_URL` ≠ the real origin | Set it to the exact https URL, no trailing slash, and redeploy |
 | PDF route 500s, everything else works | Chromium could not launch | `fly ssh console`, check `/ms-playwright`. See the version-pin note below |
+| PDF route looks for a browser in `/tmp` | `VERCEL` or `BROWSER_WS_ENDPOINT` leaked into the machine's env | `fly secrets unset` it — on Fly neither should be set |
 | OOM during PDF generation | Chromium exceeded the machine | `fly scale memory 4096` |
 | Deploy fails in `npm ci` | Lockfile lacks this platform's optional binaries | The Dockerfile already falls back to `npm install`; if it still fails, regenerate the lockfile on Linux |
+
+### Where the browser comes from
+
+`src/server/modules/profile/launch-print-browser.ts` picks it: on Fly it takes the plain
+`chromium.launch()` path, because neither `VERCEL` nor `BROWSER_WS_ENDPOINT` is set and the
+runner image already carries a matching browser. Nothing to configure — but that is why
+neither variable belongs in `fly secrets`.
 
 ### Known soft spot: the Playwright version pin
 
