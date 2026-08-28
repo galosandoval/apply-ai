@@ -309,10 +309,18 @@ needs a second template tree and cannot use Tailwind, which puts the document
 back to having two definitions of itself.
 
 The one cost of `setContent` is that the shell needs the compiled Tailwind CSS
-inlined. It is read off `.next/static` at request time (`compiled-css.ts`)
-rather than hand-maintained, so it cannot drift from what the app ships. The
-fonts are embedded into that sheet as data URIs, because a print has no origin
-and no network.
+inlined, with the fonts embedded into it as data URIs — a print has no origin
+and no network, so neither a `<link>` nor a `url(/fonts/…)` resolves.
+
+That sheet is compiled at build time by `scripts/build-print-css.ts` into
+`src/generated/print-css.ts`, which the route imports like any other module. It
+runs the real Tailwind over the real config and entrypoint rather than being
+hand-maintained, so it still cannot drift from what the app ships.
+
+It used to be read off `.next/static` at request time instead. That tied
+printing to a filesystem holding this build's output — true on a container,
+false on a host that serves static assets from a CDN — and re-encoded half a
+megabyte of base64 on every cold start.
 
 ## What is tested, and where
 

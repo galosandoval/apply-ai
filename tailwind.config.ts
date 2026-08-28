@@ -6,7 +6,14 @@ const config = {
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}"
+    "./src/**/*.{ts,tsx}",
+    /*
+      `src/generated` is output, not source. The print stylesheet is compiled
+      into a module there, and scanning it feeds Tailwind its own class names —
+      and the alphabet soup of base64 font data — back as content to match,
+      which lands junk utilities in both this sheet and the app's.
+    */
+    "!./src/generated/**"
   ],
   prefix: "",
   theme: {

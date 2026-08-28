@@ -1,6 +1,6 @@
 import { chromium } from "playwright-core"
 import { type ResumeDocumentData } from "~/components/resume-document"
-import { readCompiledCss } from "./compiled-css"
+import { printCss } from "~/generated/print-css"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -9,16 +9,18 @@ import { resumePdfDocument } from "./resume-html"
  * The markup is rendered here and handed to `page.setContent`, so the browser
  * never navigates: no round trip, no session to forward, and no requirement
  * that the server be able to reach its own public URL.
+ *
+ * `printCss` carries the sheet and its faces as one string, compiled at build
+ * time — see `scripts/build-print-css.ts`. Nothing is read from disk here, so
+ * printing does not care what the host's filesystem looks like.
  */
 export async function renderResumePdf(data: ResumeDocumentData) {
-  const css = await readCompiledCss()
-
   const browser = await chromium.launch()
 
   try {
     const page = await browser.newPage()
 
-    await page.setContent(await resumePdfDocument(data, css), {
+    await page.setContent(await resumePdfDocument(data, printCss), {
       waitUntil: "load"
     })
 

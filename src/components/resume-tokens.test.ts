@@ -434,7 +434,14 @@ describe("the page geometry", async () => {
         recursive: true
       })
     )
-      .filter((path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path))
+      .filter(
+        (path) =>
+          /\.tsx?$/.test(path) &&
+          !/\.test\.tsx?$/.test(path) &&
+          // `src/generated` is compiled output, not a component. The print
+          // stylesheet resolves the token, so of course the height is in it.
+          !/^generated[\\/]/.test(path)
+      )
       .map((path) => join("src", path))
 
     const offenders: string[] = []
