@@ -187,6 +187,7 @@ failure instead of a skip.
 | --- | --- | --- |
 | Build fails in `prebuild` | The stylesheet generator threw | Reproduce with `npm run generate:css` |
 | `ENOENT … next-server.js.nft.json` | `output: "standalone"` was on | It is off when `VERCEL` is set — check `next.config.ts` |
+| PDF import fails with `DOMMatrix is not defined` | `@napi-rs/canvas` did not ship — pdfjs requires it in a try/catch, so the tracer misses it | `outputFileTracingIncludes` names it explicitly. Note the key is `/api/trpc/**`: `[trpc]` would be parsed as a glob character class and match nothing |
 | PDF renders unstyled or in the wrong font | The generated sheet did not ship | Confirm `src/generated/print-css.ts` exists after build; run `npm run test:pdf` |
 | PDF route times out | Cold Chromium exceeded the limit | Raise `maxDuration` and the memory in `vercel.json`, or set `BROWSER_WS_ENDPOINT` |
 | Deploy rejected for bundle size | Chromium plus dependencies over 250MB | Set `BROWSER_WS_ENDPOINT` and drop `@sparticuz/chromium` |
