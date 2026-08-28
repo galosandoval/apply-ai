@@ -44,7 +44,22 @@ const config: NextConfig = {
        */
       ...(process.env.VERCEL ? ["./node_modules/@sparticuz/chromium/**"] : [])
     ],
-    "/api/trpc/[trpc]": ["./node_modules/pdfjs-dist/legacy/build/**"]
+    /**
+     * `/api/trpc/[trpc]` would be read as a glob — the brackets are a
+     * character class, matching `/api/trpc/t` and nothing real. Hence `**`.
+     */
+    "/api/trpc/**": [
+      "./node_modules/pdfjs-dist/legacy/build/**",
+      /**
+       * pdfjs `require`s `@napi-rs/canvas` inside a try/catch, so the tracer
+       * never sees it and the function ships without it. It then fails to
+       * polyfill `DOMMatrix`, which pdfjs constructs at module scope — the
+       * import throws before any text is read. The second glob is the
+       * platform-specific binary (`…-linux-x64-gnu` on the host that matters).
+       */
+      "./node_modules/@napi-rs/canvas/**",
+      "./node_modules/@napi-rs/canvas-*/**"
+    ]
   },
 
   redirects: async () => {
