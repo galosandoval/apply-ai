@@ -362,13 +362,8 @@ describe("paginate — degenerate input", () => {
   })
 })
 
-/*
-  The renderer measures the document it just drew, so it re-paginates far more
-  often than the answer actually changes: every keystroke, every hover over a
-  style button. Storing an assignment that agrees with the one held would
-  re-render the document for nothing, which is the flicker this comparison
-  exists to have stopped.
-*/
+// The flicker this comparison exists to have stopped is argued where it is
+// called from — see the doc on `isSamePagination` itself.
 describe("isSamePagination", () => {
   const page = (blocks: string[], continuedFrom: string | null = null) => ({
     blocks,

@@ -9,6 +9,7 @@ import {
   type TwoColumnRow
 } from "~/components/resume-section"
 import {
+  inDocumentOrder,
   type ResumeBlock,
   type ResumeBlockSpace,
   withBlockKeys
@@ -371,7 +372,7 @@ function continuationHeading(blocks: ResumeBlock[], sectionId: string) {
  * is the property the nesting could not have.
  */
 function documentBlocks(doc: Doc, sections: ResumeDocumentSection[]) {
-  return [
+  return inDocumentOrder([
     /*
       The header is its own one-block section. It belongs to no section the
       user owns, and every block has to name one — so it names the same thing
@@ -387,7 +388,7 @@ function documentBlocks(doc: Doc, sections: ResumeDocumentSection[]) {
       }
     ]),
     ...sections.flatMap((section) => sectionBlocksFor(doc, section))
-  ]
+  ])
 }
 
 /**
@@ -501,12 +502,15 @@ const runSpaceClass: Record<ResumeBlockSpace, string> = {
  * how a nine-bullet role comes to waste most of a page. The block is the unit
  * that is never cut, and it is deliberately smaller than an entry.
  *
- * The key, the kind and the section are in the markup because measurement
- * happens over the rendered document — in the editor's DOM and in the PDF's
- * browser — and a height is worth nothing without the block it was taken from.
- * The section is there because a break is decided per section as well as per
- * block: a page that opens mid-section is charged for the heading redrawn at
- * the top of it.
+ * The key, the kind, the section and the order are in the markup because
+ * measurement happens over the rendered document — in the editor's DOM and in
+ * the PDF's browser — and a height is worth nothing without the block it was
+ * taken from. The section is there because a break is decided per section as
+ * well as per block: a page that opens mid-section is charged for the heading
+ * redrawn at the top of it. The order is there because the drawn order is the
+ * last assignment's, not the document's — see `inDocumentOrder`.
+ *
+ * `readResumeBlock` below is the only thing that reads any of it back.
  */
 function ResumeBlockElement({ block }: { block: ResumeBlock }) {
   const className = [
@@ -522,12 +526,70 @@ function ResumeBlockElement({ block }: { block: ResumeBlock }) {
       className={className}
       data-resume-block={block.key}
       data-resume-block-kind={block.kind}
+      data-resume-block-order={block.order}
       data-resume-editor-only={block.editorOnly ? "true" : undefined}
       data-resume-section={block.sectionId}
     >
       {block.node}
     </div>
   )
+}
+
+/** Where a measurer finds the document, its sheets and the blocks on them. */
+export const resumeDocumentSelector = ".resume-document"
+export const resumePageSelector = "[data-resume-page]"
+export const resumeBlockSelector = "[data-resume-block]"
+
+/** The token holding what one sheet has room for, declared on the document. */
+export const resumePageContentHeightToken = "--resume-page-content-height"
+
+/** What one drawn block says about itself. */
+export type DrawnResumeBlock = {
+  key: string
+  sectionId: string
+  kind: "heading" | "content"
+  /** Its place in the document, which is not its place on the paper. */
+  order: number
+  isEditorOnly: boolean
+}
+
+/**
+ * One drawn block's identity, read back off the element that carries it.
+ *
+ * Here rather than beside the measurer because this is where the attributes are
+ * written: spelt on both sides of the module boundary, a rename is a silent
+ * break — every block reads as unidentifiable, drops out of the measurement,
+ * and the document lands on a leftover sheet with no error anywhere.
+ *
+ * An element missing any of it is not a block this can answer for, and is left
+ * out rather than filed under an empty name: a measurement filed under `""`
+ * collides silently with every other one. The heading a continued page repeats
+ * has no key at all — it is a repeat of a block rather than a block, and
+ * `paginate` already budgets for it — so it falls out here.
+ */
+export function readResumeBlock(element: HTMLElement): DrawnResumeBlock | null {
+  const {
+    resumeBlock: key,
+    resumeSection: sectionId,
+    resumeBlockKind: kind,
+    resumeBlockOrder: order,
+    resumeEditorOnly: editorOnly
+  } = element.dataset
+
+  // `Number.isFinite` rather than a truth test: the header is order zero, and
+  // dropping the first block of every document is not the sort of thing a
+  // measurement complains about — it just quietly draws it on the wrong sheet.
+  const position = Number(order)
+
+  if (!key || !sectionId || !Number.isFinite(position)) return null
+
+  return {
+    key,
+    sectionId,
+    kind: kind === "heading" ? "heading" : "content",
+    order: position,
+    isEditorOnly: Boolean(editorOnly)
+  }
 }
 
 /**

@@ -93,6 +93,13 @@ export type ResumeBlock = ResumeBlockDraft & {
   /** Stable across a re-render and across an edit elsewhere — see below. */
   key: string
   sectionId: string
+  /**
+   * Where the block sits in the whole document — see `inDocumentOrder`.
+   *
+   * Absent until the sections have been concatenated, because a section's
+   * blocks know their place in the section and nothing more.
+   */
+  order?: number
 }
 
 /**
@@ -106,6 +113,21 @@ export type ResumeBlock = ResumeBlockDraft & {
  */
 function resumeBlockKey(sectionId: string, position: number) {
   return `${sectionId}:${position}`
+}
+
+/**
+ * The document's blocks, each stamped with its place in the whole.
+ *
+ * Drawn into the markup and read back by the measurer, because the order the
+ * document is *drawn* in is the assignment's order and an assignment is always
+ * one edit behind the document: a block added since belongs to no page, so the
+ * renderer draws it on a leftover sheet at the end. Measured in that order it
+ * would be filed after every section that follows it, the next measurement
+ * would agree, and the wrong order would hold until the editor was remounted.
+ * The list is the order; the paper is not.
+ */
+export function inDocumentOrder(blocks: ResumeBlock[]): ResumeBlock[] {
+  return blocks.map((block, order) => ({ ...block, order }))
 }
 
 /** A section's drafts as blocks, numbered in document order. */

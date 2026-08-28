@@ -154,6 +154,24 @@ Three things make it settle rather than oscillate:
   A list would be a second copy of that fact to keep in agreement with the
   first, and the guard above is what makes the list unnecessary.
 
+**A render is not the only thing that moves a line onto another page.** A web
+font arriving and the pane being resized both re-lay the document out with
+nothing to re-render, so a `ResizeObserver` on the document and
+`document.fonts.ready` each ask for another measurement. Neither carries an
+answer of its own — they only start the loop again, and the guard above throws
+the result away when it agrees, which is almost every time.
+
+**The order a block is measured in comes from the list, not from the paper.**
+The document is drawn in the _assignment's_ order, and an assignment is always
+one edit behind the document: a block added since belongs to no page, so it is
+drawn on the leftover sheet at the end, past every section that follows it.
+Measured in drawn order it would be filed there; the next measurement would
+agree with the first, and the wrong order would hold until the editor was
+remounted. So `inDocumentOrder` stamps each block with its place in the whole
+document, the renderer draws that into the markup, and the measurement sorts by
+it. Block keys are positional within a section, which is what makes the drawn
+order and the document's order diverge in the first place.
+
 What one sheet has room for is resolved by putting a box of
 `var(--resume-page-content-height)` into the document and asking how tall it came
 out — a custom property is handed back unresolved, and doing the `calc` in

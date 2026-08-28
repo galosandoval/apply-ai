@@ -452,12 +452,8 @@ describe("empty sections", () => {
     expect(html).toContain("resume-section-placeholder")
   })
 
-  /*
-    The placeholder and the heading over it are editor furniture: the print has
-    neither. Measured, they would charge a page for height the PDF never draws,
-    and the editor would announce a page count the document does not have — the
-    one fact a stack of sheets exists to tell the truth about.
-  */
+  // Both are editor furniture, and what marking them buys is argued on
+  // `ResumeBlockDraft.editorOnly`.
   it("marks a placeholder and its heading as drawn for the editor only", async () => {
     const html = await renderResumeHtml(empty, { isEditor: true })
 

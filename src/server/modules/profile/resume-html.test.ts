@@ -132,7 +132,10 @@ const everyShape: ResumeDocumentData = {
 function documentBlocks(html: string) {
   const opens = [
     ...html.matchAll(
-      /<div class="([^"]*)" data-resume-block="([^"]*)" data-resume-block-kind="([^"]*)" data-resume-section="([^"]*)">/g
+      // `[^>]*` between the kind and the section rather than the two spelt
+      // adjacent: the order and the editor-only mark sit between them, and a
+      // block gaining an attribute should not silently stop being a block here.
+      /<div class="([^"]*)" data-resume-block="([^"]*)" data-resume-block-kind="([^"]*)"[^>]*data-resume-section="([^"]*)">/g
     )
   ]
 
@@ -140,6 +143,7 @@ function documentBlocks(html: string) {
     className: open[1] ?? "",
     key: open[2] ?? "",
     kind: open[3] ?? "",
+    order: Number(/data-resume-block-order="(\d+)"/.exec(open[0])?.[1]),
     markup: html.slice(
       open.index + open[0].length,
       opens[index + 1]?.index ?? html.length
@@ -504,6 +508,34 @@ describe("a paginated document", async () => {
     }
 
     expect(order[0]).toBeGreaterThan(order[1] ?? 0)
+  })
+
+  /*
+    The order blocks are *drawn* in is the assignment's, and an assignment is
+    always one edit behind the document: a block added since belongs to no page
+    and lands on the leftover sheet at the end, past every section that follows
+    it. A measurement taken in drawn order would file it there, the next
+    measurement would agree with the first, and the document would hold the
+    wrong order until the editor was remounted. So each block carries where it
+    sits in the document — which is a thing the paper cannot say.
+  */
+  it("numbers a block by its place in the document, not its place on the paper", async () => {
+    const stranded = inSection("experience")[1] ?? ""
+
+    const html = await renderResumeHtml(data, {
+      pages: [
+        { blocks: keys.filter((key) => key !== stranded), continuedFrom: null }
+      ]
+    })
+
+    const drawn = documentBlocks(html)
+
+    // Drawn last, on the sheet the assignment did not name...
+    expect(drawn.at(-1)?.key).toBe(stranded)
+
+    // ...and numbered where the document has it, so sorting puts it back.
+    expect([...drawn].sort((a, b) => a.order - b.order).map((b) => b.key)) //
+      .toEqual(keys)
   })
 
   it("opens a continued page with the heading of the section it continues", async () => {
