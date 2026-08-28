@@ -11,8 +11,14 @@ const config: NextConfig = {
   /** Next writes AGENTS.md / CLAUDE.md on dev boot otherwise. */
   agentRules: false,
 
-  /** Fly runs the standalone server; the Dockerfile copies `.next/standalone`. */
-  output: "standalone",
+  /**
+   * Fly runs the standalone server; the Dockerfile copies `.next/standalone`.
+   *
+   * Not on Vercel: standalone moves the trace files, and Vercel's own build
+   * step then fails looking for `.next/next-server.js.nft.json`. Vercel traces
+   * the function itself, so the setting buys nothing there anyway.
+   */
+  output: process.env.VERCEL ? undefined : "standalone",
 
   transpilePackages: ["geist"],
 

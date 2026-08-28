@@ -186,6 +186,7 @@ failure instead of a skip.
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | Build fails in `prebuild` | The stylesheet generator threw | Reproduce with `npm run generate:css` |
+| `ENOENT … next-server.js.nft.json` | `output: "standalone"` was on | It is off when `VERCEL` is set — check `next.config.ts` |
 | PDF renders unstyled or in the wrong font | The generated sheet did not ship | Confirm `src/generated/print-css.ts` exists after build; run `npm run test:pdf` |
 | PDF route times out | Cold Chromium exceeded the limit | Raise `maxDuration` and the memory in `vercel.json`, or set `BROWSER_WS_ENDPOINT` |
 | Deploy rejected for bundle size | Chromium plus dependencies over 250MB | Set `BROWSER_WS_ENDPOINT` and drop `@sparticuz/chromium` |
@@ -197,8 +198,17 @@ failure instead of a skip.
 ## Relationship to the Fly deployment
 
 Both are supported for now, and everything in step 1 is a plain improvement
-that helps either. `output: "standalone"` in `next.config.ts` and the
-`Dockerfile` exist for Fly; leave them until Vercel is proven in production.
+that helps either. The `Dockerfile` exists for Fly; leave it until Vercel is
+proven in production.
+
+Three settings in `next.config.ts` now branch on `VERCEL`, and all three exist
+because the two hosts want opposite things:
+
+| Setting | Fly | Vercel |
+| --- | --- | --- |
+| `output: "standalone"` | On — the Dockerfile copies `.next/standalone` | **Off.** Standalone relocates the trace files and Vercel's build step then fails on a missing `next-server.js.nft.json`. Vercel traces the function itself |
+| `@sparticuz/chromium` in the trace | Off — the image has its own browser | On — the runtime has none |
+| The browser launch path | `chromium.launch()` | sparticuz, via `launch-print-browser.ts` |
 
 The tradeoff is real and worth restating: Fly keeps one machine warm so
 Chromium never cold-starts, and bills 24/7 for it. Vercel scales to zero and

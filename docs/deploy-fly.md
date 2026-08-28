@@ -107,7 +107,8 @@ Verify with `fly secrets list` (names and digests only; values are write-once).
 fly deploy
 ```
 
-The build runs the three Dockerfile stages: install deps, `next build` (standalone output),
+The build runs the three Dockerfile stages: install deps, `next build` (standalone output —
+`next.config.ts` turns that off only when `VERCEL` is set),
 then copy `public/`, `.next/standalone`, `.next/static`, `migrations/` and the migration
 script onto the Playwright runtime image. First build is slow — the Playwright base image is large.
 
