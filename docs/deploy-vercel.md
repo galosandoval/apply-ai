@@ -1,178 +1,136 @@
 # Deploying to Vercel
 
-**Status: in progress.** Three of the four prerequisites are done. Until the
-last one is, [deploy-fly.md](./deploy-fly.md) is the path that works — keep it.
+The app runs on Vercel, against a Neon database provisioned through the Vercel
+marketplace integration. Push to `development` and it deploys.
 
-| # | Prerequisite | Status |
-| --- | --- | --- |
-| 1 | Print stylesheet compiled at build time, not read off `.next/static` | **Done** — verified against a real build and real Chromium |
-| 2 | Migrations moved off the boot hook | **Done** — one run per deploy, on both hosts |
-| 3 | Chromium available to the PDF route | **Done** in code — bundle size and cold-start time are unproven until a real deploy |
-| 4 | Pooled database connection | Not started |
+This is the only deployment. There was a Fly one — a Docker image bundling the
+app and Chromium, one machine kept warm — and it is gone. What follows is the
+Vercel setup and the handful of things about it that are easy to get wrong.
 
-## Why this needed work at all
+## The build
 
-The app was built for a long-lived container, for one reason: the PDF route
-prints with a real headless browser in-process
-(`src/server/modules/profile/render-resume-pdf.ts`). Three further assumptions
-followed from that host and none of them hold on a serverless one — a
-filesystem holding this build's output, a single process to migrate the
-database on boot, and a connection pool with one owner.
-
-Each is addressed below. Read the `Why` lines before changing any of it; the
-non-obvious ones are what make this deployment work.
-
-## 1. The print stylesheet — done
-
-`page.setContent` hands Chromium a document with no origin and no network, so
-neither a `<link>` nor a `url(/fonts/…)` resolves. The sheet and all eight faces
-have to be literal strings in the markup.
-
-They used to be read off `.next/static` at request time. On Vercel that
-directory is served from the CDN and is not in the function's filesystem, so
-the print would have silently lost its styling and fonts.
-
-`scripts/build-print-css.ts` now compiles the sheet at build time into
-`src/generated/print-css.ts`, which the route imports like any other module.
-Nothing is read from disk at runtime, so the host's filesystem layout no longer
-matters.
-
-**Nothing to configure.** Vercel runs `npm run build`, and `prebuild` runs the
-generator. Two things to know:
-
-- `src/generated` is gitignored build output, excluded from the Tailwind
-  content globs (it would otherwise feed Tailwind its own class names and the
-  base64 font data back as content to match) and from eslint.
-- The generated module is ~905KB. It counts against the function bundle, which
-  matters when Chromium joins it — see step 3.
-
-## 2. Migrations off the boot hook — done
-
-**Why:** `src/instrumentation.ts` ran `migrate()` on boot. On a container that
-is one process, once. On Vercel it is once per cold start, and a traffic spike
-cold-starts several concurrently — all running the migrator against the same
-database with no lock between them.
-
-The hook is gone. `scripts/migrate.mjs` (`npm run db:migrate`) now applies
-migrations once per deploy, and `vercel.json` puts it ahead of the build:
+`vercel.json` sets one command:
 
 ```json
 { "buildCommand": "npm run db:migrate && npm run build" }
 ```
 
-Three things to know:
-
-- **It picks the unpooled connection.** DDL through a transaction pooler is a
-  known source of trouble, so the script prefers `MIGRATION_DATABASE_URL`, then
-  `DATABASE_URL_UNPOOLED` / `POSTGRES_URL_NON_POOLING` (the two names the Neon
-  integration may set), and only falls back to `DATABASE_URL`. Set nothing and
-  it migrates through the pooled endpoint — confirm one of those names exists in
-  the project's environment once step 4 lands.
-- **A failed migration fails the build**, so the broken revision never takes
-  traffic. It also means the *previous* deployment keeps serving, against a
-  database the new code has not touched — which is the behaviour you want.
-- **It is plain `.mjs`, not TypeScript**, because Fly runs the same script from
-  a release machine whose image has no `tsx`. See below.
-
-Fly runs it too, as a `release_command` in `fly.toml` — same script, once per
-deploy, on its own machine before the new release takes traffic. That is why
-`Dockerfile` still copies `migrations/`, and now also `scripts/migrate.mjs` and
-`node_modules/drizzle-orm`: the standalone trace covers `pg`, but not the
-migrator, which no longer has an importer in the app. If Fly is ever retired,
-those three lines go with it.
-
-## 3. Chromium — done in code
-
-**Why:** `playwright-core` ships no browser, and Vercel's runtime has none.
-
-`src/server/modules/profile/launch-print-browser.ts` is now the only place that
-knows where a browser comes from. It picks one of three, in order:
-
-1. `BROWSER_WS_ENDPOINT` if set — `connectOverCDP` against a hosted browser.
-2. `@sparticuz/chromium` when `VERCEL` is set — a Lambda-compatible build,
-   shipped in the function and unpacked to `/tmp` on the first print.
-3. Plain `chromium.launch()` otherwise — Fly's image and every dev machine
-   already have a matching browser where Playwright looks for it.
-
-Everything else about the print is host-independent, which is why this is one
-small module and not a branch inside `render-resume-pdf.ts`.
-
-What that cost, and what is still unproven:
-
-- **Bundle size.** `@sparticuz/chromium` is 67MB of compressed browser. A
-  `VERCEL=1` build traces to 141MB total against Vercel's 250MB limit, so it
-  fits — but that measurement is `.next/standalone` locally, not the real
-  function. If a deploy is rejected for size, set `BROWSER_WS_ENDPOINT` to a
-  hosted browser (Browserbase, Browserless) and drop the dependency. That path
-  is only viable because `setContent` never navigates: the remote browser needs
-  no route back to this server.
-- **Cold start.** Unpacking Chromium is not fast. The route sets
-  `maxDuration = 60` (Hobby's ceiling) and `vercel.json` asks for 2048MB. Both
-  are guesses until a real cold print is timed — if the plan refuses the memory
-  size, the deploy fails loudly, which is the good failure.
-- **`setGraphicsMode = false`** skips unpacking swiftshader, ~40MB of software
-  GL that a page of text and rules never touches.
-- **Build wiring.** `@sparticuz/chromium` is in `serverExternalPackages`, and
-  `outputFileTracingIncludes` pulls it in **only when `VERCEL` is set** — the
-  Fly image has its own Chromium, and 67MB in `.next/standalone` would be dead
-  weight there.
-
-The fonts need nothing here — they are baked into the stylesheet by step 1, and
-sparticuz's own font pack goes unused.
-
-## 4. Database — pending
-
-Neon, provisioned through the Vercel marketplace integration so the connection
-strings land in the project's environment automatically.
-
-**Why pooled:** `src/server/db/index.ts` holds a `pg` Pool. Every warm function
-instance holds its own, so connections multiply with concurrency until Postgres
-refuses them. The app must use Neon's **pooled** endpoint; migrations must use
-the **unpooled** one.
-
-The integration sets both — confirm the exact variable names in the Vercel
-dashboard rather than assuming them, then make sure `DATABASE_URL` (which
-`src/env.ts` requires) points at the pooled endpoint.
-
-Neon also ships `pgvector`, which the ATS coverage work in
-[ats-score.md](./ats-score.md) will want for matching posting requirements
-against resume bullets semantically. That is per-user, per-resume data joined
-to relational rows — it belongs in this database, not a separate vector store.
+Migrations run **before** the build, so a bad migration fails the deploy and the
+previous deployment keeps serving. `prebuild` then compiles the print
+stylesheet, and `next build` runs.
 
 ## Environment variables
 
-All four are required by `src/env.ts` and validated at boot; validation is
-skipped only during the build (`SKIP_ENV_VALIDATION=1`).
+All four are required by `src/env.ts` and validated at build time — a missing one
+fails the build rather than the first request. Never set `SKIP_ENV_VALIDATION`
+on Vercel; it only moves that failure to runtime.
 
-| Variable | Notes |
-| --- | --- |
-| `DATABASE_URL` | Neon's **pooled** endpoint. Set by the integration — verify it is the pooled one. |
-| `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. Rotating it invalidates every session. |
-| `APP_URL` | The stable production origin, no trailing slash. `src/server/auth.ts` uses it as better-auth's `baseURL`. **Do not derive it from `VERCEL_URL`** — that is per-deployment, so callbacks would be signed against a URL that changes every push. |
-| `OPENAI_API_KEY` | Used by the resume generation and PDF import routes. |
+| Variable             | Notes                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `DATABASE_URL`       | Set by the Neon integration. Must be the **pooled** endpoint — see below.             |
+| `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. Rotating it invalidates every session.                     |
+| `APP_URL`            | The exact origin the browser sees, scheme and host only — no trailing slash, no path. |
+| `OPENAI_API_KEY`     | Used by resume generation and PDF import.                                             |
 
-`BROWSER_WS_ENDPOINT` is optional too — set it only to print on a hosted
-browser instead of the bundled one.
+Two optional ones: `MIGRATION_DATABASE_URL` to force migrations onto a specific
+(unpooled) endpoint, and `BROWSER_WS_ENDPOINT` to print on a hosted browser
+instead of the bundled one.
 
-`MIGRATION_DATABASE_URL` is optional: set it to the **unpooled** endpoint if the
-integration's own unpooled variable is named something `scripts/migrate.mjs`
-does not already look for.
+Env vars are read at deploy time. Changing one in the dashboard does nothing
+until you redeploy.
 
-`TEST_DATABASE_URL` is local and CI only. Never set it in production.
+### `APP_URL` is the origin, exactly
 
-Preview deployments need their own `APP_URL`, and sign-in will not work on them
-until that is set to the preview's own origin.
+better-auth uses it as `baseURL` (`src/server/auth.ts:16`) and compares it
+against each request's `Origin` header. A mismatch is rejected outright:
+
+```
+ERROR [Better Auth]: Invalid origin: https://www.applyai.app
+```
+
+If `www` and the apex both resolve, only one of them actually serves — check
+Settings → Domains for which is primary and which redirects, and point `APP_URL`
+at the survivor. Do not derive it from `VERCEL_URL`: that is per-deployment, so
+every push would change the origin callbacks are signed against.
+
+Preview deployments have their own hostname and need their own `APP_URL`. Until
+that is set, sign-in does not work on them.
+
+## Migrations
+
+`scripts/migrate.mjs` (`npm run db:migrate`) applies them once per deploy. It
+used to be an `instrumentation.ts` boot hook, which on a serverless host means
+once per cold start — a traffic spike would run several migrators against the
+same database with no lock between them.
+
+It prefers an unpooled connection, because DDL through a transaction pooler is a
+known source of trouble: `MIGRATION_DATABASE_URL`, then `DATABASE_URL_UNPOOLED`
+or `POSTGRES_URL_NON_POOLING` (the names Neon's integration may set), and only
+then `DATABASE_URL`.
+
+Plain `.mjs`, not TypeScript — it runs before the build, with no transpile step
+in front of it.
+
+## Chromium
+
+`playwright-core` ships no browser and the Vercel runtime has none, so
+`@sparticuz/chromium` — a Lambda-compatible build — travels in the function
+bundle and unpacks to `/tmp` on the first print of a cold instance.
+
+`src/server/modules/profile/launch-print-browser.ts` is the only place that
+knows this. It picks, in order: `BROWSER_WS_ENDPOINT` if set
+(`connectOverCDP` against a hosted browser), sparticuz when `VERCEL` is set, and
+plain `chromium.launch()` otherwise, which is what a dev machine with
+`npx playwright install chromium` uses.
+
+- **Size.** The browser is 67MB compressed against a 250MB limit. If a deploy is
+  ever rejected for size, set `BROWSER_WS_ENDPOINT` and drop the dependency.
+  That works only because `setContent` never navigates — the remote browser
+  needs no route back to this server.
+- **Cold start.** The route sets `maxDuration = 60` (Hobby's ceiling) and
+  `vercel.json` asks for 2048MB. A cold print pays for the unpack; a warm one
+  does not.
+- **`setGraphicsMode = false`** skips ~40MB of software GL that a page of text
+  and rules never touches.
+
+## The print stylesheet
+
+`page.setContent` hands Chromium a document with no origin and no network, so
+neither a `<link>` nor a `url(/fonts/…)` resolves. The sheet and all eight faces
+have to be literal strings in the markup.
+
+`scripts/build-print-css.ts` compiles them at build time into
+`src/generated/print-css.ts`, which the route imports like any other module —
+~905KB, and nothing is read from disk at runtime. `src/generated` is gitignored
+build output, excluded from the Tailwind content globs (it would otherwise feed
+Tailwind its own class names and the base64 font data back as content) and from
+eslint.
+
+## Database
+
+Neon, through the Vercel marketplace integration, which sets the connection
+strings automatically.
+
+`src/server/db/index.ts` holds a `pg` Pool, and every warm function instance
+holds its own — so connections multiply with concurrency until Postgres refuses
+them. `DATABASE_URL` must therefore be Neon's **pooled** endpoint. Worth
+verifying in the dashboard rather than assuming; the symptom of getting it wrong
+is `too many connections` under load, not at deploy.
+
+Neon also ships `pgvector`, which the ATS coverage work in
+[ats-score.md](./ats-score.md) will want for matching posting requirements
+against resume bullets semantically. That is per-user, per-resume data joined to
+relational rows — it belongs in this database, not a separate vector store.
 
 ## Verifying a deployment
 
-In this order — each exercises a different failure mode, and the last is the
-one most likely to break:
+In this order — each exercises a different failure mode, and the last is the one
+most likely to break:
 
 1. **Sign up.** Confirms `DATABASE_URL`, that migrations applied, and that
-   `APP_URL` matches the origin. A mismatch shows up as the session cookie not
-   sticking rather than as an error.
-2. **Generate a resume.** Confirms `OPENAI_API_KEY` and the function's duration
-   limit.
+   `APP_URL` matches the origin.
+2. **Import a resume PDF.** Confirms `OPENAI_API_KEY` and that pdfjs's native
+   dependencies shipped.
 3. **Download the PDF.** Confirms Chromium launched, and that the print is in
    its real faces rather than a system fallback. Open it and check the
    typography — a fallback renders perfectly happily and looks almost right.
@@ -183,34 +141,23 @@ failure instead of a skip.
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-| --- | --- | --- |
-| Build fails in `prebuild` | The stylesheet generator threw | Reproduce with `npm run generate:css` |
-| `ENOENT … next-server.js.nft.json` | `output: "standalone"` was on | It is off when `VERCEL` is set — check `next.config.ts` |
-| PDF import fails with `DOMMatrix is not defined` | `@napi-rs/canvas` did not ship — pdfjs requires it in a try/catch, so the tracer misses it | `outputFileTracingIncludes` names it explicitly. Note the key is `/api/trpc/**`: `[trpc]` would be parsed as a glob character class and match nothing |
-| PDF renders unstyled or in the wrong font | The generated sheet did not ship | Confirm `src/generated/print-css.ts` exists after build; run `npm run test:pdf` |
-| PDF route times out | Cold Chromium exceeded the limit | Raise `maxDuration` and the memory in `vercel.json`, or set `BROWSER_WS_ENDPOINT` |
-| Deploy rejected for bundle size | Chromium plus dependencies over 250MB | Set `BROWSER_WS_ENDPOINT` and drop `@sparticuz/chromium` |
-| `Could not find Chromium` on Vercel | The trace did not ship it | `VERCEL` must be set at build time for `outputFileTracingIncludes` to include it |
-| `too many connections` | Unpooled endpoint | Point `DATABASE_URL` at Neon's pooled endpoint |
-| Migration errors on deploy | DDL through the pooler | Set `MIGRATION_DATABASE_URL` to the unpooled endpoint |
-| Sign-in succeeds, session drops | `APP_URL` ≠ the real origin | Exact https origin, no trailing slash |
+Everything below has actually happened.
 
-## Relationship to the Fly deployment
+| Symptom                                   | Cause                                                                                                        | Fix                                                                                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ENOENT … src/generated/print-css.ts`     | The generator's output directory is gitignored, so a fresh checkout has none                                 | Fixed — `build-print-css.ts` creates it. Reproduce with `rm -rf src/generated && npm run generate:css`                                      |
+| `ENOENT … next-server.js.nft.json`        | `output: "standalone"` relocates the trace files and Vercel's build step cannot find them                    | Fixed — the setting is gone with Fly. Do not reintroduce it                                                                                 |
+| `DOMMatrix is not defined` on PDF import  | pdfjs `require`s `@napi-rs/canvas` in a try/catch, so the tracer misses it and the function ships without it | Fixed — `outputFileTracingIncludes` names it. Note the key is `/api/trpc/**`: `[trpc]` parses as a glob character class and matches nothing |
+| `Invalid origin` on sign-up               | `APP_URL` ≠ the origin the browser is on                                                                     | The exact surviving origin, no trailing slash. Redeploy                                                                                     |
+| Sign-in succeeds, session drops           | Same cause, subtler symptom                                                                                  | Same fix                                                                                                                                    |
+| Build fails in `prebuild`                 | The stylesheet generator threw                                                                               | Reproduce with `npm run generate:css`                                                                                                       |
+| PDF renders unstyled or in the wrong font | The generated sheet did not ship                                                                             | Confirm `src/generated/print-css.ts` exists after build; run `npm run test:pdf`                                                             |
+| PDF route times out                       | Cold Chromium exceeded the limit                                                                             | Raise `maxDuration` and the memory in `vercel.json`, or set `BROWSER_WS_ENDPOINT`                                                           |
+| Deploy rejected for bundle size           | Chromium plus dependencies over 250MB                                                                        | Set `BROWSER_WS_ENDPOINT` and drop `@sparticuz/chromium`                                                                                    |
+| `too many connections`                    | `DATABASE_URL` points at the unpooled endpoint                                                               | Point it at Neon's pooled one                                                                                                               |
+| Migration errors on deploy                | DDL through the pooler                                                                                       | Set `MIGRATION_DATABASE_URL` to the unpooled endpoint                                                                                       |
 
-Both are supported for now, and everything in step 1 is a plain improvement
-that helps either. The `Dockerfile` exists for Fly; leave it until Vercel is
-proven in production.
-
-Three settings in `next.config.ts` now branch on `VERCEL`, and all three exist
-because the two hosts want opposite things:
-
-| Setting | Fly | Vercel |
-| --- | --- | --- |
-| `output: "standalone"` | On — the Dockerfile copies `.next/standalone` | **Off.** Standalone relocates the trace files and Vercel's build step then fails on a missing `next-server.js.nft.json`. Vercel traces the function itself |
-| `@sparticuz/chromium` in the trace | Off — the image has its own browser | On — the runtime has none |
-| The browser launch path | `chromium.launch()` | sparticuz, via `launch-print-browser.ts` |
-
-The tradeoff is real and worth restating: Fly keeps one machine warm so
-Chromium never cold-starts, and bills 24/7 for it. Vercel scales to zero and
-pays for that with a cold browser on the first print after idle.
+A general note on tracing: a package Next never statically sees — required in a
+try/catch, resolved by path at runtime — will not ship unless
+`outputFileTracingIncludes` names it. That has now bitten twice, once for
+Chromium and once for canvas. It fails at runtime, not at build.

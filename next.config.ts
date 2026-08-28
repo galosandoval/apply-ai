@@ -1,7 +1,4 @@
-/**
- * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
- * for Docker builds.
- */
+/** Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. */
 import "./src/env"
 import type { NextConfig } from "next"
 
@@ -10,15 +7,6 @@ const config: NextConfig = {
 
   /** Next writes AGENTS.md / CLAUDE.md on dev boot otherwise. */
   agentRules: false,
-
-  /**
-   * Fly runs the standalone server; the Dockerfile copies `.next/standalone`.
-   *
-   * Not on Vercel: standalone moves the trace files, and Vercel's own build
-   * step then fails looking for `.next/next-server.js.nft.json`. Vercel traces
-   * the function itself, so the setting buys nothing there anyway.
-   */
-  output: process.env.VERCEL ? undefined : "standalone",
 
   transpilePackages: ["geist"],
 
@@ -37,12 +25,8 @@ const config: NextConfig = {
   outputFileTracingIncludes: {
     "/api/resume/pdf": [
       "./node_modules/playwright-core/**",
-      /**
-       * 67MB of compressed browser, and only Vercel needs it — the Fly image
-       * has its own Chromium, and dragging this into `.next/standalone` would
-       * be dead weight there. See `launch-print-browser.ts`.
-       */
-      ...(process.env.VERCEL ? ["./node_modules/@sparticuz/chromium/**"] : [])
+      /** The browser itself — `playwright-core` ships none. 67MB compressed. */
+      "./node_modules/@sparticuz/chromium/**"
     ],
     /**
      * `/api/trpc/[trpc]` would be read as a glob — the brackets are a

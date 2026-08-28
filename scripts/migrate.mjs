@@ -6,8 +6,8 @@
  * traffic spike cold-starts several concurrently — every one of them running
  * the migrator against the same database with no lock between them.
  *
- * Plain `.mjs` on purpose: it has to run from the Fly release machine, whose
- * image carries no `tsx` and no TypeScript.
+ * Plain `.mjs` on purpose: it runs before the build, under whatever Node the
+ * host provides, with no transpile step in front of it.
  *
  * Uses an unpooled connection. DDL through a transaction pooler is a known
  * source of trouble, so the unpooled URLs are preferred over `DATABASE_URL`
