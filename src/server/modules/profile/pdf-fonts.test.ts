@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { type ResumeStyle } from "~/lib/resume-style"
 import { printCss as css } from "~/generated/print-css"
+import { hasPrintBrowser } from "./print-test-support"
 import { resumePdfDocument } from "./resume-html"
 
 /**
@@ -20,36 +21,7 @@ import { resumePdfDocument } from "./resume-html"
  * is embedded and in use, and that the page fetched nothing to get it.
  */
 
-/**
- * Skipping is a local convenience, and only that.
- *
- * The sheet is no longer what can be missing — `pretest` generates it, so it is
- * always there. Chromium is: `playwright-core` ships no browser, and a checkout
- * that has never run `npx playwright install` should skip rather than fail for
- * the wrong reason.
- *
- * But a suite that silently asserts nothing is worse than no suite, and this is
- * the only thing standing between the print and a system fallback. So
- * `REQUIRE_PDF_TESTS=1` — set by `npm run test:pdf`, and worth setting in CI —
- * turns the skip into a failure.
- */
-const hasBrowser = await chromium
-  .launch()
-  .then((browser) => browser.close())
-  .then(() => true)
-  .catch(() => false)
-
-if (!hasBrowser && process.env.REQUIRE_PDF_TESTS === "1") {
-  throw new Error(
-    "REQUIRE_PDF_TESTS=1 but no browser launched — run `npx playwright install chromium`."
-  )
-}
-
-if (!hasBrowser) {
-  console.warn(
-    "pdf-fonts.test.ts: skipped, no Chromium. `npx playwright install chromium` enables it."
-  )
-}
+const hasBrowser = await hasPrintBrowser("pdf-fonts.test.ts")
 
 const data: ResumeDocumentData = {
   profession: "Software Engineer",

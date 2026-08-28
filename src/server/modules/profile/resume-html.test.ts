@@ -376,6 +376,32 @@ describe("resumePdfDocument", () => {
     expect(document).not.toContain("<link")
     expect(document).not.toContain("<script")
   })
+
+  /*
+    The two documents one print renders: the flow it measures, then the sheets
+    it prints. That the sheets carry the margin is asserted over the markup a
+    few describes down — this is only that the assignment gets there at all,
+    which is the whole of what the route adds to the page it prints.
+  */
+  it("prints the continuous flow when it has nothing to assign", async () => {
+    const document = await resumePdfDocument(data, "")
+
+    expect(document).not.toContain("data-resume-page")
+  })
+
+  it("prints the assignment it is given, as sheets", async () => {
+    const keys = documentBlocks(await renderResumeHtml(data)).map(
+      (block) => block.key
+    )
+    const at = Math.ceil(keys.length / 2)
+
+    const document = await resumePdfDocument(data, "", [
+      { blocks: keys.slice(0, at), continuedFrom: null },
+      { blocks: keys.slice(at), continuedFrom: null }
+    ])
+
+    expect([...document.matchAll(/data-resume-page="/g)]).toHaveLength(2)
+  })
 })
 
 /**

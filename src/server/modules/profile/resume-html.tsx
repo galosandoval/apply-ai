@@ -76,9 +76,17 @@ export async function renderResumeHtml(
  * The faces need nothing here: they are `@font-face` rules and `:root`
  * variables in the same stylesheet, which is exactly why they are declared
  * that way rather than through `next/font`.
+ *
+ * Called twice per print: once without an assignment, which is the document
+ * the browser measures, and once with the assignment those measurements
+ * produced, which is the document it prints — see `renderResumePdf`.
  */
-export async function resumePdfDocument(data: ResumeDocumentData, css: string) {
-  const body = await renderResumeHtml(data)
+export async function resumePdfDocument(
+  data: ResumeDocumentData,
+  css: string,
+  pages?: PaginatedPage[]
+) {
+  const body = await renderResumeHtml(data, { pages })
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -86,7 +94,12 @@ export async function resumePdfDocument(data: ResumeDocumentData, css: string) {
 <meta charset="utf-8">
 <style>${css}</style>
 <style>
-  /* The page is the paper. Margins come from page.pdf, not from the body. */
+  /*
+    The page is the paper, and the paper carries its own margin: every sheet
+    is padded on all four sides by the paper class. The print options pass no
+    margin at all, so page two is margined exactly like page one — which
+    printing the continuous flow onto sheet-sized paper never was.
+  */
   html, body { margin: 0; padding: 0; background: #fff; }
 </style>
 </head>

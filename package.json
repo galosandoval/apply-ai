@@ -19,7 +19,7 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:pdf": "npm run generate:css && REQUIRE_PDF_TESTS=1 vitest run src/server/modules/profile/pdf-fonts.test.ts",
+    "test:pdf": "npm run generate:css && REQUIRE_PDF_TESTS=1 vitest run src/server/modules/profile/pdf-fonts.test.ts src/server/modules/profile/pdf-pagination.test.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },

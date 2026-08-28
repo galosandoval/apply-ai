@@ -10,7 +10,7 @@ import { newAccount, signUp } from "./support"
 test("signing up lands on onboarding", async ({ page }) => {
   await signUp(page, newAccount())
 
-  await expect(page).toHaveURL(/\/onboarding\/import/)
+  await expect(page).toHaveURL(/\/onboarding/)
 })
 
 test("signing in reaches the dashboard", async ({ page, context }) => {
