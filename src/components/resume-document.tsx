@@ -1,4 +1,4 @@
-import { Fragment } from "react"
+import { Fragment, type ReactNode } from "react"
 import {
   customSectionShape,
   type EntryPart,
@@ -158,7 +158,10 @@ export function ResumeDocument({
   )
 
   const blocks = documentBlocks(doc, sections)
-  const sheets = mode === "page" && pages ? pages : null
+
+  // The assignment only applies where there is paper to apply it to: reflow is
+  // a phone, and a stack of A4 sheets on one is a document nobody can read.
+  const activePages = mode === "page" && pages ? pages : null
 
   return (
     /*
@@ -174,11 +177,15 @@ export function ResumeDocument({
       paragraph is not.
     */
     <div
-      className={documentClassName(mode, toResumeStyle(data.style), sheets)}
+      className={documentClassName(
+        mode,
+        toResumeStyle(data.style),
+        activePages !== null
+      )}
       style={accentOverride(data.accent)}
     >
-      {sheets ? (
-        <PageStack blocks={blocks} pages={sheets} />
+      {activePages ? (
+        <PageStack blocks={blocks} pages={activePages} />
       ) : (
         <BlockFlow blocks={blocks} />
       )}
@@ -204,12 +211,12 @@ const paperClassName = "bg-resume-paper px-resume-page-x py-resume-page-y"
  * the sheet, on all four sides, because the border box is the paper.
  *
  * Nothing here hides an overflow, deliberately: read the comment in
- * `ResumeDocument` about the page that used to clip. The gap to the next sheet
- * and the break that ends this one are `.resume-page-sheet` in `global.css` —
- * both have to change when the sheets are real paper, which a utility cannot
- * say.
+ * `ResumeDocument` about the page that used to clip. `relative` is what makes
+ * that promise true rather than merely unhidden — see `Sheet`. The gap to the
+ * next sheet and the break that ends it are `.resume-page-sheet` in
+ * `global.css`, which a utility cannot say.
  */
-const pageClassName = `resume-page resume-page-sheet ${paperClassName} h-resume-page w-resume-page rounded-resume-page`
+const pageClassName = `resume-page resume-page-sheet ${paperClassName} relative h-resume-page w-resume-page rounded-resume-page`
 
 /**
  * The document dealt onto sheets, one element per assigned page.
@@ -230,23 +237,21 @@ function PageStack({
   const byKey = new Map(blocks.map((block) => [block.key, block]))
   const assigned = new Set(pages.flatMap((page) => page.blocks))
   const unassigned = blocks.filter((block) => !assigned.has(block.key))
+  const total = pages.length + (unassigned.length > 0 ? 1 : 0)
 
   return (
     <>
       {pages.map((page, index) => (
-        <div
-          className={pageClassName}
-          data-resume-page={index}
+        <Sheet
+          blocks={page.blocks.flatMap((key) => byKey.get(key) ?? [])}
+          heading={
+            page.continuedFrom &&
+            continuationHeading(blocks, page.continuedFrom)
+          }
+          index={index}
           key={page.blocks[0] ?? `empty:${index}`}
-        >
-          {page.continuedFrom && (
-            <ContinuedHeading blocks={blocks} sectionId={page.continuedFrom} />
-          )}
-
-          <BlockFlow
-            blocks={page.blocks.flatMap((key) => byKey.get(key) ?? [])}
-          />
-        </div>
+          total={total}
+        />
       ))}
 
       {/*
@@ -257,13 +262,64 @@ function PageStack({
         choice the overflowing page is: a resume with an unexpected last page is
         a document the user can see is wrong, and one that quietly lost a job is
         not. The next measurement replaces the assignment and the page goes.
+
+        It is marked, because it is not one of the pages that were assigned: a
+        parser counting the assignment against the markup would otherwise find
+        one page more than it asked for and have no way to tell which.
       */}
       {unassigned.length > 0 && (
-        <div className={pageClassName} data-resume-page={pages.length}>
-          <BlockFlow blocks={unassigned} />
-        </div>
+        <Sheet
+          blocks={unassigned}
+          index={pages.length}
+          isUnassigned
+          total={total}
+        />
       )}
     </>
+  )
+}
+
+/**
+ * One page element: a sheet of paper with blocks on it.
+ *
+ * One component rather than two near-identical elements, because an assigned
+ * page and the sheet that catches what the assignment missed are the same piece
+ * of paper — spelt twice, they are two sheets that can quietly stop matching.
+ *
+ * `--resume-page-order` stacks the sheets in reverse: the first page paints
+ * above the second, the second above the third. Without it a block too tall for
+ * its page runs *under* the next sheet's opaque background, which is the
+ * clipping the document comment forbids, arrived at by paint order instead of
+ * by `overflow-hidden`. Reversed, the overflow lands on top of the page below
+ * and is a bug the user can see — which is the whole point.
+ *
+ * It is markup rather than style because it counts the sheets, and CSS cannot;
+ * `.resume-page-sheet` in `global.css` is what reads it.
+ */
+function Sheet({
+  blocks,
+  heading,
+  index,
+  isUnassigned = false,
+  total
+}: {
+  blocks: ResumeBlock[]
+  heading?: ReactNode
+  index: number
+  isUnassigned?: boolean
+  total: number
+}) {
+  return (
+    <div
+      className={pageClassName}
+      data-resume-page={index}
+      data-resume-page-unassigned={isUnassigned ? "true" : undefined}
+      style={{ "--resume-page-order": total - index } as React.CSSProperties}
+    >
+      {heading}
+
+      <BlockFlow blocks={blocks} />
+    </div>
   )
 }
 
@@ -282,14 +338,11 @@ function PageStack({
  * parser — or a test — tells it from a genuine second section of the same name,
  * and the title itself is left alone: appending "(continued)" would be the
  * renderer editing the user's own section name.
+ *
+ * The height it costs is not free, and `paginate` reserves it: a page that
+ * opens mid-section is measured with one heading already on it.
  */
-function ContinuedHeading({
-  blocks,
-  sectionId
-}: {
-  blocks: ResumeBlock[]
-  sectionId: string
-}) {
+function continuationHeading(blocks: ResumeBlock[], sectionId: string) {
   const heading = blocks.find(
     (block) => block.sectionId === sectionId && block.kind === "heading"
   )
@@ -489,7 +542,7 @@ function ResumeBlockElement({ block }: { block: ResumeBlock }) {
 function documentClassName(
   mode: RenderMode,
   style: ResumeStyle,
-  sheets: PaginatedPage[] | null
+  isPaginated: boolean
 ) {
   const shared = `resume-document ${resumeStyleClass(style)} text-resume-body`
 
@@ -502,7 +555,7 @@ function documentClassName(
     second page at a glance. Unpaginated, the document is still the one sheet it
     always was, and still the thing `resume-page` names.
   */
-  return sheets
+  return isPaginated
     ? shared
     : `${shared} ${paperClassName} resume-page w-resume-page rounded-resume-page`
 }

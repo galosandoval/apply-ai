@@ -248,6 +248,57 @@ describe("paginate — continued sections", () => {
 
     expect(pages[1]?.continuedFrom).toBe("contact")
   })
+
+  /*
+    The renderer redraws the heading at the top of a continued page, so that
+    heading is real height on a real page. Budgeted as though it were not there,
+    every continued page comes out one heading too full — and a page too full is
+    an overflow the user sees, which is the failure this whole area exists to
+    have stopped.
+  */
+  it("charges a continued page for the heading redrawn on it", () => {
+    const blocks = [
+      heading("h", 50, "experience"),
+      ...[1, 2, 3, 4, 5, 6].map((n) => block(`b${n}`, 80))
+    ]
+
+    // 250 fits the heading and two bullets, or three bullets on their own. A
+    // continued page gets two, because the repeated heading takes the third
+    // bullet's room.
+    expect(keysPerPage(blocks, 250)).toEqual([
+      ["h", "b1", "b2"],
+      ["b3", "b4"],
+      ["b5", "b6"]
+    ])
+  })
+
+  it("charges nothing to a page that opens a section of its own", () => {
+    const blocks = [
+      heading("summary-heading", 50, "summary"),
+      block("summary", 150, { sectionId: "summary" }),
+      heading("skills-heading", 50, "skills"),
+      ...[1, 2].map((n) => block(`skill-${n}`, 100, { sectionId: "skills" }))
+    ]
+
+    // The second page starts its own section, so nothing is redrawn above it
+    // and all 250 of its height is content.
+    expect(keysPerPage(blocks, 250)).toEqual([
+      ["summary-heading", "summary"],
+      ["skills-heading", "skill-1", "skill-2"]
+    ])
+  })
+
+  it("charges nothing for a continued section drawn without a heading", () => {
+    const blocks = [1, 2, 3, 4].map((n) =>
+      block(`contact-${n}`, 100, { sectionId: "contact" })
+    )
+
+    // No heading to repeat is no height to reserve: both pages hold two.
+    expect(keysPerPage(blocks, 250)).toEqual([
+      ["contact-1", "contact-2"],
+      ["contact-3", "contact-4"]
+    ])
+  })
 })
 
 describe("paginate — degenerate input", () => {

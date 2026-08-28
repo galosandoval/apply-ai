@@ -385,26 +385,54 @@ describe("the page geometry", async () => {
     respace and a print that keeps a gap that has nothing to show.
   */
   it("puts the gap between sheets on the page element, from the token", () => {
-    const sheet = bodyForSelector(".resume-page-sheet")
+    const sheet = bodyForSelector(".resume-page-sheet:not(:last-child)")
 
-    expect(sheet, ".resume-page-sheet is missing").not.toBe("")
+    expect(sheet, "the between-sheets rule is missing").not.toBe("")
     expect(sheet).toContain("var(--resume-page-gap)")
   })
 
-  it("ends every sheet with a forced break and no gap in print", () => {
-    expect(bodyForSelector(".resume-page-sheet")).toContain("break-after: page")
+  it("ends each sheet but the last with a forced break, and no gap in print", () => {
+    expect(bodyForSelector(".resume-page-sheet:not(:last-child)")).toContain(
+      "break-after: page"
+    )
 
     // The gap is the app's background between two pieces of paper. On paper
     // the sheets are already separate, so what would be left is a margin the
     // print has to find room for — which is a third page for two pages of
     // content.
     const printed =
-      /@media print \{\s*\.resume-page-sheet \{([^}]*)\}/.exec(css)?.[1] ?? ""
+      /@media print \{\s*\.resume-page-sheet:not\(:last-child\) \{([^}]*)\}/.exec(
+        css
+      )?.[1] ?? ""
 
-    expect(printed, ".resume-page-sheet is not re-valued for print").not.toBe(
-      ""
-    )
+    expect(printed, "the between-sheets rule has no print value").not.toBe("")
     expect(printed).toContain("margin-bottom: 0")
+  })
+
+  /*
+    Both between-sheets rules stop short of the last sheet. A trailing margin is
+    a gap below nothing, and a trailing forced break is the blank final page
+    Chromium prints for it — a two-page resume that comes out three pages long.
+  */
+  it("leaves the last sheet no trailing gap and no trailing break", () => {
+    const every = bodyForSelector(".resume-page-sheet")
+
+    expect(every, ".resume-page-sheet is missing").not.toBe("")
+    expect(every).not.toContain("margin-bottom")
+    expect(every).not.toContain("break-after")
+  })
+
+  /*
+    A sheet is positioned so the stack can be ordered in reverse — see `Sheet`.
+    Without it a block too tall for its page paints under the next sheet's
+    background, which is the clipping the document is built not to do, arrived
+    at by paint order rather than by `overflow-hidden`.
+  */
+  it("positions a sheet so an overflow can paint over the page below", () => {
+    const sheet = bodyForSelector(".resume-page-sheet")
+
+    expect(sheet).toContain("position: relative")
+    expect(sheet).toContain("var(--resume-page-order")
   })
 
   it("leaves no A4 literal in any component", async () => {

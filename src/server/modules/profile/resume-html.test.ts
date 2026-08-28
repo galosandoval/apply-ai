@@ -402,10 +402,13 @@ describe("a paginated document", async () => {
 
   /** The page elements of a rendered document, in order. */
   function pageElements(html: string) {
-    const opens = [...html.matchAll(/<div class="([^"]*)" data-resume-page="/g)]
+    const opens = [
+      ...html.matchAll(/<div class="([^"]*)" data-resume-page="[^>]*>/g)
+    ]
 
     return opens.map((open, index) => ({
       className: open[1] ?? "",
+      openTag: open[0],
       markup: html.slice(
         open.index + open[0].length,
         opens[index + 1]?.index ?? html.length
@@ -428,6 +431,7 @@ describe("a paginated document", async () => {
 
     for (const page of pageElements(html)) {
       expect(page.className).toContain("resume-page")
+      expect(page.openTag).not.toContain("data-resume-page-unassigned")
     }
   })
 
@@ -477,6 +481,31 @@ describe("a paginated document", async () => {
     expect(html).not.toContain("overflow-clip")
   })
 
+  /*
+    Nothing hidden is only half of it. Sheets are opaque and adjacent, so a
+    block too tall for its page would paint *under* the next sheet's background
+    and be exactly as invisible as `overflow-hidden` would have made it — the
+    clipping arrived at by paint order instead. The stack is ordered in reverse
+    so the overflow lands on top of the page below, where the user can see it.
+  */
+  it("stacks the sheets in reverse so an overflow paints over the next page", async () => {
+    const pages = pageElements(
+      await renderResumeHtml(data, { pages: twoPages })
+    )
+
+    const order = pages.map((page) =>
+      Number(/--resume-page-order:\s*(\d+)/.exec(page.openTag)?.[1])
+    )
+
+    expect(order).toHaveLength(2)
+
+    for (const [index, z] of order.entries()) {
+      expect(z, `page ${index} has no z-index`).not.toBeNaN()
+    }
+
+    expect(order[0]).toBeGreaterThan(order[1] ?? 0)
+  })
+
   it("opens a continued page with the heading of the section it continues", async () => {
     const [, second] = pageElements(
       await renderResumeHtml(data, { pages: twoPages })
@@ -524,6 +553,16 @@ describe("a paginated document", async () => {
 
     expect(pageElements(html)).toHaveLength(2)
     expect(pageElements(html)[1]?.markup).toContain("Home Tuition")
+
+    // Marked, because it is not one of the pages that were assigned: a parser
+    // counting the assignment against the markup would otherwise find one page
+    // more than it asked for and no way to tell which one it was.
+    expect(pageElements(html)[0]?.openTag).not.toContain(
+      "data-resume-page-unassigned"
+    )
+    expect(pageElements(html)[1]?.openTag).toContain(
+      'data-resume-page-unassigned="true"'
+    )
   })
 
   it("leaves the phone alone — reflow is one flow, not a stack of pages", async () => {

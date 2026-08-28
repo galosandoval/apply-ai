@@ -688,6 +688,19 @@
   /*
     One sheet in a stack of them.
 
+    Positioned, so that the sheets can be stacked in reverse and a block too
+    tall for its page paints *over* the page below rather than under it — see
+    `Sheet` in `resume-document.tsx`, which sets the order. The z-index is
+    markup rather than style because it counts the sheets, and CSS cannot.
+  */
+  .resume-page-sheet {
+    position: relative;
+    z-index: var(--resume-page-order, 0);
+  }
+
+  /*
+    What separates one sheet from the next.
+
     The gap is the app's background between two pieces of paper — a margin
     rather than padding, because it is space *around* the sheet and the sheet's
     own padding is the print margin. In print there is nothing between two
@@ -695,17 +708,22 @@
     element boundary and the sheet boundary become the same boundary, which is
     the point of drawing pages at all.
 
+    Both are between-sheets rules, so neither reaches the last sheet. A trailing
+    margin is a gap below nothing, and a trailing `break-after: page` is the
+    blank final page Chromium prints for it — a two-page resume that comes out
+    of the PDF three pages long.
+
     `break-after` is unconditional rather than print-only. On screen it costs
     nothing — there are no pages to break onto — and a rule that only exists
     inside a media query is a rule the print is the first thing to test.
   */
-  .resume-page-sheet {
+  .resume-page-sheet:not(:last-child) {
     margin-bottom: var(--resume-page-gap);
     break-after: page;
   }
 
   @media print {
-    .resume-page-sheet {
+    .resume-page-sheet:not(:last-child) {
       margin-bottom: 0;
     }
   }
