@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import { Toaster } from "react-hot-toast"
 import "~/styles/global.css"
 import { Providers } from "~/app/providers"
+import { env } from "~/env"
 import { routing } from "~/i18n/routing"
 
 export async function generateMetadata({
@@ -16,6 +17,12 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "meta" })
 
   return {
+    /**
+     * Makes the canonical and `hreflang` links absolute. Relative alternates
+     * are not reliably honoured by crawlers, which would waste the whole point
+     * of prefixed URLs.
+     */
+    metadataBase: new URL(env.APP_URL),
     title: {
       default: t("appName"),
       template: `%s · ${t("appName")}`
