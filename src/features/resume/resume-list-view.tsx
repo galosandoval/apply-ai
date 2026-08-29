@@ -1,5 +1,6 @@
 "use client"
 
+import { useFormatter, useTranslations } from "next-intl"
 import { Link } from "~/i18n/navigation"
 import toast from "react-hot-toast"
 import { Button } from "~/components/ui/button"
@@ -14,6 +15,8 @@ import { api } from "~/utils/api"
  * generating twice is permanent.
  */
 export function ResumeListView() {
+  const t = useTranslations("resumeList")
+  const format = useFormatter()
   const utils = api.useContext()
   const { data: resumes, status } = api.resume.list.useQuery()
 
@@ -21,7 +24,7 @@ export function ResumeListView() {
     onSuccess: () => utils.resume.list.invalidate(),
     onError: (error) => {
       console.error(error)
-      toast.error("Could not delete that resume.")
+      toast.error(t("deleteFailed"))
     }
   })
 
@@ -30,7 +33,9 @@ export function ResumeListView() {
   }
 
   if (status === "pending" || !resumes) {
-    return <main className="grid h-full place-items-center">Loading...</main>
+    return (
+      <main className="grid h-full place-items-center">{t("loading")}</main>
+    )
   }
 
   return (
@@ -48,11 +53,11 @@ export function ResumeListView() {
               dates is a list of dates. Two lines of it is enough to recognize.
             */}
             <p className="line-clamp-2 text-sm text-neutral-600">
-              {resume.jobDescription || "No job description saved"}
+              {resume.jobDescription || t("noJobDescription")}
             </p>
 
             <p className="pt-1 text-xs text-neutral-500">
-              {resume.createdAt.toDateString()}
+              {format.dateTime(resume.createdAt, "long")}
             </p>
           </Link>
 
@@ -63,7 +68,7 @@ export function ResumeListView() {
             type="button"
             variant="ghost"
           >
-            Delete
+            {t("delete")}
           </Button>
         </div>
       ))}

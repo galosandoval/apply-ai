@@ -1,20 +1,28 @@
 import { type Metadata } from "next"
 import { hasLocale, NextIntlClientProvider } from "next-intl"
-import { setRequestLocale } from "next-intl/server"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 import { notFound } from "next/navigation"
 import { Toaster } from "react-hot-toast"
 import "~/styles/global.css"
 import { Providers } from "~/app/providers"
 import { routing } from "~/i18n/routing"
 
-export const metadata: Metadata = {
-  title: {
-    default: "ApplyAI",
-    template: "%s · ApplyAI"
-  },
-  description:
-    "Created by Galo Sandoval to make the job application process easier.",
-  icons: { icon: "/favicon.ico" }
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "meta" })
+
+  return {
+    title: {
+      default: t("appName"),
+      template: `%s · ${t("appName")}`
+    },
+    description: t("description"),
+    icons: { icon: "/favicon.ico" }
+  }
 }
 
 /** Prerenders both locales instead of rendering every page on demand. */

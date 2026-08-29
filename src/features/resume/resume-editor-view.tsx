@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
@@ -40,6 +41,7 @@ export function ResumeEditorView() {
 type Pane = "edit" | "document"
 
 function Editor({ resumeId }: { resumeId: string }) {
+  const t = useTranslations("resumeEditor")
   const editor = useResumeEditor(resumeId)
   const { mode } = useResumeRenderMode()
   const [pane, setPane] = useState<Pane>("edit")
@@ -54,7 +56,9 @@ function Editor({ resumeId }: { resumeId: string }) {
   }
 
   if (!editor.resume || !editor.panel) {
-    return <main className="grid h-full place-items-center">Loading...</main>
+    return (
+      <main className="grid h-full place-items-center">{t("loading")}</main>
+    )
   }
 
   return (
@@ -170,11 +174,12 @@ function StylePicker({
   onPreview: (style: ResumeStyle | null) => void
   onChange: (style: ResumeStyle) => void
 }) {
+  const t = useTranslations("resumeEditor")
   const showing = preview ?? style
 
   return (
     <div
-      aria-label="Resume style"
+      aria-label={t("styleLabel")}
       className="flex items-center gap-1 rounded-md border border-neutral-200 p-0.5"
       onMouseLeave={() => onPreview(null)}
       role="radiogroup"
@@ -233,6 +238,8 @@ function PaneTabs({
   pane: Pane
   setPane: (pane: Pane) => void
 }) {
+  const t = useTranslations("resumeEditor")
+
   return (
     <div className="flex gap-1 lg:hidden">
       {(["edit", "document"] as const).map((value) => (
@@ -243,22 +250,17 @@ function PaneTabs({
           type="button"
           variant={pane === value ? "default" : "outline"}
         >
-          {value === "edit" ? "Edit" : "Resume"}
+          {value === "edit" ? t("modeEdit") : t("modeResume")}
         </Button>
       ))}
     </div>
   )
 }
 
-const saveMessages: Record<SaveState, string> = {
-  idle: "Changes save automatically",
-  saving: "Saving…",
-  saved: "Saved",
-  failed: "Could not save"
-}
-
 /** Autosave without feedback is indistinguishable from data loss. */
 function SaveStatus({ state }: { state: SaveState }) {
+  const t = useTranslations("resumeEditor.save")
+
   return (
     <p
       className={`text-sm ${
@@ -266,7 +268,7 @@ function SaveStatus({ state }: { state: SaveState }) {
       }`}
       role="status"
     >
-      {saveMessages[state]}
+      {t(state)}
     </p>
   )
 }
@@ -278,6 +280,7 @@ function SaveStatus({ state }: { state: SaveState }) {
  * do before sending, on whatever device you have.
  */
 function PdfPreviewButton({ resume }: { resume: DownloadPdfSchema }) {
+  const t = useTranslations("resumeEditor")
   const [isRendering, setIsRendering] = useState(false)
 
   /*
@@ -314,7 +317,7 @@ function PdfPreviewButton({ resume }: { resume: DownloadPdfSchema }) {
       window.open(openUrl.current, "_blank", "noreferrer")
     } catch (error) {
       console.error(error)
-      toast.error("Could not render the PDF.")
+      toast.error(t("pdfFailed"))
     } finally {
       setIsRendering(false)
     }

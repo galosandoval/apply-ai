@@ -1,7 +1,17 @@
 import { type Metadata } from "next"
+import { getTranslations } from "next-intl/server"
 import { ResumeListView } from "~/features/resume/resume-list-view"
 
-export const metadata: Metadata = { title: "Your resumes" }
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "meta" })
+
+  return { title: t("resumes") }
+}
 
 export default function Page() {
   return <ResumeListView />

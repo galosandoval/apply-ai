@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useRouter } from "~/i18n/navigation"
 import { useEffect } from "react"
 import {
@@ -36,11 +37,14 @@ const initialSkills: InsertSkillsSchema["skills"] = [
 ]
 
 export function SkillsStep() {
+  const t = useTranslations("onboarding.skills")
   const router = useRouter()
   const { goToStep } = useOnboardingStep()
   const { id: userId } = useUser()
 
-  const { data: profile } = api.profile.read.useQuery(undefined, { enabled: !!userId })
+  const { data: profile } = api.profile.read.useQuery(undefined, {
+    enabled: !!userId
+  })
 
   const { mutate } = api.profile.upsertSkills.useMutation({
     onError: (error) => {
@@ -59,11 +63,11 @@ export function SkillsStep() {
     values: {
       skills: profile?.skills?.length
         ? profile.skills.map((s, i) => ({
-          id: s.id,
-          category: s.category ?? "",
-          all: s.all?.join(", ") ?? "",
-          position: s.position ?? i
-        }))
+            id: s.id,
+            category: s.category ?? "",
+            all: s.all?.join(", ") ?? "",
+            position: s.position ?? i
+          }))
         : initialSkills
     }
   })
@@ -102,7 +106,7 @@ export function SkillsStep() {
     <OnboardingFormLayout
       form={form}
       handleSubmit={handleSubmit(onSubmit)}
-      title="Skills"
+      title={t("title")}
     >
       <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
         This is how your skills will be displayed on your resume. You can add
@@ -112,7 +116,7 @@ export function SkillsStep() {
 
       <Image
         src="/skills.png"
-        alt="Skills"
+        alt={t("imageAlt")}
         width={768}
         height={100}
         className="h-auto w-full rounded"
@@ -142,7 +146,7 @@ export function SkillsStep() {
           </Button>
         )}
 
-        <Button type="submit">Done: Start generating resumes</Button>
+        <Button type="submit">{t("done")}</Button>
       </div>
     </OnboardingFormLayout>
   )
@@ -170,6 +174,8 @@ function SkillForm({
   remove: UseFieldArrayRemove
   control: Control<InsertSkillsSchema>
 }) {
+  const t = useTranslations("onboarding.skills")
+
   return (
     <div key={field.id}>
       <div className="grid grid-cols-8 gap-4 max-md:grid-cols-1 max-md:gap-2">
@@ -195,8 +201,8 @@ function SkillForm({
             render={({ field }) => (
               <MyInput
                 field={field}
-                label="All"
-                placeholder="Ex: Customer service, customer support"
+                label={t("all")}
+                placeholder={t("allPlaceholder")}
               />
             )}
           />

@@ -1,3 +1,21 @@
+import { type Metadata } from "next"
+import { getTranslations } from "next-intl/server"
+import { localeAlternates } from "~/i18n/alternates"
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: "meta" })
+
+  return {
+    title: t("privacyPolicy"),
+    alternates: localeAlternates("/privacy-policy")
+  }
+}
+
 export default function PrivacyPolicy() {
   return (
     <div className="w-full overflow-y-auto pb-12 pt-20">

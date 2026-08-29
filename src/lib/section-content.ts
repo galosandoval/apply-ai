@@ -197,7 +197,13 @@ type ComponentSpec<Type extends SectionComponentType> = {
  * editor stays as small as the renderer it edits.
  */
 export type SectionContentField = {
-  label: string
+  /**
+   * Names the field's copy under `sectionContent` in the message files rather
+   * than holding it. The registry is data shared by the panel and the renderer,
+   * and only the panel shows a label — so the string is resolved where it is
+   * drawn, in the user's language.
+   */
+  labelKey: string
   target: SectionContentTarget
   value: string
   /** A plain line, or the constrained markdown subset with its toolbar. */
@@ -286,7 +292,7 @@ const sectionComponents: {
     read: (content) => content.markdown,
     fields: (content) => [
       {
-        label: "Text",
+        labelKey: "text",
         target: { componentType: "richText", field: "markdown" },
         value: content.markdown,
         input: "markdown"
@@ -322,13 +328,13 @@ const sectionComponents: {
       empty: () => ({ left: "", right: "" }),
       fields: (row, index) => [
         {
-          label: "Left",
+          labelKey: "left",
           target: { componentType: "twoColumn", index, side: "left" },
           value: row.left,
           input: "text"
         },
         {
-          label: "Right",
+          labelKey: "right",
           target: { componentType: "twoColumn", index, side: "right" },
           value: row.right,
           input: "text"
@@ -368,7 +374,7 @@ const sectionComponents: {
       empty: () => "",
       fields: (item, index) => [
         {
-          label: "Item",
+          labelKey: "item",
           target: { componentType: "list", index },
           value: item,
           input: "text"
@@ -401,7 +407,7 @@ const sectionComponents: {
       empty: () => "",
       fields: (tag, index) => [
         {
-          label: "Tag",
+          labelKey: "tag",
           target: { componentType: "tagList", index },
           value: tag,
           input: "text"
@@ -440,13 +446,13 @@ const sectionComponents: {
       empty: () => ({ icon: "", text: "" }),
       fields: (entry, index) => [
         {
-          label: "Icon",
+          labelKey: "icon",
           target: { componentType: "iconList", index, field: "icon" },
           value: entry.icon,
           input: "text"
         },
         {
-          label: "Label",
+          labelKey: "label",
           target: { componentType: "iconList", index, field: "text" },
           value: entry.text,
           input: "text"
@@ -497,13 +503,13 @@ const sectionComponents: {
       empty: () => ({ label: "", level: 50 }),
       fields: (entry, index) => [
         {
-          label: "Name",
+          labelKey: "name",
           target: { componentType: "meter", index, field: "label" },
           value: entry.label,
           input: "text"
         },
         {
-          label: "Level (0-100)",
+          labelKey: "level",
           target: { componentType: "meter", index, field: "level" },
           value: String(entry.level),
           input: "text"
@@ -557,13 +563,13 @@ const sectionComponents: {
       empty: () => ({ label: "", items: [] }),
       fields: (group, index) => [
         {
-          label: "Category",
+          labelKey: "category",
           target: { componentType: "groupedList", index, field: "label" },
           value: group.label,
           input: "text"
         },
         {
-          label: "Items, separated by commas",
+          labelKey: "items",
           target: { componentType: "groupedList", index, field: "items" },
           value: toItemLine(group.items),
           input: "text"

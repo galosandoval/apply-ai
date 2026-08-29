@@ -7,11 +7,7 @@ import { ProtectedNavbar } from "~/components/navbar/protected-navbar"
  * breadcrumbs instead — and a nested layout adds to its parent rather than
  * replacing it, so the navbar has to live one level down.
  */
-export default function AppLayout({
-  children
-}: {
-  children: React.ReactNode
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <ProtectedNavbar />

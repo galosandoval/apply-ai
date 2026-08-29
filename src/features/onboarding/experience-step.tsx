@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { useEffect } from "react"
 import {
@@ -55,11 +56,14 @@ const fromBullets = (bullets: string[]) => bullets.join("\n")
 const maxExperience = 4
 
 export function ExperienceStep() {
+  const t = useTranslations("onboarding.experience")
   const { goToStep } = useOnboardingStep()
 
   const { id } = useUser()
 
-  const { data: profile } = api.profile.read.useQuery(undefined, { enabled: !!id })
+  const { data: profile } = api.profile.read.useQuery(undefined, {
+    enabled: !!id
+  })
 
   const { mutate } = api.profile.addWork.useMutation({
     onError: (error) => {
@@ -78,13 +82,13 @@ export function ExperienceStep() {
     values: {
       experience: profile?.experience.length
         ? profile.experience.map((experience) => ({
-          id: experience.id,
-          name: experience.name,
-          bullets: experience.bullets,
-          startDate: experience.startDate,
-          endDate: experience.endDate,
-          title: experience.title
-        }))
+            id: experience.id,
+            name: experience.name,
+            bullets: experience.bullets,
+            startDate: experience.startDate,
+            endDate: experience.endDate,
+            title: experience.title
+          }))
         : initialExperience
     }
   })
@@ -105,9 +109,7 @@ export function ExperienceStep() {
   const onSubmit = (data: InsertExperienceSchema) => {
     const experienceToSubmit = data.experience.map((experience) => ({
       ...experience,
-      bullets: experience.bullets
-        .map((bullet) => bullet.trim())
-        .filter(Boolean)
+      bullets: experience.bullets.map((bullet) => bullet.trim()).filter(Boolean)
     }))
 
     mutate({ experience: experienceToSubmit })
@@ -124,7 +126,7 @@ export function ExperienceStep() {
   return (
     <OnboardingFormLayout
       form={form}
-      title="Experience"
+      title={t("title")}
       handleSubmit={handleSubmit(onSubmit)}
     >
       <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
@@ -158,7 +160,7 @@ export function ExperienceStep() {
           </Button>
         )}
 
-        <Button type="submit">Next: Skills</Button>
+        <Button type="submit">{t("next")}</Button>
       </div>
     </OnboardingFormLayout>
   )
@@ -179,6 +181,7 @@ function ExperienceForm({
   remove: UseFieldArrayRemove
   control: Control<InsertExperienceSchema>
 }) {
+  const t = useTranslations("onboarding.experience")
   const nameSub = watch(`experience.${index}.name`)
 
   let fieldTitle = ""
@@ -214,8 +217,8 @@ function ExperienceForm({
         render={({ field }) => (
           <MyInput
             field={field}
-            label="Company Name"
-            placeholder="Ex: Google"
+            label={t("company")}
+            placeholder={t("companyPlaceholder")}
             required
           />
         )}
@@ -227,8 +230,8 @@ function ExperienceForm({
         render={({ field }) => (
           <MyInput
             field={field}
-            label="Title"
-            placeholder="Ex: Software Engineer"
+            label={t("jobTitle")}
+            placeholder={t("jobTitlePlaceholder")}
             required
           />
         )}
@@ -241,8 +244,8 @@ function ExperienceForm({
           render={({ field }) => (
             <MyInput
               field={field}
-              label="Start Date"
-              placeholder="Ex: Sept 2017"
+              label={t("startDate")}
+              placeholder={t("startDatePlaceholder")}
               required
             />
           )}
@@ -253,8 +256,8 @@ function ExperienceForm({
           render={({ field }) => (
             <MyInput
               field={field}
-              label="End Date"
-              placeholder="Ex: May 2021"
+              label={t("endDate")}
+              placeholder={t("endDatePlaceholder")}
               required
             />
           )}
@@ -265,7 +268,7 @@ function ExperienceForm({
         {index === 0 && (
           <div className="mt-4">
             <MyAlert
-              title="Accomplishments"
+              title={t("accomplishments")}
               description={`Write 3 to 5 accomplishments, one per line. Be concise and try to use numbers and percentages. Each line becomes a bullet point on your resume.`}
             />
           </div>
@@ -284,6 +287,8 @@ function BulletsField({
   control: Control<InsertExperienceSchema>
   index: number
 }) {
+  const t = useTranslations("onboarding.experience")
+
   return (
     <FormField
       control={control}
@@ -291,15 +296,13 @@ function BulletsField({
       render={({ field }) => (
         <FormItem className="w-full">
           <FormLabel>
-            Write 3 to 5 accomplishments
+            {t("bulletsLabel")}
             <span className="text-destructive">*</span>
           </FormLabel>
           <FormControl>
             <Textarea
               className="min-h-[100px]"
-              placeholder={
-                "Collaborated closely with cross-functional teams to ship new features\nCut page load time by 40% by splitting the bundle"
-              }
+              placeholder={t("accomplishmentsPlaceholder")}
               name={field.name}
               ref={field.ref}
               onBlur={field.onBlur}
@@ -307,7 +310,7 @@ function BulletsField({
               onChange={(e) => field.onChange(toBullets(e.target.value))}
             />
           </FormControl>
-          <FormDescription>One accomplishment per line.</FormDescription>
+          <FormDescription>{t("accomplishmentsHint")}</FormDescription>
           <FormMessage />
         </FormItem>
       )}

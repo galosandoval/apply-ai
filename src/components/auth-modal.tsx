@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useTranslations } from "next-intl"
+import { useMemo, useState } from "react"
 import { Button } from "./ui/button"
 import {
   Dialog,
@@ -18,19 +19,6 @@ import { MyInput } from "./my-input"
 import { z } from "zod"
 import { appPath } from "~/lib/path"
 import { useAppForm } from "~/components/use-app-form"
-
-const signUpSchema = z
-  .object({
-    email: z.string().email().max(255),
-    password: z.string().min(8).max(50),
-    confirm: z.string().min(8).max(50)
-  })
-  .refine((data) => data.confirm === data.password, {
-    message: "Passwords don't match",
-    path: ["confirm"]
-  })
-
-type SignUpFormValues = z.infer<typeof signUpSchema>
 
 export function AuthModal({
   initialModal,
@@ -67,17 +55,65 @@ function AuthSwitch({ initialModal }: { initialModal: Modal }) {
   return <LoginForm handleSwitchAuth={handleSwitchAuth} />
 }
 
-function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
-  const router = useRouter()
+/** better-auth codes we translate. Anything else falls back to its own text. */
+const translatedAuthCodes = [
+  "USER_ALREADY_EXISTS",
+  "INVALID_EMAIL_OR_PASSWORD",
+  "INVALID_EMAIL",
+  "PASSWORD_TOO_SHORT",
+  "PASSWORD_TOO_LONG"
+] as const
 
-  const form = useAppForm(signUpSchema, {
+/**
+ * better-auth writes its own error messages, and they are English whatever the
+ * locale is. Sign-in is the first thing a Spanish reader touches, so the codes
+ * that actually come up get translated; an unmapped code keeps the library's
+ * English text rather than being flattened into a generic apology.
+ */
+function useAuthError() {
+  const t = useTranslations("auth.errors")
+
+  return (
+    error: { code?: string; message?: string } | undefined,
+    fallback: "signUpFailed" | "loginFailed"
+  ) => {
+    const code = translatedAuthCodes.find((known) => known === error?.code)
+
+    if (code) return t(code)
+
+    return error?.message ?? t(fallback)
+  }
+}
+
+function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
+  const t = useTranslations("auth")
+  const router = useRouter()
+  const toMessage = useAuthError()
+
+  /** The refine message is copy, so the schema can only exist inside render. */
+  const schema = useMemo(
+    () =>
+      z
+        .object({
+          email: z.string().email().max(255),
+          password: z.string().min(8).max(50),
+          confirm: z.string().min(8).max(50)
+        })
+        .refine((data) => data.confirm === data.password, {
+          message: t("validation.passwordsDoNotMatch"),
+          path: ["confirm"]
+        }),
+    [t]
+  )
+
+  const form = useAppForm(schema, {
     defaultValues: { email: "", password: "", confirm: "" }
   })
   const [isPending, setIsPending] = useState(false)
 
   // better-auth signs the new user straight in, so there is no second call and
   // no window where an account exists but the browser has no session.
-  const onSubmit = async ({ email, password }: SignUpFormValues) => {
+  const onSubmit = async ({ email, password }: z.infer<typeof schema>) => {
     setIsPending(true)
 
     const { error } = await signUp.email({ email, password, name: "" })
@@ -85,7 +121,7 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
     setIsPending(false)
 
     if (error) {
-      form.setError("email", { message: error.message ?? "Sign up failed" })
+      form.setError("email", { message: toMessage(error, "signUpFailed") })
       return
     }
 
@@ -95,11 +131,8 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Sign Up</DialogTitle>
-        <DialogDescription>
-          Creating an account means we’ll save your work so you can return to it
-          later.
-        </DialogDescription>
+        <DialogTitle>{t("signUp.title")}</DialogTitle>
+        <DialogDescription>{t("signUp.description")}</DialogDescription>
       </DialogHeader>
 
       <Form {...form}>
@@ -110,29 +143,39 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
           <FormField
             control={form.control}
             name="email"
-            render={({ field }) => <MyInput field={field} label="Email" />}
+            render={({ field }) => (
+              <MyInput field={field} label={t("fields.email")} />
+            )}
           />
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => (
-              <MyInput field={field} type="password" label="Password" />
+              <MyInput
+                field={field}
+                type="password"
+                label={t("fields.password")}
+              />
             )}
           />
           <FormField
             control={form.control}
             name="confirm"
             render={({ field }) => (
-              <MyInput field={field} type="password" label="Confirm Password" />
+              <MyInput
+                field={field}
+                type="password"
+                label={t("fields.confirmPassword")}
+              />
             )}
           />
           <DialogFooter className="pt-4">
             <Button onClick={handleSwitchAuth} type="button" variant="link">
-              Log In
+              {t("signUp.switch")}
             </Button>
 
             <Button loading={isPending} type="submit">
-              {isPending ? "Creating Account" : "Create Account"}
+              {isPending ? t("signUp.submitting") : t("signUp.submit")}
             </Button>
           </DialogFooter>
         </form>
@@ -149,7 +192,9 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>
 
 function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
+  const t = useTranslations("auth")
   const router = useRouter()
+  const toMessage = useAuthError()
 
   const form = useAppForm(loginFormSchema, {
     defaultValues: { email: "", password: "" }
@@ -164,9 +209,7 @@ function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
     setIsPending(false)
 
     if (error) {
-      form.setError("email", {
-        message: error.message ?? "Those details didn't match an account"
-      })
+      form.setError("email", { message: toMessage(error, "loginFailed") })
       return
     }
 
@@ -176,10 +219,8 @@ function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Log In</DialogTitle>
-        <DialogDescription>
-          Log in to access your saved resumes and create new ones.
-        </DialogDescription>
+        <DialogTitle>{t("login.title")}</DialogTitle>
+        <DialogDescription>{t("login.description")}</DialogDescription>
       </DialogHeader>
 
       <Form {...form}>
@@ -190,22 +231,28 @@ function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
           <FormField
             control={form.control}
             name="email"
-            render={({ field }) => <MyInput field={field} label="Email" />}
+            render={({ field }) => (
+              <MyInput field={field} label={t("fields.email")} />
+            )}
           />
           <FormField
             control={form.control}
             name="password"
             render={({ field }) => (
-              <MyInput field={field} type="password" label="Password" />
+              <MyInput
+                field={field}
+                type="password"
+                label={t("fields.password")}
+              />
             )}
           />
           <DialogFooter className="pt-4">
             <Button onClick={handleSwitchAuth} type="button" variant="link">
-              Sign Up
+              {t("login.switch")}
             </Button>
 
             <Button loading={isPending} type="submit">
-              {isPending ? "Logging In" : "Log In"}
+              {isPending ? t("login.submitting") : t("login.submit")}
             </Button>
           </DialogFooter>
         </form>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { Cross1Icon } from "@radix-ui/react-icons"
 import { useEffect } from "react"
 import {
@@ -39,10 +40,13 @@ const initialSchool: InsertEducationSchema["education"] = [
 const maxSchools = 4
 
 export function EducationStep() {
+  const t = useTranslations("onboarding.education")
   const { goToStep } = useOnboardingStep()
   const { id } = useUser()
 
-  const { data: profile } = api.profile.read.useQuery(undefined, { enabled: !!id })
+  const { data: profile } = api.profile.read.useQuery(undefined, {
+    enabled: !!id
+  })
 
   const { mutate } = api.profile.addEducation.useMutation({
     onError: (error) => {
@@ -57,30 +61,30 @@ export function EducationStep() {
     defaultValues: {
       education: profile?.education.length
         ? profile.education.map((school) => ({
-          id: school.id,
-          degree: school.degree,
-          endDate: school.endDate,
-          name: school.name,
-          startDate: school.startDate,
-          description: school.description,
-          gpa: school.gpa,
-          location: school.location
-        }))
+            id: school.id,
+            degree: school.degree,
+            endDate: school.endDate,
+            name: school.name,
+            startDate: school.startDate,
+            description: school.description,
+            gpa: school.gpa,
+            location: school.location
+          }))
         : initialSchool
     },
 
     values: {
       education: profile?.education.length
         ? profile.education.map((school) => ({
-          id: school.id,
-          degree: school.degree,
-          endDate: school.endDate,
-          name: school.name,
-          startDate: school.startDate,
-          description: school.description,
-          gpa: school.gpa,
-          location: school.location
-        }))
+            id: school.id,
+            degree: school.degree,
+            endDate: school.endDate,
+            name: school.name,
+            startDate: school.startDate,
+            description: school.description,
+            gpa: school.gpa,
+            location: school.location
+          }))
         : initialSchool
     }
   })
@@ -114,7 +118,7 @@ export function EducationStep() {
     <OnboardingFormLayout
       form={form}
       handleSubmit={handleSubmit(onSubmit)}
-      title="Education"
+      title={t("title")}
     >
       <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
         Start with your most recent education and work backwards, including the
@@ -154,11 +158,11 @@ export function EducationStep() {
             variant="ghost"
             onClick={() => append(initialSchool)}
           >
-            {fields.length === 0 ? "Add a school" : "Add another"}
+            {fields.length === 0 ? t("addFirst") : t("addAnother")}
           </Button>
         )}
 
-        <Button type="submit">Next: Work Experience</Button>
+        <Button type="submit">{t("next")}</Button>
       </div>
     </OnboardingFormLayout>
   )
@@ -178,6 +182,7 @@ function EducationForm({
   remove: UseFieldArrayRemove
   control: Control<InsertEducationSchema>
 }) {
+  const t = useTranslations("onboarding.education")
   const nameSub = watch(`education.${index}.name`)
 
   let fieldTitle = ""
@@ -215,8 +220,8 @@ function EducationForm({
         render={({ field }) => (
           <MyInput
             field={field}
-            label="Institution Name"
-            placeholder="Ex: University of California, Berkeley"
+            label={t("institution")}
+            placeholder={t("institutionPlaceholder")}
             required
           />
         )}
@@ -229,8 +234,8 @@ function EducationForm({
           render={({ field }) => (
             <MyInput
               field={field}
-              label="Start"
-              placeholder="Ex: Sept 2017"
+              label={t("start")}
+              placeholder={t("startPlaceholder")}
               required
             />
           )}
@@ -241,8 +246,8 @@ function EducationForm({
           render={({ field }) => (
             <MyInput
               field={field}
-              label="End"
-              placeholder="Ex: May 2021"
+              label={t("end")}
+              placeholder={t("endPlaceholder")}
               required
             />
           )}
@@ -255,8 +260,8 @@ function EducationForm({
         render={({ field }) => (
           <MyInput
             field={field}
-            label="Degree/Certificate"
-            placeholder="Ex: Computer Science"
+            label={t("degree")}
+            placeholder={t("degreePlaceholder")}
             required
           />
         )}
@@ -268,8 +273,8 @@ function EducationForm({
         render={({ field }) => (
           <MyInput
             field={field}
-            label="Location"
-            placeholder="Ex: Berkely, CA"
+            label={t("location")}
+            placeholder={t("locationPlaceholder")}
           />
         )}
       />
@@ -280,8 +285,8 @@ function EducationForm({
         render={({ field }) => (
           <MyInput
             field={field}
-            label="GPA"
-            placeholder="Only if your GPA was 3.5+"
+            label={t("gpa")}
+            placeholder={t("gpaPlaceholder")}
           />
         )}
       />
@@ -292,8 +297,8 @@ function EducationForm({
         render={({ field }) => (
           <MyTextarea
             field={field}
-            label="Anything extra you want a hiring manager to know"
-            placeholder="Ex: I was the president of the computer science club."
+            label={t("extra")}
+            placeholder={t("extraPlaceholder")}
           />
         )}
       />

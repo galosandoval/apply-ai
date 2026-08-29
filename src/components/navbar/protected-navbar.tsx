@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { Link } from "~/i18n/navigation"
 import { useRouter } from "~/i18n/navigation"
 import {
@@ -29,6 +30,7 @@ const showOnboarding = process.env.NODE_ENV === "development"
  * every page under it had to know the bar's height to pad around it.
  */
 export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
+  const t = useTranslations("nav")
   const router = useRouter()
 
   const handleSignOut = async () => {
@@ -45,17 +47,17 @@ export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
 
       <NavigationMenu className="shrink-0">
         <NavigationMenuList>
-          <NavLink href={appPath.dashboard}>Dashboard</NavLink>
+          <NavLink href={appPath.dashboard}>{t("dashboard")}</NavLink>
           {showOnboarding && (
-            <NavLink href={appPath.onboarding}>Onboarding</NavLink>
+            <NavLink href={appPath.onboarding}>{t("onboarding")}</NavLink>
           )}
-          <NavLink href={appPath.resume}>Resumes</NavLink>
+          <NavLink href={appPath.resume}>{t("resumes")}</NavLink>
           <NavigationMenuItem asChild>
             <button
               className={navigationMenuTriggerStyle()}
               onClick={handleSignOut}
             >
-              Sign Out
+              {t("signOut")}
             </button>
           </NavigationMenuItem>
         </NavigationMenuList>

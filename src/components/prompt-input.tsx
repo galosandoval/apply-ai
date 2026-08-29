@@ -10,6 +10,7 @@ import {
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
 import { PaperPlaneIcon } from "@radix-ui/react-icons"
+import { useTranslations } from "next-intl"
 
 export function PromptInput({
   input,
@@ -18,6 +19,7 @@ export function PromptInput({
   input: string
   handleInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
 }) {
+  const t = useTranslations("dashboard")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   useAutosizeTextArea(textareaRef, input)
 
@@ -33,7 +35,7 @@ export function PromptInput({
   return (
     <div className="relative flex flex-col">
       <label htmlFor="prompt" className="sr-only">
-        Prompt
+        {t("promptLabel")}
       </label>
 
       <Textarea
@@ -42,7 +44,7 @@ export function PromptInput({
         value={input}
         onChange={handleInputChange}
         id="prompt"
-        placeholder="Paste job description here"
+        placeholder={t("promptPlaceholder")}
         onKeyDown={onEnter}
         style={{ height: "0px" }}
       />

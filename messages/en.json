@@ -1,1 +1,440 @@
-{}
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "onboarding": "Onboarding",
+    "resumes": "Resumes",
+    "signOut": "Sign Out",
+    "login": "Login"
+  },
+  "auth": {
+    "signUp": {
+      "title": "Sign Up",
+      "description": "Creating an account means we’ll save your work so you can return to it later.",
+      "submit": "Create Account",
+      "submitting": "Creating Account",
+      "switch": "Log In"
+    },
+    "login": {
+      "title": "Log In",
+      "description": "Log in to access your saved resumes and create new ones.",
+      "submit": "Log In",
+      "submitting": "Logging In",
+      "switch": "Sign Up"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm Password"
+    },
+    "validation": {
+      "passwordsDoNotMatch": "Passwords don't match"
+    },
+    "errors": {
+      "USER_ALREADY_EXISTS": "An account with that email already exists.",
+      "INVALID_EMAIL_OR_PASSWORD": "Those details didn't match an account",
+      "INVALID_EMAIL": "That doesn't look like a valid email address.",
+      "PASSWORD_TOO_SHORT": "Your password must be at least 8 characters.",
+      "PASSWORD_TOO_LONG": "Your password must be 50 characters or fewer.",
+      "signUpFailed": "Sign up failed",
+      "loginFailed": "Those details didn't match an account"
+    }
+  },
+  "landing": {
+    "hero": {
+      "title": "AI-Powered Resume Builder",
+      "description": "Create a professional resume in minutes with our easy-to-use builder. Stand out to employers with a polished and well-designed CV.",
+      "cta": "Get Started",
+      "finePrint": "No credit card required. 14-day free trial.",
+      "imageAlt": "Hero"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "description": "Let our AI help you create the perfect resume. Stand out with beautifully designed components that you can copy and paste into your apps. Accessible. Customizable. Open Source.",
+      "profile": {
+        "title": "Save your profile",
+        "description": "Fill in your contact info, work experience, education, and skills to get started. We will never use your data."
+      },
+      "copyPaste": {
+        "title": "Copy/Paste",
+        "description": "Copy the job description of the position you are applying for. On the dashboard, paste the job description onto the input field and hit enter to generate your resume."
+      },
+      "download": {
+        "title": "Download your resume",
+        "description": "Download your resume in PDF format. Share it with employers and get the job!"
+      }
+    },
+    "testimonial": {
+      "title": "Testimonial",
+      "quote": "The resume builder was so easy to use, and the templates are fantastic. I got the job!\" - Sarah T."
+    },
+    "footer": {
+      "copyright": "© 2024 ApplyAI All rights reserved.",
+      "privacy": "Privacy",
+      "terms": "Terms of Service",
+      "contact": "Contact"
+    }
+  },
+  "meta": {
+    "appName": "ApplyAI",
+    "description": "Created by Galo Sandoval to make the job application process easier.",
+    "home": "Sign up",
+    "dashboard": "Dashboard",
+    "resumes": "Your resumes",
+    "editResume": "Edit resume",
+    "onboarding": "Set up your profile",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
+  },
+  "dashboard": {
+    "writing": "Writing your resume...",
+    "retry": "Your posting is still here — send it again to retry.",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Paste job description here"
+  },
+  "resumeList": {
+    "loading": "Loading...",
+    "noJobDescription": "No job description saved",
+    "delete": "Delete",
+    "deleteFailed": "Could not delete that resume."
+  },
+  "onboarding": {
+    "steps": {
+      "import": "Import",
+      "contact": "Contact",
+      "education": "Education",
+      "experience": "Work Experience",
+      "skills": "Skills"
+    },
+    "import": {
+      "title": "Start with your current resume",
+      "upload": "Upload a PDF",
+      "reading": "Reading your resume...",
+      "imported": "Imported {experience, plural, one {# job} other {# jobs}}, {education, plural, one {# school} other {# schools}}, and {skills, plural, one {# skill group} other {# skill groups}}.",
+      "notPdf": "That file isn't a PDF.",
+      "tooLarge": "That PDF is too large. Keep it under 8MB.",
+      "unreadable": "Could not read that file."
+    },
+    "contact": {
+      "title": "How can employers get in touch with you?",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "profession": "Profession",
+      "professionPlaceholder": "Ex: Software Engineer",
+      "location": "Location",
+      "locationPlaceholder": "Ex: Los Angeles, CA",
+      "phone": "Phone",
+      "linkedIn": "LinkedIn URL",
+      "linkedInPlaceholder": "Ex: https://www.linkedin.com/in/...",
+      "website": "Website URL",
+      "websitePlaceholder": "Ex: https://github.com/galosandoval",
+      "loading": "Loading...",
+      "next": "Next: Education"
+    },
+    "education": {
+      "title": "Education",
+      "addFirst": "Add a school",
+      "addAnother": "Add another",
+      "next": "Next: Work Experience",
+      "institution": "Institution Name",
+      "institutionPlaceholder": "Ex: University of California, Berkeley",
+      "start": "Start",
+      "startPlaceholder": "Ex: Sept 2017",
+      "end": "End",
+      "endPlaceholder": "Ex: May 2021",
+      "degree": "Degree/Certificate",
+      "degreePlaceholder": "Ex: Computer Science",
+      "location": "Location",
+      "locationPlaceholder": "Ex: Berkely, CA",
+      "gpa": "GPA",
+      "gpaPlaceholder": "Only if your GPA was 3.5+",
+      "extra": "Anything extra you want a hiring manager to know",
+      "extraPlaceholder": "Ex: I was the president of the computer science club."
+    },
+    "experience": {
+      "title": "Experience",
+      "next": "Next: Skills",
+      "company": "Company Name",
+      "companyPlaceholder": "Ex: Google",
+      "jobTitle": "Title",
+      "jobTitlePlaceholder": "Ex: Software Engineer",
+      "startDate": "Start Date",
+      "startDatePlaceholder": "Ex: Sept 2017",
+      "endDate": "End Date",
+      "endDatePlaceholder": "Ex: May 2021",
+      "accomplishments": "Accomplishments",
+      "accomplishmentsPlaceholder": "Collaborated closely with cross-functional teams to ship new features\nCut page load time by 40% by splitting the bundle",
+      "accomplishmentsHint": "One accomplishment per line.",
+      "bulletsLabel": "Write 3 to 5 accomplishments"
+    },
+    "skills": {
+      "title": "Skills",
+      "imageAlt": "Skills",
+      "done": "Done: Start generating resumes",
+      "all": "All",
+      "allPlaceholder": "Ex: Customer service, customer support",
+      "categoryPlaceholders": [
+        "Ex: Soft Skills",
+        "Ex: Hard Skills",
+        "Ex: Technical Skills",
+        "Ex: Frontend",
+        "Ex: Backend",
+        "Ex: Additional"
+      ]
+    }
+  },
+  "resumeEditor": {
+    "loading": "Loading...",
+    "notFound": "Resume not found.",
+    "styleLabel": "Resume style",
+    "pdfFailed": "Could not render the PDF.",
+    "saveFailed": "Could not save that change.",
+    "save": {
+      "idle": "Changes save automatically",
+      "failed": "Could not save",
+      "saving": "Saving…",
+      "saved": "Saved"
+    },
+    "searchSections": "Search sections",
+    "markdown": {
+      "bulletListLabel": "List",
+      "bulletListTitle": "Bullet list",
+      "boldTitle": "Bold",
+      "linkTitle": "Link"
+    },
+    "fullName": "Full name",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "modeEdit": "Edit",
+    "modeResume": "Resume"
+  },
+  "resumePanel": {
+    "resume": "Resume",
+    "sections": "Sections",
+    "header": "Header",
+    "entries": "Entries",
+    "bullets": "Bullets",
+    "untitledEntry": "Entry",
+    "untitledSection": "Section",
+    "sectionName": "Name",
+    "profession": "Profession",
+    "contact": {
+      "fullName": "Full name",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "linkedIn": "LinkedIn",
+      "portfolio": "Portfolio"
+    },
+    "experience": {
+      "name": "Company",
+      "title": "Title",
+      "startDate": "Start",
+      "endDate": "End"
+    },
+    "education": {
+      "name": "School",
+      "degree": "Degree",
+      "startDate": "Start",
+      "endDate": "End",
+      "description": "Description"
+    },
+    "up": "Up",
+    "down": "Down",
+    "remove": "Remove",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "addSectionTitle": "Add a section",
+    "searchSections": "Search sections",
+    "noSectionMatch": "No section matches “{query}”. Add a Text section and name it whatever you like.",
+    "errors": {
+      "add": "Could not add that.",
+      "remove": "Could not remove that.",
+      "move": "Could not move that."
+    },
+    "nouns": {
+      "job": {
+        "add": "Add job",
+        "empty": "No jobs yet.",
+        "untitled": "Untitled job"
+      },
+      "school": {
+        "add": "Add school",
+        "empty": "No schools yet.",
+        "untitled": "Untitled school"
+      },
+      "section": {
+        "add": "Add section",
+        "empty": "No sections yet.",
+        "untitled": "Untitled section"
+      },
+      "bullet": {
+        "add": "Add bullet",
+        "empty": "No bullets yet.",
+        "untitled": "Untitled bullet"
+      },
+      "row": {
+        "add": "Add row",
+        "empty": "No rows yet.",
+        "untitled": "Untitled row"
+      },
+      "item": {
+        "add": "Add item",
+        "empty": "No items yet.",
+        "untitled": "Untitled item"
+      },
+      "tag": {
+        "add": "Add tag",
+        "empty": "No tags yet.",
+        "untitled": "Untitled tag"
+      },
+      "entry": {
+        "add": "Add entry",
+        "empty": "No entries yet.",
+        "untitled": "Untitled entry"
+      },
+      "level": {
+        "add": "Add level",
+        "empty": "No levels yet.",
+        "untitled": "Untitled level"
+      },
+      "group": {
+        "add": "Add group",
+        "empty": "No groups yet.",
+        "untitled": "Untitled group"
+      }
+    },
+    "bullet": "Bullet {index}"
+  },
+  "sectionCatalog": {
+    "groups": {
+      "writing": "Writing",
+      "work": "Work",
+      "credentials": "Credentials",
+      "skills": "Skills",
+      "personal": "Personal"
+    },
+    "presets": {
+      "text": {
+        "label": "Text",
+        "hint": "A title and rich text — the plain one"
+      },
+      "summary": {
+        "label": "Summary",
+        "hint": "A short opening paragraph"
+      },
+      "objective": {
+        "label": "Objective",
+        "hint": "What you are looking for"
+      },
+      "goal": {
+        "label": "Goal",
+        "hint": "What you are working toward"
+      },
+      "additional": {
+        "label": "Additional information",
+        "hint": "Anything that fits nowhere else"
+      },
+      "projects": {
+        "label": "Projects",
+        "hint": "What you built, and when"
+      },
+      "achievements": {
+        "label": "Achievements",
+        "hint": "Results worth their own section"
+      },
+      "publications": {
+        "label": "Publications",
+        "hint": "Papers, articles, posts"
+      },
+      "patents": {
+        "label": "Patents",
+        "hint": "Filed or granted"
+      },
+      "speaking": {
+        "label": "Speaking",
+        "hint": "Talks, panels, workshops"
+      },
+      "volunteering": {
+        "label": "Volunteering",
+        "hint": "Unpaid work worth showing"
+      },
+      "extracurriculars": {
+        "label": "Extracurriculars",
+        "hint": "Clubs, teams, societies"
+      },
+      "certificates": {
+        "label": "Certificates",
+        "hint": "What you earned, and when"
+      },
+      "licenses": {
+        "label": "Licenses",
+        "hint": "Licences you hold"
+      },
+      "awards": {
+        "label": "Awards",
+        "hint": "Prizes and honours"
+      },
+      "courses": {
+        "label": "Courses",
+        "hint": "Training beyond a degree"
+      },
+      "memberships": {
+        "label": "Memberships",
+        "hint": "Professional bodies"
+      },
+      "conferences": {
+        "label": "Conferences",
+        "hint": "Where you attended or presented"
+      },
+      "military": {
+        "label": "Military service",
+        "hint": "Branch, role, dates"
+      },
+      "tools": {
+        "label": "Tools",
+        "hint": "Short names, read at a glance"
+      },
+      "languages": {
+        "label": "Languages",
+        "hint": "A level per language, drawn as a bar"
+      },
+      "graphs": {
+        "label": "Graphs",
+        "hint": "Anything you rate out of a hundred"
+      },
+      "hobbies": {
+        "label": "Hobbies",
+        "hint": "What you do outside work"
+      },
+      "interests": {
+        "label": "Interests",
+        "hint": "Subjects you follow"
+      },
+      "socialMedia": {
+        "label": "Social media",
+        "hint": "An icon and a handle per network"
+      },
+      "portfolio": {
+        "label": "Portfolio",
+        "hint": "Links worth an icon"
+      },
+      "references": {
+        "label": "References",
+        "hint": "A name and how to reach them"
+      }
+    }
+  },
+  "sectionContent": {
+    "text": "Text",
+    "left": "Left",
+    "right": "Right",
+    "item": "Item",
+    "tag": "Tag",
+    "icon": "Icon",
+    "label": "Label",
+    "name": "Name",
+    "level": "Level (0-100)",
+    "category": "Category",
+    "items": "Items, separated by commas"
+  }
+}

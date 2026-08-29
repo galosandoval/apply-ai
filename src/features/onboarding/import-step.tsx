@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { Button } from "~/components/ui/button"
@@ -8,7 +9,14 @@ import { api } from "~/utils/api"
 
 const MAX_FILE_SIZE_BYTES = 8_000_000
 
+/**
+ * Thrown from a plain Promise, outside any component, so it can't reach for a
+ * hook. The caller catches it and shows `onboarding.import.unreadable`.
+ */
+const UNREADABLE_FILE = "unreadable-file"
+
 export function ImportStep() {
+  const t = useTranslations("onboarding.import")
   const { goToStep } = useOnboardingStep()
   const utils = api.useContext()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -20,9 +28,7 @@ export function ImportStep() {
     onSuccess: async (counts) => {
       await utils.profile.read.invalidate()
 
-      toast.success(
-        `Imported ${counts.experience} jobs, ${counts.education} schools, and ${counts.skills} skill groups.`
-      )
+      toast.success(t("imported", counts))
 
       goToStep("contact")
     }
@@ -30,19 +36,26 @@ export function ImportStep() {
 
   const validateAndUpload = async (file: File) => {
     if (file.type !== "application/pdf") {
-      setRejection("That file isn't a PDF.")
+      setRejection(t("notPdf"))
       return
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setRejection("That PDF is too large. Keep it under 8MB.")
+      setRejection(t("tooLarge"))
       return
     }
 
     setRejection("")
 
     setFileName(file.name)
-    mutate({ fileBase64: await readAsBase64(file) })
+
+    // The rejection used to escape unhandled — the reader's message went
+    // nowhere and the page sat on a filename that never uploaded.
+    try {
+      mutate({ fileBase64: await readAsBase64(file) })
+    } catch {
+      setRejection(t("unreadable"))
+    }
   }
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,7 +73,7 @@ export function ImportStep() {
   return (
     <div>
       <div className="flex flex-col gap-4">
-        <h1 className="text-3xl">Start with your current resume</h1>
+        <h1 className="text-3xl">{t("title")}</h1>
 
         <p className="max-w-md text-sm text-muted-foreground">
           Upload a PDF and we&apos;ll fill in your contact info, work history,
@@ -82,7 +95,7 @@ export function ImportStep() {
             loading={isPending}
             onClick={() => inputRef.current?.click()}
           >
-            {isPending ? "Reading your resume..." : "Upload a PDF"}
+            {isPending ? t("reading") : t("upload")}
           </Button>
 
           <Button
@@ -130,7 +143,7 @@ function readAsBase64(file: File) {
     const reader = new FileReader()
 
     reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "")
-    reader.onerror = () => reject(new Error("Could not read that file."))
+    reader.onerror = () => reject(new Error(UNREADABLE_FILE))
     reader.readAsDataURL(file)
   })
 }

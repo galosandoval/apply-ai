@@ -4,6 +4,13 @@ import { routing } from "./routing"
 
 type Messages = Record<string, unknown>
 
+/** Named formats, so a date reads the same wherever it is rendered. */
+const formats = {
+  dateTime: {
+    long: { dateStyle: "long" }
+  }
+} as const
+
 /** Walks a dotted message path (`onboarding.import.title`) into the tree. */
 function lookup(messages: Messages, path: string) {
   const value = path
@@ -43,13 +50,16 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   const isDev = process.env.NODE_ENV === "development"
 
-  if (isDev || locale === routing.defaultLocale) return { locale, messages }
+  if (isDev || locale === routing.defaultLocale) {
+    return { locale, messages, formats }
+  }
 
   const fallback = (await import(`../../messages/en.json`)).default as Messages
 
   return {
     locale,
     messages,
+    formats,
     getMessageFallback: ({ namespace, key }) => {
       const path = [namespace, key].filter(Boolean).join(".")
 
