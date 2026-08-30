@@ -2,16 +2,21 @@
 
 import { createContext, useContext } from "react"
 
-/** In step order. `OnboardingShell` owns which one is showing. */
+/**
+ * In step order. `OnboardingShell` owns which one is showing.
+ *
+ * Ids only — the crumb labels are copy, and live under `onboarding.steps` in
+ * the message files so the trail reads in the user's language.
+ */
 export const onboardingSteps = [
-  { id: "import", label: "Import" },
-  { id: "contact", label: "Contact" },
-  { id: "education", label: "Education" },
-  { id: "experience", label: "Work Experience" },
-  { id: "skills", label: "Skills" }
+  "import",
+  "contact",
+  "education",
+  "experience",
+  "skills"
 ] as const
 
-export type OnboardingStepId = (typeof onboardingSteps)[number]["id"]
+export type OnboardingStepId = (typeof onboardingSteps)[number]
 
 const OnboardingStepContext = createContext<{
   activeStep: OnboardingStepId

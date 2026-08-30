@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useEffect } from "react"
 import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
@@ -20,10 +21,13 @@ export function ContactStep() {
 }
 
 function NameAndContactForm() {
+  const t = useTranslations("onboarding.contact")
   const { goToStep } = useOnboardingStep()
   const utils = api.useContext()
   const { id } = useUser()
-  const { data: profile, status } = api.profile.read.useQuery(undefined, { enabled: !!id })
+  const { data: profile, status } = api.profile.read.useQuery(undefined, {
+    enabled: !!id
+  })
 
   const form = useAppForm(insertContactSchema, {
     defaultValues: {
@@ -97,21 +101,21 @@ function NameAndContactForm() {
     <OnboardingFormLayout
       form={form}
       handleSubmit={handleSubmit(onSubmit)}
-      title="How can employers get in touch with you?"
+      title={t("title")}
     >
       <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={form.control}
           name="firstName"
           render={({ field }) => (
-            <MyInput field={field} label="First Name" required />
+            <MyInput field={field} label={t("firstName")} required />
           )}
         />
         <FormField
           control={form.control}
           name="lastName"
           render={({ field }) => (
-            <MyInput field={field} label="Last Name" required />
+            <MyInput field={field} label={t("lastName")} required />
           )}
         />
       </div>
@@ -121,9 +125,9 @@ function NameAndContactForm() {
         name="profession"
         render={({ field }) => (
           <MyInput
-            placeholder="Ex: Software Engineer"
+            placeholder={t("professionPlaceholder")}
             field={field}
-            label="Profession"
+            label={t("profession")}
             required
           />
         )}
@@ -133,9 +137,9 @@ function NameAndContactForm() {
         name="location"
         render={({ field }) => (
           <MyInput
-            placeholder="Ex: Los Angeles, CA"
+            placeholder={t("locationPlaceholder")}
             field={field}
-            label="Location"
+            label={t("location")}
             required
           />
         )}
@@ -143,7 +147,7 @@ function NameAndContactForm() {
       <FormField
         control={form.control}
         name="phone"
-        render={({ field }) => <MyInput field={field} label="Phone" />}
+        render={({ field }) => <MyInput field={field} label={t("phone")} />}
       />
 
       <div className="flex gap-2 max-sm:flex-col">
@@ -152,9 +156,9 @@ function NameAndContactForm() {
           name="linkedIn"
           render={({ field }) => (
             <MyInput
-              placeholder="Ex: https://www.linkedin.com/in/..."
+              placeholder={t("linkedInPlaceholder")}
               field={field}
-              label="LinkedIn URL"
+              label={t("linkedIn")}
             />
           )}
         />
@@ -163,9 +167,9 @@ function NameAndContactForm() {
           name="portfolio"
           render={({ field }) => (
             <MyInput
-              placeholder="Ex: https://github.com/galosandoval"
+              placeholder={t("websitePlaceholder")}
               field={field}
-              label="Website URL"
+              label={t("website")}
             />
           )}
         />
@@ -173,7 +177,7 @@ function NameAndContactForm() {
 
       <div className="flex w-full justify-end">
         <Button loading={status === "pending"} type="submit">
-          {status === "pending" ? "Loading..." : "Next: Education"}
+          {status === "pending" ? t("loading") : t("next")}
         </Button>
       </div>
     </OnboardingFormLayout>

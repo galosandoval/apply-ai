@@ -20,7 +20,7 @@ export async function signUp(page: Page, account: Account) {
   await page.getByLabel("Confirm Password").fill(account.password)
   await page.getByRole("button", { name: "Create Account" }).click()
 
-  await expect(page).toHaveURL(/\/onboarding\/import/, { timeout: 30_000 })
+  await expect(page).toHaveURL(/\/onboarding\/?$/, { timeout: 30_000 })
 
   return account
 }

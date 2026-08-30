@@ -15,7 +15,12 @@ export const env = createEnv({
       process.env.NODE_ENV === "production"
         ? z.string().min(1)
         : z.string().min(1).optional(),
-    /** Origin the app is served from. better-auth signs callbacks against it. */
+    /**
+     * Origin the app is served from. better-auth signs callbacks against it,
+     * and rejects any request whose `Origin` header differs — so this is the
+     * exact scheme and host the browser lands on, no trailing slash, no path.
+     * Never `VERCEL_URL`: that changes every deployment.
+     */
     APP_URL: z.string().url(),
     OPENAI_API_KEY: z.string().min(1)
   },
@@ -41,8 +46,8 @@ export const env = createEnv({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY
   },
   /**
-   * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
-   * useful for Docker builds.
+   * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation.
+   * Never set it on a deployed host — it moves the failure to runtime.
    */
   skipValidation: !!process.env.SKIP_ENV_VALIDATION
 })

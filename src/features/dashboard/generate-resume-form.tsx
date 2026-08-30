@@ -1,6 +1,7 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { useRouter } from "~/i18n/navigation"
 import { type ChangeEvent, type FormEvent, useState } from "react"
 import { PromptInput } from "~/components/prompt-input"
 import { appPath } from "~/lib/path"
@@ -26,6 +27,7 @@ const initialInput = process.env.NODE_ENV === "development" ? testPrompt : ""
  * the delete action on the list is for.
  */
 export function GenerateResumeForm() {
+  const t = useTranslations("dashboard")
   const router = useRouter()
   const [jobDescription, setJobDescription] = useState(initialInput)
 
@@ -46,7 +48,7 @@ export function GenerateResumeForm() {
   // The redirect happens after the resume exists, so the pending state covers
   // the write as well as the drafting.
   if (generate.isPending || generate.isSuccess) {
-    return <p>Writing your resume...</p>
+    return <p>{t("writing")}</p>
   }
 
   return (
@@ -65,8 +67,7 @@ export function GenerateResumeForm() {
       */}
       {generate.isError ? (
         <p role="alert" className="text-sm text-destructive">
-          {generate.error.message} Your posting is still here — send it again to
-          retry.
+          {generate.error.message} {t("retry")}
         </p>
       ) : null}
     </form>

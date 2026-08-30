@@ -70,7 +70,9 @@ describe("bullets", () => {
   })
 
   it("rejects a bullet that is too short", () => {
-    const result = insertExperienceSchema.safeParse(job([...filled(2), "short"]))
+    const result = insertExperienceSchema.safeParse(
+      job([...filled(2), "short"])
+    )
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(

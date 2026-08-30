@@ -6,11 +6,11 @@ import { chromium, type Browser } from "playwright-core"
  * `playwright-core` ships no browser, so where one comes from is a property of
  * the host, and this is the only place that knows which host it is running on:
  *
- * - **Fly, and any dev machine.** The Playwright image carries a matching
- *   Chromium at the path `launch()` already looks in. Nothing to configure.
  * - **Vercel.** The runtime has no browser at all. `@sparticuz/chromium` is a
  *   Lambda-compatible build, shipped in the function bundle and unpacked to
  *   `/tmp` on the first print of a cold instance.
+ * - **A dev machine.** `npx playwright install chromium` puts one where
+ *   `launch()` already looks. Nothing to configure.
  * - **A hosted browser.** Set `BROWSER_WS_ENDPOINT` and the print connects out
  *   instead of launching. This is the escape hatch if the bundle ever outgrows
  *   Vercel's 250MB limit, and it is only viable because `setContent` never

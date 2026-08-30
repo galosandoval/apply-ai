@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useLayoutEffect, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Textarea } from "~/components/ui/textarea"
@@ -15,10 +16,18 @@ import { applyMarkdownAction, type MarkdownAction } from "~/lib/resume-markdown"
  * is that typing markdown reads as dated to some users, which is exactly why
  * the buttons are not optional: a phone keyboard is a bad place for asterisks.
  */
-const toolbar: { action: MarkdownAction; label: string; title: string }[] = [
-  { action: "bold", label: "B", title: "Bold" },
-  { action: "link", label: "Link", title: "Link" },
-  { action: "bulletList", label: "List", title: "Bullet list" }
+/**
+ * `label` is the glyph on the button and stays as written — "B" reads as bold
+ * in every locale this ships in. `titleKey` is the tooltip, which is copy.
+ */
+const toolbar: {
+  action: MarkdownAction
+  label: string
+  titleKey: "boldTitle" | "linkTitle" | "bulletListTitle"
+}[] = [
+  { action: "bold", label: "B", titleKey: "boldTitle" },
+  { action: "link", label: "Link", titleKey: "linkTitle" },
+  { action: "bulletList", label: "List", titleKey: "bulletListTitle" }
 ]
 
 export function MarkdownField({
@@ -32,6 +41,7 @@ export function MarkdownField({
   onCommit: () => void
   id: string
 }) {
+  const t = useTranslations("resumeEditor.markdown")
   const textarea = useRef<HTMLTextAreaElement>(null)
 
   // Where the caret goes once the new text has rendered. A button that leaves
@@ -74,7 +84,7 @@ export function MarkdownField({
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => apply(button.action)}
             size="sm"
-            title={button.title}
+            title={t(button.titleKey)}
             type="button"
             variant="outline"
           >

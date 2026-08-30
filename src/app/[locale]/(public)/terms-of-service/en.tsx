@@ -1,4 +1,4 @@
-export default function TermsOfService() {
+export function TermsOfServiceEn() {
   return (
     <div className="w-full overflow-y-auto pb-12 pt-20">
       <div className="container px-4 lg:px-8">
@@ -111,8 +111,8 @@ export default function TermsOfService() {
           </p>
           <h2 className="py-5 font-bold">Contact Us</h2>
           <p>
-            If you have any questions about this Privacy Policy or our
-            practices, please contact us at galo.sandoval.dev@gmail.com.
+            If you have any questions about these Terms or our practices, please
+            contact us at galo.sandoval.dev@gmail.com.
           </p>
         </div>
       </div>

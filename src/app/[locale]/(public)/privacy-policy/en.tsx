@@ -1,4 +1,4 @@
-export default function PrivacyPolicy() {
+export function PrivacyPolicyEn() {
   return (
     <div className="w-full overflow-y-auto pb-12 pt-20">
       <div className="container px-4 lg:px-8">

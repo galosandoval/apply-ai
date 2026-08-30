@@ -49,8 +49,15 @@ export async function upsertNameAndContact(
   userId: string,
   input: UpsertNameAndContactInput
 ) {
-  const { firstName, lastName, profession, linkedIn, location, phone, portfolio } =
-    input
+  const {
+    firstName,
+    lastName,
+    profession,
+    linkedIn,
+    location,
+    phone,
+    portfolio
+  } = input
 
   // The name lives on `user` and the rest on `contact`; a half-applied save
   // would show the user a form that disagrees with itself.

@@ -134,7 +134,7 @@ describe("the panel's view of a shape", () => {
   it("gives rich text one markdown field and no collection", () => {
     expect(sectionContentFields("richText", { markdown: "**Hi**" })).toEqual([
       {
-        label: "Text",
+        labelKey: "text",
         target: { componentType: "richText", field: "markdown" },
         value: "**Hi**",
         input: "markdown"
@@ -164,13 +164,13 @@ describe("the panel's view of a shape", () => {
         index: 0,
         fields: [
           {
-            label: "Left",
+            labelKey: "left",
             target: { componentType: "twoColumn", index: 0, side: "left" },
             value: "2020",
             input: "text"
           },
           {
-            label: "Right",
+            labelKey: "right",
             target: { componentType: "twoColumn", index: 0, side: "right" },
             value: "Something",
             input: "text"

@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { Fragment, useEffect, useRef, useState } from "react"
 import { ProtectedNavbar } from "~/components/navbar/protected-navbar"
 import {
@@ -46,6 +47,7 @@ export function OnboardingShell({ children }: { children: React.ReactNode }) {
 }
 
 function OnboardingBreadcrumbs() {
+  const t = useTranslations("onboarding.steps")
   const { activeStep, goToStep } = useOnboardingStep()
   const activeStepRef = useRef<HTMLSpanElement>(null)
 
@@ -70,26 +72,26 @@ function OnboardingBreadcrumbs() {
     <Breadcrumb className="flex min-w-0 flex-1 justify-center">
       <BreadcrumbList className="flex-nowrap overflow-x-auto whitespace-nowrap py-2 max-md:justify-start">
         {onboardingSteps.map((step, index) => (
-          <Fragment key={step.id}>
+          <Fragment key={step}>
             {index > 0 && <BreadcrumbSeparator />}
 
             <BreadcrumbItem>
-              {step.id === activeStep ? (
+              {step === activeStep ? (
                 <BreadcrumbPage
                   ref={activeStepRef}
-                  id={`onboarding-step-${step.id}`}
+                  id={`onboarding-step-${step}`}
                 >
-                  {step.label}
+                  {t(step)}
                 </BreadcrumbPage>
               ) : (
                 <BreadcrumbLink asChild>
                   <button
                     type="button"
-                    id={`onboarding-step-${step.id}`}
-                    onClick={() => goToStep(step.id)}
+                    id={`onboarding-step-${step}`}
+                    onClick={() => goToStep(step)}
                     className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    {step.label}
+                    {t(step)}
                   </button>
                 </BreadcrumbLink>
               )}

@@ -23,10 +23,7 @@ export default function OnboardingFormLayout<T extends FieldValues>({
 }) {
   return (
     <Form {...form}>
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-2"
-      >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <h1 className="text-3xl">{title}</h1>
 
         {children}

@@ -150,28 +150,45 @@ export function resolveSelection(
  * A selection the resume no longer holds falls back to the resume itself, which
  * is the same thing the editor derives when a selected row is deleted.
  */
+/**
+ * The `t` from `useTranslations("resumePanel")` — and, for `contentT`, from
+ * `useTranslations("sectionContent")`.
+ *
+ * The panel is a model, not a component — it names every label and every empty
+ * state — so the copy has to arrive from the hook that builds it rather than
+ * from a hook of its own.
+ */
+export type PanelTranslate = (
+  key: string,
+  values?: Record<string, string>
+) => string
+
 export function buildPanel({
   resume,
   selected,
   select,
-  structure
+  structure,
+  t,
+  contentT
 }: {
   resume: SavedResume
   selected: ResumeSelection | null
   select: Select
   structure: StructureActions
+  t: PanelTranslate
+  contentT: PanelTranslate
 }): PanelModel {
   const resolved = selected && resolveSelection(resume, selected)
 
-  if (!resolved) return resumePanel(resume, select, structure)
+  if (!resolved) return resumePanel(resume, select, structure, t)
 
   switch (resolved.kind) {
     case "header":
-      return headerPanel(resume)
+      return headerPanel(resume, t)
     case "row":
-      return rowPanel(resume, resolved, structure)
+      return rowPanel(resume, resolved, structure, t)
     case "section":
-      return sectionPanel(resume, resolved, select, structure)
+      return sectionPanel(resume, resolved, select, structure, t, contentT)
   }
 }
 
@@ -206,16 +223,17 @@ function byRowId(
 function resumePanel(
   resume: SavedResume,
   select: Select,
-  structure: StructureActions
+  structure: StructureActions,
+  t: PanelTranslate
 ): PanelModel {
   const ids = resume.sections.map((row) => row.id)
 
   return {
-    title: "Resume",
+    title: t("resume"),
     fields: [],
     lists: [
       {
-        title: "Sections",
+        title: t("sections"),
         noun: "section",
         items: resume.sections.map((row) => ({
           key: row.id,
@@ -234,25 +252,18 @@ function resumePanel(
 }
 
 /** The name, the profession and the contact details — one of each per resume. */
-function headerPanel(resume: SavedResume): PanelModel {
+function headerPanel(resume: SavedResume, t: PanelTranslate): PanelModel {
   const contact = (
-    [
-      ["fullName", "Full name"],
-      ["email", "Email"],
-      ["phone", "Phone"],
-      ["location", "Location"],
-      ["linkedIn", "LinkedIn"],
-      ["portfolio", "Portfolio"]
-    ] as const
-  ).map(([column, label]) => ({
+    ["fullName", "email", "phone", "location", "linkedIn", "portfolio"] as const
+  ).map((column) => ({
     path: formatResumeFieldPath({ section: "contact", kind: "column", column }),
-    label,
+    label: t(`contact.${column}`),
     value: resume.contact[column] ?? "",
     input: "text" as const
   }))
 
   return {
-    title: "Header",
+    title: t("header"),
     fields: [
       {
         path: formatResumeFieldPath({
@@ -260,7 +271,7 @@ function headerPanel(resume: SavedResume): PanelModel {
           kind: "column",
           column: "profession"
         }),
-        label: "Profession",
+        label: t("profession"),
         value: resume.profession,
         input: "text"
       },
@@ -284,25 +295,14 @@ type ColumnOf<List extends RowListName> = Extract<
  * panel read one by name without asking whether it is there.
  */
 const rowColumns = {
-  experience: [
-    ["name", "Company"],
-    ["title", "Title"],
-    ["startDate", "Start"],
-    ["endDate", "End"]
-  ],
-  education: [
-    ["name", "School"],
-    ["degree", "Degree"],
-    ["startDate", "Start"],
-    ["endDate", "End"],
-    ["description", "Description"]
-  ]
+  experience: ["name", "title", "startDate", "endDate"],
+  education: ["name", "degree", "startDate", "endDate", "description"]
 } as const satisfies {
-  [List in RowListName]: readonly (readonly [ColumnOf<List>, string])[]
+  [List in RowListName]: readonly ColumnOf<List>[]
 }
 
 /** A column some core row has — the ones `rowColumns` names, and only those. */
-type CoreColumn = (typeof rowColumns)[RowListName][number][0]
+type CoreColumn = (typeof rowColumns)[RowListName][number]
 
 /** Which of those columns is a paragraph rather than a line. */
 const multilineColumns: ReadonlySet<CoreColumn> = new Set(["description"])
@@ -332,12 +332,13 @@ function entryLabel(row: CoreRow) {
 function rowPanel(
   resume: SavedResume,
   selected: Extract<ResolvedSelection, { kind: "row" }>,
-  structure: StructureActions
+  structure: StructureActions,
+  t: PanelTranslate
 ): PanelModel {
   const { list, row, index } = selected
   const ids = resume[list].map((current) => current.id)
 
-  const fields = rowColumns[list].flatMap(([column, label]) => {
+  const fields = rowColumns[list].flatMap((column) => {
     const target = rowColumnTarget(list, row.id, column)
 
     if (!target) return []
@@ -345,7 +346,7 @@ function rowPanel(
     return [
       {
         path: formatResumeFieldPath(target),
-        label,
+        label: t(`${list}.${column}`),
         value: stringAt(row, column),
         input: multilineColumns.has(column) ? "textarea" : "text"
       } satisfies PanelField
@@ -366,15 +367,16 @@ function rowPanel(
   })
 
   return {
-    title: entryLabel(row) || "Entry",
+    title: entryLabel(row) || t("untitledEntry"),
     fields,
     lists:
-      list === "experience" ? [bulletList(bullets, row.id, structure)] : [],
+      list === "experience" ? [bulletList(bullets, row.id, structure, t)] : [],
     actions: moveAndRemove({
       index,
       count: ids.length,
       onMove: (to) => ops.onMove(index, to),
-      onRemove: () => ops.onRemove(index)
+      onRemove: () => ops.onRemove(index),
+      t
     })
   }
 }
@@ -383,10 +385,11 @@ function rowPanel(
 function bulletList(
   bullets: string[],
   rowId: string,
-  structure: StructureActions
+  structure: StructureActions,
+  t: PanelTranslate
 ): PanelList {
   return {
-    title: "Bullets",
+    title: t("bullets"),
     noun: "bullet",
     items: bullets.map((bullet, index) => ({
       // Keyed by position within the job, which is what a bullet's identity
@@ -400,7 +403,7 @@ function bulletList(
             row: rowId,
             bulletIndex: index
           }),
-          label: `Bullet ${index + 1}`,
+          label: t("bullet", { index: String(index + 1) }),
           value: bullet,
           input: "textarea"
         }
@@ -428,7 +431,9 @@ function sectionPanel(
   resume: SavedResume,
   selected: Extract<ResolvedSelection, { kind: "section" }>,
   select: Select,
-  structure: StructureActions
+  structure: StructureActions,
+  t: PanelTranslate,
+  contentT: PanelTranslate
 ): PanelModel {
   const { section, index } = selected
 
@@ -438,7 +443,7 @@ function sectionPanel(
       kind: "label",
       row: section.id
     }),
-    label: "Name",
+    label: t("sectionName"),
     value: section.label,
     input: "text"
   }
@@ -450,7 +455,7 @@ function sectionPanel(
     : sectionContentFields(section.componentType, section.content).map(
         (field) => ({
           path: contentPath(section.id, field.target),
-          label: field.label,
+          label: contentT(field.labelKey),
           value: field.value,
           input: field.input
         })
@@ -465,16 +470,17 @@ function sectionPanel(
   )
 
   return {
-    title: section.label || "Section",
+    title: section.label || t("untitledSection"),
     fields: [labelField, ...contentFields],
     lists: core
-      ? [coreEntryList(resume, core, select, structure)]
-      : contentList(section, structure),
+      ? [coreEntryList(resume, core, select, structure, t)]
+      : contentList(section, structure, t, contentT),
     actions: moveAndRemove({
       index,
       count: resume.sections.length,
       onMove: (to) => ops.onMove(index, to),
-      onRemove: () => ops.onRemove(index)
+      onRemove: () => ops.onRemove(index),
+      t
     })
   }
 }
@@ -490,16 +496,17 @@ function coreEntryList(
   resume: SavedResume,
   core: { key: RowListName; noun: string },
   select: Select,
-  structure: StructureActions
+  structure: StructureActions,
+  t: PanelTranslate
 ): PanelList {
   const rows: CoreRow[] = resume[core.key]
 
   return {
-    title: "Entries",
+    title: t("entries"),
     noun: core.noun,
     items: rows.map((row) => ({
       key: row.id,
-      label: entryLabel(row) || `Untitled ${core.noun}`,
+      label: entryLabel(row) || t(`nouns.${core.noun}.untitled`),
       fields: [],
       onSelect: () => select({ kind: "row", list: core.key, rowId: row.id })
     })),
@@ -517,7 +524,9 @@ function coreEntryList(
 /** A custom section's content, as the shape registry describes it. */
 function contentList(
   section: SavedSection,
-  structure: StructureActions
+  structure: StructureActions,
+  t: PanelTranslate,
+  contentT: PanelTranslate
 ): PanelList[] {
   const noun = sectionContentNoun(section.componentType)
 
@@ -525,9 +534,12 @@ function contentList(
 
   const entries = sectionContentEntries(section.componentType, section.content)
 
-  const write = (next: AnySectionContent | null, what: string) => {
+  const write = (
+    next: AnySectionContent | null,
+    what: "add" | "remove" | "move"
+  ) => {
     if (!next) {
-      toast.error(`Could not ${what} that.`)
+      toast.error(t(`errors.${what}`))
       return
     }
 
@@ -536,13 +548,13 @@ function contentList(
 
   return [
     {
-      title: "Entries",
+      title: t("entries"),
       noun,
       items: entries.map((entry) => ({
         key: String(entry.index),
         fields: entry.fields.map((field) => ({
           path: contentPath(section.id, field.target),
-          label: field.label,
+          label: contentT(field.labelKey),
           value: field.value,
           input: field.input
         }))
@@ -580,22 +592,28 @@ function moveAndRemove({
   index,
   count,
   onMove,
-  onRemove
+  onRemove,
+  t
 }: {
   index: number
   count: number
   onMove: (to: number) => void
   onRemove: () => void
+  t: PanelTranslate
 }): PanelAction[] {
   const actions: PanelAction[] = []
 
   if (index > 0)
-    actions.push({ label: "Move up", onClick: () => onMove(index - 1) })
+    actions.push({ label: t("moveUp"), onClick: () => onMove(index - 1) })
 
   if (index < count - 1)
-    actions.push({ label: "Move down", onClick: () => onMove(index + 1) })
+    actions.push({ label: t("moveDown"), onClick: () => onMove(index + 1) })
 
-  actions.push({ label: "Remove", onClick: onRemove, variant: "destructive" })
+  actions.push({
+    label: t("remove"),
+    onClick: onRemove,
+    variant: "destructive"
+  })
 
   return actions
 }

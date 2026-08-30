@@ -1,11 +1,15 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
-import { searchSectionCatalog, type SectionPreset } from "~/lib/section-catalog"
+import {
+  type DisplaySectionPreset,
+  searchSectionCatalog
+} from "~/lib/section-catalog"
 import { type SectionComponentType } from "~/lib/section-content"
 import { MarkdownField } from "~/features/resume/markdown-field"
 import {
@@ -197,6 +201,8 @@ function List({
   onChange: (path: string, value: string) => void
   onCommit: () => void
 }) {
+  const t = useTranslations("resumePanel")
+
   return (
     <section className="flex flex-col gap-2 border-t border-neutral-200 pt-3">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
@@ -204,7 +210,9 @@ function List({
       </h3>
 
       {!list.items.length && (
-        <p className="text-sm text-neutral-500">No {list.noun}s yet.</p>
+        <p className="text-sm text-neutral-500">
+          {t(`nouns.${list.noun}.empty`)}
+        </p>
       )}
 
       {list.items.map((item, index) => (
@@ -241,7 +249,7 @@ function List({
                   type="button"
                   variant="outline"
                 >
-                  Up
+                  {t("up")}
                 </Button>
 
                 <Button
@@ -251,7 +259,7 @@ function List({
                   type="button"
                   variant="outline"
                 >
-                  Down
+                  {t("down")}
                 </Button>
               </>
             )}
@@ -263,7 +271,7 @@ function List({
                 type="button"
                 variant="ghost"
               >
-                Remove
+                {t("remove")}
               </Button>
             )}
           </div>
@@ -277,7 +285,7 @@ function List({
           type="button"
           variant="secondary"
         >
-          Add {list.noun}
+          {t(`nouns.${list.noun}.add`)}
         </Button>
       )}
     </section>
@@ -302,10 +310,12 @@ function AddSection({
 }: {
   onAdd: (label: string, componentType: SectionComponentType) => void
 }) {
+  const t = useTranslations("resumePanel")
   const [query, setQuery] = useState("")
-  const groups = searchSectionCatalog(query)
+  const catalogT = useTranslations("sectionCatalog")
+  const groups = searchSectionCatalog(query, catalogT)
 
-  const add = (preset: SectionPreset) => {
+  const add = (preset: DisplaySectionPreset) => {
     onAdd(preset.label, preset.componentType)
     setQuery("")
   }
@@ -313,28 +323,27 @@ function AddSection({
   return (
     <section className="flex flex-col gap-2 border-t border-neutral-200 pt-3">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
-        Add a section
+        {t("addSectionTitle")}
       </h3>
 
       <Label className="sr-only" htmlFor="section-search">
-        Search sections
+        {t("searchSections")}
       </Label>
       <Input
         id="section-search"
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search sections"
+        placeholder={t("searchSections")}
         value={query}
       />
 
       {groups.length === 0 ? (
         <p className="py-2 text-sm text-neutral-500">
-          No section matches “{query.trim()}”. Add a Text section and name it
-          whatever you like.
+          {t("noSectionMatch", { query: query.trim() })}
         </p>
       ) : (
         <div className="flex max-h-80 flex-col gap-3 overflow-y-auto">
           {groups.map((group) => (
-            <div className="flex flex-col gap-1" key={group.title}>
+            <div className="flex flex-col gap-1" key={group.id}>
               <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
                 {group.title}
               </h4>

@@ -128,15 +128,15 @@ throwaway one.
 
 ### Deployment
 
-One image runs the Next server and the Chromium the PDF route prints with:
+Vercel, from `development` — push and it builds. `vercel.json` runs migrations
+before the build, so a bad migration fails the deploy instead of the app.
 
-```bash
-docker build -t apply-ai .
-fly deploy
-```
+The PDF route prints with a real Chromium, which the Vercel runtime does not
+have: `@sparticuz/chromium` ships in the function bundle.
 
-`fly.toml` keeps a machine running rather than cold-starting per request —
-Chromium is expensive to launch and the process holds the database pool.
+The same four variables from Configuration are set in the Vercel project, and
+`src/env.ts` validates them at build time — a missing one fails the deploy
+rather than the first request.
 
 <!-- ROADMAP -->
 

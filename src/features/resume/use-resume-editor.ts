@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { parseResumeFieldPath } from "~/lib/resume-field-path"
@@ -57,6 +58,10 @@ export function useResumeEditor(resumeId: string) {
     { enabled: !!resumeId }
   )
 
+  const t = useTranslations("resumeEditor")
+  const panelT = useTranslations("resumePanel")
+  const contentT = useTranslations("sectionContent")
+
   const [requested, setRequested] = useState<ResumeSelection | null>(null)
 
   const save = useSaveState()
@@ -96,7 +101,7 @@ export function useResumeEditor(resumeId: string) {
 
   return {
     resume,
-    errorMessage: resumeQuery.isError ? "Resume not found." : null,
+    errorMessage: resumeQuery.isError ? t("notFound") : null,
     saveState: save.state,
     selected,
     onSelect: setRequested,
@@ -112,7 +117,14 @@ export function useResumeEditor(resumeId: string) {
     onFieldCommit: fields.flush,
     panel: resume
       ? withUnsavedText(
-          buildPanel({ resume, selected, select: setRequested, structure }),
+          buildPanel({
+            resume,
+            selected,
+            select: setRequested,
+            structure,
+            t: panelT,
+            contentT
+          }),
           fields.unsaved
         )
       : null,
@@ -277,6 +289,8 @@ type PendingFields = {
  * response predating one.
  */
 function useFieldAutosave({ resumeId, patch, resync, save }: ResumeCache) {
+  const t = useTranslations("resumeEditor")
+
   const utils = api.useContext()
 
   // What each pending path looked like before the user started typing into it,
@@ -321,7 +335,7 @@ function useFieldAutosave({ resumeId, patch, resync, save }: ResumeCache) {
       save.end(false)
 
       console.error(error)
-      toast.error("Could not save that change.")
+      toast.error(t("saveFailed"))
     },
     onSuccess: (_data, variables) => {
       rollback.current.delete(variables.path)
@@ -524,11 +538,13 @@ function useStructureMutations(
  * local copy cannot repair by itself.
  */
 function useSettle({ resync, save }: ResumeCache) {
+  const t = useTranslations("resumeEditor")
+
   return {
     onMutate: () => save.begin(),
     onError: (error: unknown) => {
       console.error(error)
-      toast.error("Could not save that change.")
+      toast.error(t("saveFailed"))
       save.end(false)
       resync()
     },
