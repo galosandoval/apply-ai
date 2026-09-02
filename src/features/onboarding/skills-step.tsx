@@ -54,7 +54,7 @@ export function SkillsStep() {
       goToStep("skills")
     },
 
-    onMutate: () => router.push(appPath.dashboard)
+    onMutate: () => router.push(appPath.newResume)
   })
 
   const form = useAppForm(insertSkillsSchema, {

@@ -10,16 +10,24 @@ import {
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
 import { PaperPlaneIcon } from "@radix-ui/react-icons"
-import { useTranslations } from "next-intl"
 
+/**
+ * The posting box: a growing textarea with a send button.
+ *
+ * Its copy arrives as props rather than being read from a message namespace,
+ * so a form other than the resume one can reuse it with its own wording.
+ */
 export function PromptInput({
   input,
-  handleInputChange
+  handleInputChange,
+  label,
+  placeholder
 }: {
   input: string
   handleInputChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
+  label: string
+  placeholder: string
 }) {
-  const t = useTranslations("dashboard")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   useAutosizeTextArea(textareaRef, input)
 
@@ -35,7 +43,7 @@ export function PromptInput({
   return (
     <div className="relative flex flex-col">
       <label htmlFor="prompt" className="sr-only">
-        {t("promptLabel")}
+        {label}
       </label>
 
       <Textarea
@@ -44,7 +52,7 @@ export function PromptInput({
         value={input}
         onChange={handleInputChange}
         id="prompt"
-        placeholder={t("promptPlaceholder")}
+        placeholder={placeholder}
         onKeyDown={onEnter}
         style={{ height: "0px" }}
       />

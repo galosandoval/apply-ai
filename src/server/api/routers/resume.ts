@@ -19,7 +19,7 @@ export const resumeRouter = createTRPCRouter({
    * Drafts a resume against a job description, saves it, and returns its id for
    * the client to navigate to.
    *
-   * An ordinary mutation rather than a streaming API route: the dashboard shows
+   * An ordinary mutation rather than a streaming API route: the page shows
    * a loading state and needs the whole object before it can render anything,
    * so the stream was overhead with a `JSON.parse` on the end of it.
    */

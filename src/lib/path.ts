@@ -1,6 +1,6 @@
 export const appPath = {
   onboarding: "/onboarding",
-  dashboard: "/dashboard",
-  resume: "/resume",
-  resumeById: (resumeId: string) => `/resume/${resumeId}`
+  newResume: "/resumes/new",
+  resumes: "/resumes",
+  resumeById: (resumeId: string) => `/resumes/${resumeId}`
 } as const

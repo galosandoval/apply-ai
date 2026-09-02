@@ -2,11 +2,15 @@ import { getSessionCookie } from "better-auth/cookies"
 import createIntlMiddleware from "next-intl/middleware"
 import { NextResponse, type NextRequest } from "next/server"
 import { routing } from "~/i18n/routing"
+import { appPath } from "~/lib/path"
 
 const handleLocale = createIntlMiddleware(routing)
 
 /** Routes that require a session, written without a locale prefix. */
-const protectedPaths = [/^\/dashboard$/, /^\/resume(\/|$)/, /^\/onboarding$/]
+const protectedPaths = [
+  new RegExp(`^${appPath.resumes}(/|$)`),
+  new RegExp(`^${appPath.onboarding}$`)
+]
 
 /**
  * Locale resolution and the signed-out bounce, in that order.
@@ -18,9 +22,9 @@ const protectedPaths = [/^\/dashboard$/, /^\/resume(\/|$)/, /^\/onboarding$/]
  * somewhere honest to send people: a Spanish reader whose session expired
  * lands on `/es`, not on an English landing page.
  *
- * This also owns the signed-in `/` → `/dashboard` redirect, which used to be a
- * static rule in `next.config.ts`. A config rule can't know that `/es` is the
- * same route as `/`.
+ * This also owns the signed-in `/` → `/resumes/new` redirect, which used to
+ * be a static rule in `next.config.ts`. A config rule can't know that `/es` is
+ * the same route as `/`.
  *
  * The session check here is routing and UX, not authorization. It only checks
  * that a cookie is present — validating it would mean a database round trip on
@@ -36,7 +40,9 @@ export function proxy(request: NextRequest) {
   const hasSession = Boolean(getSessionCookie(request))
 
   if (path === "/" && hasSession) {
-    return NextResponse.redirect(new URL(`${prefix}/dashboard`, request.url))
+    return NextResponse.redirect(
+      new URL(`${prefix}${appPath.newResume}`, request.url)
+    )
   }
 
   if (!hasSession && protectedPaths.some((route) => route.test(path))) {
@@ -61,7 +67,7 @@ function localeOf(pathname: string) {
   return locale ?? routing.defaultLocale
 }
 
-/** `/es/dashboard` and `/dashboard` are the same route — compare without the tag. */
+/** `/es/resumes` and `/resumes` are the same route — compare without the tag. */
 function stripLocale(pathname: string, locale: string) {
   if (!pathname.startsWith(`/${locale}`)) return pathname
 

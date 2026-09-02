@@ -1,6 +1,6 @@
 {
   "nav": {
-    "dashboard": "Dashboard",
+    "newResume": "New resume",
     "onboarding": "Onboarding",
     "resumes": "Resumes",
     "signOut": "Sign Out",
@@ -61,7 +61,7 @@
       },
       "copyPaste": {
         "title": "Copy/Paste",
-        "description": "Copy the job description of the position you are applying for. On the dashboard, paste the job description onto the input field and hit enter to generate your resume."
+        "description": "Copy the job description of the position you are applying for. On the New resume page, paste the job description onto the input field and hit enter to generate your resume."
       },
       "download": {
         "title": "Download your resume",
@@ -83,14 +83,16 @@
     "appName": "ApplyAI",
     "description": "Created by Galo Sandoval to make the job application process easier.",
     "home": "Sign up",
-    "dashboard": "Dashboard",
+    "newResume": "New resume",
     "resumes": "Your resumes",
     "editResume": "Edit resume",
     "onboarding": "Set up your profile",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service"
   },
-  "dashboard": {
+  "newResume": {
+    "heading": "New resume",
+    "blurb": "Paste the job posting you're applying to. Your resume is written from the history saved on your profile, tailored to what the posting asks for.",
     "writing": "Writing your resume...",
     "retry": "Your posting is still here — send it again to retry.",
     "promptLabel": "Prompt",

@@ -1,7 +1,8 @@
 import { ProtectedNavbar } from "~/components/navbar/protected-navbar"
 
 /**
- * The signed-in app: dashboard and resumes, under the app navigation.
+ * The signed-in app: creating a resume and the saved ones, under the app
+ * navigation.
  *
  * Split from `(protected)` because onboarding is also signed-in but wears
  * breadcrumbs instead — and a nested layout adds to its parent rather than

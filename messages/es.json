@@ -1,6 +1,6 @@
 {
   "nav": {
-    "dashboard": "Panel",
+    "newResume": "Nuevo currículum",
     "onboarding": "Configuración",
     "resumes": "Currículums",
     "signOut": "Cerrar sesión",
@@ -61,7 +61,7 @@
       },
       "copyPaste": {
         "title": "Copia y pega",
-        "description": "Copia la descripción del puesto al que estás postulando. En el panel, pégala en el campo de texto y presiona Enter para generar tu currículum."
+        "description": "Copia la descripción del puesto al que estás postulando. En la página Nuevo currículum, pégala en el campo de texto y presiona Enter para generar tu currículum."
       },
       "download": {
         "title": "Descarga tu currículum",
@@ -83,14 +83,16 @@
     "appName": "ApplyAI",
     "description": "Creado por Galo Sandoval para hacer más fácil el proceso de postulación.",
     "home": "Crear cuenta",
-    "dashboard": "Panel",
+    "newResume": "Nuevo currículum",
     "resumes": "Tus currículums",
     "editResume": "Editar currículum",
     "onboarding": "Configura tu perfil",
     "privacyPolicy": "Política de privacidad",
     "termsOfService": "Términos del servicio"
   },
-  "dashboard": {
+  "newResume": {
+    "heading": "Nuevo currículum",
+    "blurb": "Pega la descripción del puesto al que estás postulando. Tu currículum se escribe a partir del historial guardado en tu perfil, adaptado a lo que pide la oferta.",
     "writing": "Escribiendo tu currículum...",
     "retry": "Tu descripción sigue aquí: envíala de nuevo para reintentar.",
     "promptLabel": "Instrucción",

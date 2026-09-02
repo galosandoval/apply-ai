@@ -13,7 +13,7 @@ test("signing up lands on onboarding", async ({ page }) => {
   await expect(page).toHaveURL(/\/onboarding\/?$/)
 })
 
-test("signing in reaches the dashboard", async ({ page, context }) => {
+test("signing in reaches the new-resume page", async ({ page, context }) => {
   const account = newAccount()
 
   await signUp(page, account)
@@ -26,12 +26,14 @@ test("signing in reaches the dashboard", async ({ page, context }) => {
   await page.getByLabel("Password").fill(account.password)
   await page.getByRole("button", { name: "Log In" }).click()
 
-  await expect(page).toHaveURL(/\/dashboard/)
+  await expect(page).toHaveURL(/\/resumes\/new/)
 })
 
-test("a signed-out visitor cannot reach the dashboard", async ({ page }) => {
+test("a signed-out visitor cannot reach the new-resume page", async ({
+  page
+}) => {
   await pinEnglish(page)
-  await page.goto("/dashboard")
+  await page.goto("/resumes/new")
 
   await expect(page).toHaveURL("/")
 })

@@ -48,11 +48,11 @@ export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
 
       <NavigationMenu className="shrink-0">
         <NavigationMenuList>
-          <NavLink href={appPath.dashboard}>{t("dashboard")}</NavLink>
+          <NavLink href={appPath.newResume}>{t("newResume")}</NavLink>
           {showOnboarding && (
             <NavLink href={appPath.onboarding}>{t("onboarding")}</NavLink>
           )}
-          <NavLink href={appPath.resume}>{t("resumes")}</NavLink>
+          <NavLink href={appPath.resumes}>{t("resumes")}</NavLink>
           <NavigationMenuItem>
             <LocaleSwitcher persist />
           </NavigationMenuItem>
