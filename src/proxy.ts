@@ -8,9 +8,23 @@ const handleLocale = createIntlMiddleware(routing)
 
 /** Routes that require a session, written without a locale prefix. */
 const protectedPaths = [
-  new RegExp(`^${appPath.resumes}(/|$)`),
-  new RegExp(`^${appPath.onboarding}$`)
+  pathMatcher(appPath.resumes, "subtree"),
+  pathMatcher(appPath.onboarding, "exact")
 ]
+
+/**
+ * A matcher for one `appPath` entry. Segment comparison rather than a pattern:
+ * the values in `appPath` exist to be concatenated into hrefs, and reading them
+ * as regex source would make a future route carrying a `.` or a `+` match more
+ * than it named, silently.
+ *
+ * `"subtree"` also matches everything below the route; `"exact"` matches only
+ * the route itself.
+ */
+function pathMatcher(route: string, match: "exact" | "subtree") {
+  return (path: string) =>
+    path === route || (match === "subtree" && path.startsWith(`${route}/`))
+}
 
 /**
  * Locale resolution and the signed-out bounce, in that order.
@@ -45,7 +59,7 @@ export function proxy(request: NextRequest) {
     )
   }
 
-  if (!hasSession && protectedPaths.some((route) => route.test(path))) {
+  if (!hasSession && protectedPaths.some((isProtected) => isProtected(path))) {
     return NextResponse.redirect(new URL(prefix || "/", request.url))
   }
 
