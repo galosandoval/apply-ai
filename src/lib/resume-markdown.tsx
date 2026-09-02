@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react"
+import { type ResumeBlockKind } from "~/lib/resume-blocks"
 
 /**
  * The constrained markdown subset a rich-text field may contain — bold, links
@@ -15,9 +16,10 @@ import { Fragment, type ReactNode } from "react"
  * whose formatting set would have to be reconciled with this one is exactly the
  * ongoing work this avoids.
  *
- * A bullet list *inside* rich text exists because markdown has one, but the app
- * never offers it as a rich-text action from the panel: a list of things gets
- * one home, the list component. See `section-content` for that tie-break.
+ * A bullet list is the shape most of this text is written in: an entry's body
+ * is one of these strings, and its accomplishments are its list items. So the
+ * toolbar offers the list as an action, and a list item is rendered as a block
+ * of its own — a nine-bullet job has to be able to break across a page.
  */
 
 /** A line that opens a bullet list item. */
@@ -36,40 +38,44 @@ const safeScheme = /^(https?:\/\/|mailto:)/i
 const bulletPrefix = "- "
 
 /**
- * Renders the subset to React nodes.
+ * One block of rendered markdown: a run of prose, or a single list item.
  *
- * Blocks are paragraphs and bullet lists, separated by blank lines or by the
- * first bullet. The caller owns the surrounding element, so this returns the
- * blocks rather than a wrapper.
+ * The kind travels with the node because the document is a list of blocks and
+ * every block has to name what it is — see `ResumeBlockKind`, whose `bullet`
+ * and `paragraph` these are.
  */
-export function renderResumeMarkdown(markdown: string): ReactNode[] {
-  const blocks: ReactNode[] = []
+export type ResumeMarkdownBlock = {
+  kind: Extract<ResumeBlockKind, "bullet" | "paragraph">
+  node: ReactNode
+}
+
+/**
+ * Renders the subset to blocks.
+ *
+ * A paragraph is one block, and **each list item is a block of its own** — not
+ * the list. A body of nine bullets that rendered as one `<ul>` would be one
+ * uncuttable element, which is exactly the thing a page break has to be allowed
+ * to fall inside; see `docs/editable-resume.md`, under "The document is a block
+ * list". Each item is still a real `<li>` inside a real `<ul>`, so a parser
+ * reads a list wherever the items land.
+ *
+ * The caller owns the surrounding element, so this returns the blocks rather
+ * than a wrapper.
+ */
+export function renderResumeMarkdown(markdown: string): ResumeMarkdownBlock[] {
+  const blocks: ResumeMarkdownBlock[] = []
 
   let paragraph: string[] = []
-  let items: string[] = []
 
   const flushParagraph = () => {
     if (!paragraph.length) return
 
-    blocks.push(
-      <p key={`p${blocks.length}`}>{renderInline(paragraph.join(" "))}</p>
-    )
+    blocks.push({
+      kind: "paragraph",
+      node: <p key={`p${blocks.length}`}>{renderInline(paragraph.join(" "))}</p>
+    })
 
     paragraph = []
-  }
-
-  const flushList = () => {
-    if (!items.length) return
-
-    blocks.push(
-      <ul className="list-disc pl-resume-bullet" key={`l${blocks.length}`}>
-        {items.map((item, index) => (
-          <li key={index}>{renderInline(item)}</li>
-        ))}
-      </ul>
-    )
-
-    items = []
   }
 
   for (const line of markdown.split("\n")) {
@@ -77,22 +83,28 @@ export function renderResumeMarkdown(markdown: string): ReactNode[] {
 
     if (bullet) {
       flushParagraph()
-      items.push(bullet[1] ?? "")
+
+      blocks.push({
+        kind: "bullet",
+        node: (
+          <ul className="list-disc pl-resume-bullet" key={`l${blocks.length}`}>
+            <li>{renderInline(bullet[1] ?? "")}</li>
+          </ul>
+        )
+      })
+
       continue
     }
 
     if (!line.trim()) {
       flushParagraph()
-      flushList()
       continue
     }
 
-    flushList()
     paragraph.push(line.trim())
   }
 
   flushParagraph()
-  flushList()
 
   return blocks
 }
@@ -168,6 +180,25 @@ export function stripMarkdown(markdown: string): string {
 
       return stripInline(bullet ? (bullet[1] ?? "") : line)
     })
+    .join("\n")
+}
+
+/**
+ * Every filled line of `text` as a bullet, leaving alone the ones that already
+ * are.
+ *
+ * Here rather than at the form that wants it, because what makes a line a
+ * bullet is this module's to say: a second copy of the marker test is how a
+ * form comes to write a prefix the renderer does not read back.
+ *
+ * Blank lines go — a marker with nothing after it is not a list item.
+ */
+export function toBulletedMarkdown(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => (bulletLine.test(line) ? line : bulletPrefix + line))
     .join("\n")
 }
 

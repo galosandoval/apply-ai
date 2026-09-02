@@ -22,6 +22,7 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
+import { toBulletedMarkdown } from "~/lib/resume-markdown"
 import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import {
   FormControl,
@@ -38,21 +39,12 @@ import { useErrorText } from "~/components/use-error-text"
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
     name: "",
-    bullets: [],
+    body: "",
     startDate: "",
     endDate: "",
     title: ""
   }
 ]
-
-/**
- * Bullets are stored as an array but collected as one textarea, so a line is a
- * bullet. Blank lines survive `toBullets` on purpose: stripping them as the user
- * types would swallow the newline they just pressed. `onSubmit` drops them.
- */
-const toBullets = (text: string) => text.split("\n")
-
-const fromBullets = (bullets: string[]) => bullets.join("\n")
 
 const maxExperience = 4
 
@@ -86,7 +78,7 @@ export function ExperienceStep() {
         ? profile.experience.map((experience) => ({
             id: experience.id,
             name: experience.name,
-            bullets: experience.bullets,
+            body: experience.body,
             startDate: experience.startDate,
             endDate: experience.endDate,
             title: experience.title
@@ -109,9 +101,11 @@ export function ExperienceStep() {
   })
 
   const onSubmit = (data: InsertExperienceSchema) => {
+    // Submitting without ever leaving the field is a real path — the button is
+    // reachable by keyboard — so the marker is applied here as well as on blur.
     const experienceToSubmit = data.experience.map((experience) => ({
       ...experience,
-      bullets: experience.bullets.map((bullet) => bullet.trim()).filter(Boolean)
+      body: toBulletedMarkdown(experience.body)
     }))
 
     mutate({ experience: experienceToSubmit })
@@ -277,12 +271,22 @@ function ExperienceForm({
         )}
       </div>
 
-      <BulletsField control={control} index={index} />
+      <BodyField control={control} index={index} />
     </div>
   )
 }
 
-function BulletsField({
+/**
+ * The job's body: one field, holding what the resume prints under the job.
+ *
+ * The step asks for one accomplishment per line, and the column holds markdown
+ * — where a line without a marker is prose. So every filled line is given the
+ * `- ` it is going to be read as, on blur rather than on a keystroke: rewriting
+ * a line under a caret is how a keystroke ends up somewhere the user did not
+ * put it. On blur rather than on submit, too, so that what the form validates
+ * and what the user is looking at are both the thing that gets stored.
+ */
+function BodyField({
   control,
   index
 }: {
@@ -294,22 +298,22 @@ function BulletsField({
   return (
     <FormField
       control={control}
-      name={`experience.${index}.bullets`}
+      name={`experience.${index}.body`}
       render={({ field }) => (
         <FormItem className="w-full">
           <FormLabel>
-            {t("bulletsLabel")}
+            {t("bodyLabel")}
             <span className="text-destructive">*</span>
           </FormLabel>
           <FormControl>
             <Textarea
               className="min-h-[100px]"
               placeholder={t("accomplishmentsPlaceholder")}
-              name={field.name}
-              ref={field.ref}
-              onBlur={field.onBlur}
-              value={fromBullets(field.value)}
-              onChange={(e) => field.onChange(toBullets(e.target.value))}
+              {...field}
+              onBlur={() => {
+                field.onChange(toBulletedMarkdown(field.value))
+                field.onBlur()
+              }}
             />
           </FormControl>
           <FormDescription>{t("accomplishmentsHint")}</FormDescription>

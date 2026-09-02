@@ -29,7 +29,7 @@ import { useErrorText } from "~/components/use-error-text"
 const initialSchool: InsertEducationSchema["education"] = [
   {
     degree: "",
-    description: "",
+    body: "",
     name: "",
     endDate: "",
     gpa: "",
@@ -68,7 +68,7 @@ export function EducationStep() {
             endDate: school.endDate,
             name: school.name,
             startDate: school.startDate,
-            description: school.description,
+            body: school.body,
             gpa: school.gpa,
             location: school.location
           }))
@@ -83,7 +83,7 @@ export function EducationStep() {
             endDate: school.endDate,
             name: school.name,
             startDate: school.startDate,
-            description: school.description,
+            body: school.body,
             gpa: school.gpa,
             location: school.location
           }))
@@ -295,7 +295,7 @@ function EducationForm({
 
       <FormField
         control={control}
-        name={`education.${index}.description`}
+        name={`education.${index}.body`}
         render={({ field }) => (
           <MyTextarea
             field={field}

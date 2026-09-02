@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react"
+import { renderResumeMarkdown } from "~/lib/resume-markdown"
 import {
   customSectionShape,
   type EntryPart,
@@ -637,27 +638,19 @@ function handleFor(doc: Doc, selection: ResumeSelection): SelectHandle | null {
 function Text({
   doc,
   value,
-  className = "",
-  multiline = false
+  className = ""
 }: {
   doc: Doc
   value: string | null | undefined
   className?: string
-  multiline?: boolean
 }) {
-  // Multiline text keeps the newlines it was typed with instead of collapsing
-  // them to a space.
-  const textClassName = multiline
-    ? `${className} whitespace-pre-line`
-    : className
-
   if (!value) {
     return doc.render.isEditor ? (
       <span className={`${className} text-resume-muted`}>&mdash;</span>
     ) : null
   }
 
-  return <span className={textClassName}>{value}</span>
+  return <span className={className}>{value}</span>
 }
 
 /**
@@ -718,22 +711,7 @@ function experienceRows(doc: Doc): TwoColumnRow[] {
       end: job.endDate,
       name: job.name,
       detail: job.title,
-      body: job.bullets.map((bullet) => ({
-        kind: "bullet",
-        /*
-          One list per bullet, rather than one list holding every bullet of a
-          job. A list is an element, and an element cannot be in two places —
-          which is what a job split across a page boundary asks of it. Each
-          bullet is still a real list item inside a real list, on whichever
-          sheet it lands on, and the discs line up because the indent is a
-          token rather than a position.
-        */
-        node: (
-          <ul className="list-disc pl-resume-bullet">
-            <li className="whitespace-pre-line">{bullet}</li>
-          </ul>
-        )
-      }))
+      body: entryBody(job.body)
     }),
     select: rowHandle(doc, "experience", job.id)
   }))
@@ -746,15 +724,21 @@ function educationRows(doc: Doc): TwoColumnRow[] {
       end: school.endDate,
       name: school.name,
       detail: school.degree,
-      body: [
-        {
-          kind: "description",
-          node: <Text doc={doc} multiline value={school.description} />
-        }
-      ]
+      body: entryBody(school.body)
     }),
     select: rowHandle(doc, "education", school.id)
   }))
+}
+
+/**
+ * An entry's body as the blocks that follow its identity line — one function
+ * for a job and for a school, because they are one field.
+ *
+ * Absent rather than empty is a payload assembled before the body existed — a
+ * PDF of a document that predates it — which draws as no body at all.
+ */
+function entryBody(markdown: string | undefined): EntryPart[] {
+  return renderResumeMarkdown(markdown ?? "")
 }
 
 /**

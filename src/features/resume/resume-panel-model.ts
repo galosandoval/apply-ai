@@ -25,16 +25,16 @@ export type PanelField = {
   path: string
   label: string
   value: string
-  input: "text" | "textarea" | "markdown"
+  /** A plain line, or the constrained markdown subset with its toolbar. */
+  input: "text" | "markdown"
 }
 
 /**
- * One element of a repeated thing: a bullet, a list item, an entry of a core
- * section.
+ * One element of a repeated thing: a list item, an entry of a core section.
  *
  * An item with `fields` is edited here; an item with `onSelect` is edited by
- * selecting it, and shows only its name — a section panel holding four jobs and
- * twenty bullets is exactly what item-level selection exists to avoid.
+ * selecting it, and shows only its name — a section panel holding every job and
+ * everything written under it is what item-level selection exists to avoid.
  */
 export type PanelListItem = {
   key: string
@@ -92,7 +92,6 @@ export type AddedSectionPreset = Pick<
  * so this module stays pure and the two can be read apart.
  */
 export type StructureActions = {
-  setBullets: (rowId: string, bullets: string[]) => void
   addRow: (list: RowListName) => void
   removeRow: (list: RowListName, rowId: string) => void
   reorderRows: (list: RowListName, rowIds: string[]) => void
@@ -307,8 +306,8 @@ type ColumnOf<List extends RowListName> = Extract<
  * panel read one by name without asking whether it is there.
  */
 const rowColumns = {
-  experience: ["name", "title", "startDate", "endDate"],
-  education: ["name", "degree", "startDate", "endDate", "description"]
+  experience: ["name", "title", "startDate", "endDate", "body"],
+  education: ["name", "degree", "startDate", "endDate", "body"]
 } as const satisfies {
   [List in RowListName]: readonly ColumnOf<List>[]
 }
@@ -316,8 +315,14 @@ const rowColumns = {
 /** A column some core row has — the ones `rowColumns` names, and only those. */
 type CoreColumn = (typeof rowColumns)[RowListName][number]
 
-/** Which of those columns is a paragraph rather than a line. */
-const multilineColumns: ReadonlySet<CoreColumn> = new Set(["description"])
+/**
+ * Which of those columns is rich text rather than a line.
+ *
+ * The body is edited with the markdown toolbar, not as a list of one-line
+ * inputs: a bullet is a `- ` line inside one field now, so adding, removing and
+ * reordering one is typing rather than three buttons per bullet.
+ */
+const markdownColumns: ReadonlySet<CoreColumn> = new Set(["body"])
 
 /**
  * One column of a core row, as the panel shows it.
@@ -360,18 +365,10 @@ function rowPanel(
         path: formatResumeFieldPath(target),
         label: t(`${list}.${column}`),
         value: stringAt(row, column),
-        input: multilineColumns.has(column) ? "textarea" : "text"
+        input: markdownColumns.has(column) ? "markdown" : "text"
       } satisfies PanelField
     ]
   })
-
-  // Only a job owns a list the panel edits in place; a school's description is
-  // one field, and a skill group's line is one field. Read back off the typed
-  // array rather than off the selection, which holds the union of all three.
-  const bullets =
-    list === "experience"
-      ? (resume.experience.find((job) => job.id === row.id)?.bullets ?? [])
-      : []
 
   const ops = byRowId(ids, {
     onRemove: (id) => structure.removeRow(list, id),
@@ -381,8 +378,9 @@ function rowPanel(
   return {
     title: entryLabel(row) || t("untitledEntry"),
     fields,
-    lists:
-      list === "experience" ? [bulletList(bullets, row.id, structure, t)] : [],
+    // An entry owns no list of its own any more: its body is one markdown
+    // field, and the bullets inside it are lines of that field.
+    lists: [],
     actions: moveAndRemove({
       index,
       count: ids.length,
@@ -390,45 +388,6 @@ function rowPanel(
       onRemove: () => ops.onRemove(index),
       t
     })
-  }
-}
-
-/** A job's bullets: the one list the panel edits in place. */
-function bulletList(
-  bullets: string[],
-  rowId: string,
-  structure: StructureActions,
-  t: PanelTranslate
-): PanelList {
-  return {
-    title: t("bullets"),
-    noun: "bullet",
-    items: bullets.map((bullet, index) => ({
-      // Keyed by position within the job, which is what a bullet's identity
-      // *is*: bullets are an array column, not rows with ids of their own.
-      key: `${rowId}.${index}`,
-      fields: [
-        {
-          path: formatResumeFieldPath({
-            section: "experience",
-            kind: "bullet",
-            row: rowId,
-            bulletIndex: index
-          }),
-          label: t("bullet", { index: String(index + 1) }),
-          value: bullet,
-          input: "textarea"
-        }
-      ]
-    })),
-    onAdd: () => structure.setBullets(rowId, [...bullets, ""]),
-    onRemove: (index) =>
-      structure.setBullets(
-        rowId,
-        bullets.filter((_bullet, at) => at !== index)
-      ),
-    onMove: (index, to) =>
-      structure.setBullets(rowId, moveItem(bullets, index, to))
   }
 }
 
@@ -500,9 +459,9 @@ function sectionPanel(
 /**
  * A core section's entries, named rather than expanded.
  *
- * Selecting one is how it is edited — a panel holding four jobs and twenty
- * bullets is exactly what item-level selection exists to avoid — so this offers
- * the operations that belong to the section: add, remove, and order.
+ * Selecting one is how it is edited — a panel holding every job and everything
+ * written under it is what item-level selection exists to avoid — so this
+ * offers the operations that belong to the section: add, remove, and order.
  */
 function coreEntryList(
   resume: SavedResume,

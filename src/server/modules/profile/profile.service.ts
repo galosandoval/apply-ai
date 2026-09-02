@@ -151,7 +151,7 @@ export async function replaceExperience(
     id: e.id ?? createId(),
     position,
     name: e.name,
-    bullets: e.bullets,
+    body: e.body,
     endDate: e.endDate,
     startDate: e.startDate,
     title: e.title,

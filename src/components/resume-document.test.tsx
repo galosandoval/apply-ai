@@ -32,7 +32,7 @@ const data: ResumeDocumentData = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
-      bullets: ["Wrote the first algorithm", "Described a general computer"]
+      body: "- Wrote the first algorithm\n- Described a general computer"
     },
     {
       id: "w2",
@@ -40,7 +40,7 @@ const data: ResumeDocumentData = {
       title: "Analyst",
       startDate: "1836",
       endDate: "1840",
-      bullets: ["Read the notes"]
+      body: "- Read the notes"
     }
   ],
   education: [
@@ -50,7 +50,7 @@ const data: ResumeDocumentData = {
       degree: "Mathematics",
       startDate: "1830",
       endDate: "1835",
-      description: "Studied under De Morgan"
+      body: "Studied under De Morgan"
     }
   ],
   sections: [

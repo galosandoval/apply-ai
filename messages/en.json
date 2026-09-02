@@ -170,8 +170,8 @@
       "endDatePlaceholder": "Ex: May 2021",
       "accomplishments": "Accomplishments",
       "accomplishmentsPlaceholder": "Collaborated closely with cross-functional teams to ship new features\nCut page load time by 40% by splitting the bundle",
-      "accomplishmentsHint": "One accomplishment per line.",
-      "bulletsLabel": "Write 3 to 5 accomplishments"
+      "accomplishmentsHint": "One accomplishment per line. Each line is saved as a bullet.",
+      "bodyLabel": "Write 3 to 5 accomplishments"
     },
     "skills": {
       "title": "Skills",
@@ -220,7 +220,6 @@
     "sections": "Sections",
     "header": "Header",
     "entries": "Entries",
-    "bullets": "Bullets",
     "untitledEntry": "Entry",
     "untitledSection": "Section",
     "sectionName": "Name",
@@ -237,14 +236,15 @@
       "name": "Company",
       "title": "Title",
       "startDate": "Start",
-      "endDate": "End"
+      "endDate": "End",
+      "body": "Details"
     },
     "education": {
       "name": "School",
       "degree": "Degree",
       "startDate": "Start",
       "endDate": "End",
-      "description": "Description"
+      "body": "Details"
     },
     "up": "Up",
     "down": "Down",
@@ -274,11 +274,6 @@
         "add": "Add section",
         "empty": "No sections yet.",
         "untitled": "Untitled section"
-      },
-      "bullet": {
-        "add": "Add bullet",
-        "empty": "No bullets yet.",
-        "untitled": "Untitled bullet"
       },
       "row": {
         "add": "Add row",
@@ -310,8 +305,7 @@
         "empty": "No groups yet.",
         "untitled": "Untitled group"
       }
-    },
-    "bullet": "Bullet {index}"
+    }
   },
   "sectionCatalog": {
     "groups": {
@@ -455,10 +449,6 @@
   "validation": {
     "minChars": "Must be at least {count, plural, one {# character} other {# characters}}",
     "maxChars": "Must be less than {count, plural, one {# character} other {# characters}}",
-    "bulletsMin": "Write at least {count, plural, one {# accomplishment} other {# accomplishments}}",
-    "bulletsMax": "Write at most {count, plural, one {# accomplishment} other {# accomplishments}}",
-    "bulletTooShort": "Each accomplishment must be more than {count} characters",
-    "bulletTooLong": "Each accomplishment must be less than {count} characters",
     "postingRequired": "Paste the job posting first",
     "postingTooLong": "That posting is too long",
     "pdfTooLarge": "That PDF is too large"

@@ -15,9 +15,9 @@ import { z } from "zod"
 import { moveItem } from "./move-item"
 
 /**
- * Core kinds keep their typed rows — a `work` row's company, dates and bullets
- * are what make a resume machine-readable, so their structure is not the user's
- * to restructure. Every other kind carries `content`.
+ * Core kinds keep their typed rows — a `work` row's company, dates and body are
+ * what make a resume machine-readable, so their structure is not the user's to
+ * restructure. Every other kind carries `content`.
  *
  * Skills used to be here and is not any more. Its categories were never the
  * machine-readable claim that a date range or an employer is — they are a way

@@ -45,7 +45,7 @@ const baseData: Omit<ResumeDocumentData, "sections"> = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
-      bullets: ["Wrote the first algorithm", "Described a general computer"]
+      body: "- Wrote the first algorithm\n- Described a general computer"
     }
   ],
   education: [
@@ -55,7 +55,7 @@ const baseData: Omit<ResumeDocumentData, "sections"> = {
       degree: "Mathematics",
       startDate: "1830",
       endDate: "1835",
-      description: "Studied under De Morgan"
+      body: "Studied under De Morgan"
     }
   ]
 }
@@ -324,6 +324,23 @@ describe("rich text", () => {
     expect(html).toMatch(/<ul[^>]*>/)
     expect(html).toContain("Ships")
     expect(html).toContain("Tests")
+  })
+
+  /**
+   * One block per item, where a list used to be one block.
+   *
+   * A section written as nine bullets is as splittable as a job written as
+   * nine bullets: as one block it would be uncuttable, and a page break would
+   * have nowhere to fall inside it.
+   */
+  it("gives a bullet list one block per item", async () => {
+    const html = await render("Intro.\n\n- Ships\n- Tests\n- Reviews")
+
+    const kinds = [...html.matchAll(/data-resume-block-kind="([^"]*)"/g)]
+      .map(([, kind]) => kind)
+      .filter((kind) => kind === "bullet" || kind === "paragraph")
+
+    expect(kinds).toEqual(["paragraph", "bullet", "bullet", "bullet"])
   })
 
   it("escapes everything outside the subset rather than emitting it as markup", async () => {
@@ -616,13 +633,19 @@ describe("the block list", () => {
     )
 
     expect(kinds[0]).toBe("header")
+
+    /*
+      `description` is gone from the set, deliberately. A school's description
+      and a job's bullets were the same field with two types; both are one
+      markdown body now, so what a body contributes is a paragraph or a bullet
+      — and which of the two is the user's to decide rather than the section's.
+    */
     expect(new Set(kinds)).toEqual(
       new Set([
         "header",
         "heading",
         "entry",
         "bullet",
-        "description",
         "paragraph",
         "listGroup",
         "tagRow",
@@ -700,7 +723,7 @@ describe("the block list", () => {
           title: "Analyst",
           startDate: "1836",
           endDate: "1840",
-          bullets: ["Read the notes"]
+          body: "- Read the notes"
         }
       ]
     })

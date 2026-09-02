@@ -70,29 +70,14 @@ const fieldLenses: { [Section in ResumeSection]: FieldLens<Section> } = {
   },
 
   experience: {
-    read: (resume, target) => {
-      const job = resume.experience.find((row) => row.id === target.row)
-
-      if (!job) return undefined
-
-      return target.kind === "bullet"
-        ? job.bullets[target.bulletIndex]
-        : (job[target.column] ?? undefined)
-    },
+    read: (resume, target) =>
+      resume.experience.find((row) => row.id === target.row)?.[target.column] ??
+      undefined,
     write: (resume, target, value) => ({
       ...resume,
-      experience: resume.experience.map((job) => {
-        if (job.id !== target.row) return job
-
-        if (target.kind !== "bullet") return { ...job, [target.column]: value }
-
-        return {
-          ...job,
-          bullets: job.bullets.map((bullet, index) =>
-            index === target.bulletIndex ? value : bullet
-          )
-        }
-      })
+      experience: resume.experience.map((job) =>
+        job.id === target.row ? { ...job, [target.column]: value } : job
+      )
     })
   },
 

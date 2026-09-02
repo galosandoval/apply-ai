@@ -419,11 +419,11 @@ function useFieldAutosave({ resumeId, patch, resync, save }: ResumeCache) {
   }, [send])
 
   /**
-   * A structural write rewrites a whole container — the bullets of a job, the
-   * content of a section — and it carries the typed text with it, because the
+   * A structural write rewrites a whole container — the content of a section,
+   * the order of a list — and it carries the typed text with it, because the
    * cache it was built from already holds every keystroke. Sending the
    * debounced field write as well would land it *after* the reorder, at an
-   * index that by then names a different bullet. So the container write
+   * address that by then names a different row. So the container write
    * supersedes them, and removing a row drops writes to a row about to go.
    */
   const discard = useCallback((prefix: string) => {
@@ -552,7 +552,7 @@ function useSettle({ resync, save }: ResumeCache) {
 }
 
 /**
- * The jobs, schools and skill groups of a core section, and a job's bullets.
+ * The jobs and schools of a core section.
  *
  * The ones whose result can be computed here patch the cache first, so the
  * document moves with the click rather than a round trip later. Adding is the
@@ -563,27 +563,11 @@ function useRowMutations(cache: ResumeCache, fields: PendingFields) {
   const { resumeId, patch } = cache
   const settle = useSettle(cache)
 
-  const setBullets = api.resume.setBullets.useMutation(settle)
   const addRow = api.resume.addRow.useMutation(settle)
   const removeRow = api.resume.removeRow.useMutation(settle)
   const reorderRows = api.resume.reorderRows.useMutation(settle)
 
   return {
-    setBullets: (rowId: string, bullets: string[]) => {
-      // This write already carries every keystroke: `bullets` came from the
-      // cache, which is patched as the user types.
-      fields.discard(`experience.${rowId}.bullets.`)
-
-      patch((resume) => ({
-        ...resume,
-        experience: resume.experience.map((job) =>
-          job.id === rowId ? { ...job, bullets } : job
-        )
-      }))
-
-      setBullets.mutate({ resumeId, rowId, bullets })
-    },
-
     addRow: (list: RowListName) => {
       fields.flush()
       addRow.mutate({ resumeId, section: list })
@@ -664,8 +648,8 @@ function useSectionMutations(cache: ResumeCache, fields: PendingFields) {
     },
 
     setContent: (sectionId: string, content: AnySectionContent) => {
-      // Same reason as `setBullets`: `content` was read out of the cache the
-      // keystrokes have already been patched into.
+      // Same reason a reorder discards them: `content` was read out of the
+      // cache the keystrokes have already been patched into.
       fields.discard(`section.${sectionId}.content.`)
 
       patch((resume) => ({

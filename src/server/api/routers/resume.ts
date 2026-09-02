@@ -9,7 +9,6 @@ import {
   removeResumeSchema,
   removeRowSchema,
   reorderRowsSchema,
-  setBulletsSchema,
   setStyleSchema,
   updateFieldSchema
 } from "~/server/modules/resume/resume.schema"
@@ -69,16 +68,6 @@ export const resumeRouter = createTRPCRouter({
     .input(removeRowSchema)
     .mutation(({ ctx, input }) =>
       resumeService.removeRow(ctx.db, ctx.session.user.id, input)
-    ),
-
-  /**
-   * Replaces a job's whole bullet list — how a bullet is added, removed or
-   * moved, where `updateField` rewrites one that already exists.
-   */
-  setBullets: protectedProcedure
-    .input(setBulletsSchema)
-    .mutation(({ ctx, input }) =>
-      resumeService.setBullets(ctx.db, ctx.session.user.id, input)
     ),
 
   /** Chooses the typographic direction the document is drawn in. */

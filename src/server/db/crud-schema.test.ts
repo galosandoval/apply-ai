@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { invalid } from "~/lib/validation-message"
 import {
+  insertEducationSchema,
   insertExperienceSchema,
   insertSkillsSchema,
-  MAX_BULLETS,
-  maxSkills,
-  MIN_BULLETS
+  maxBodyLength,
+  maxSkills
 } from "./crud-schema"
 
 /**
@@ -13,93 +13,80 @@ import {
  * server and have no locale to write in, so what they produce is resolved where
  * it is drawn. See `~/lib/validation-message`.
  *
- * The bullets `superRefine` is the only non-trivial validator here: it counts
- * *filled* bullets rather than array entries, because onboarding edits them as
- * one line-separated textarea and a blank line is a user mid-typing.
+ * The body is the only non-trivial validator here. It used to be a `bullets`
+ * array with a count, a per-bullet minimum and a per-bullet maximum; it is one
+ * markdown string now, so what is left to assert is that a job has to say
+ * something and that what it says is bounded. How the user divides it between
+ * prose and `- ` lines is theirs to decide, and is deliberately not checked.
  */
 
-const job = (bullets: string[]) => ({
+const job = (body: string) => ({
   experience: [
     {
       name: "Acme Corp",
       title: "Engineer",
       startDate: "2020",
       endDate: "2022",
-      bullets
+      body
     }
   ]
 })
 
-const filled = (count: number) =>
-  Array.from({ length: count }, (_, index) => `Accomplishment number ${index}`)
+const school = (body: string) => ({
+  education: [
+    {
+      name: "Somewhere University",
+      degree: "Mathematics",
+      startDate: "2016",
+      endDate: "2020",
+      body
+    }
+  ]
+})
 
-describe("bullets", () => {
-  it("accepts the minimum number of filled bullets", () => {
+describe("an entry's body", () => {
+  it("accepts a body of bullets", () => {
+    const body = "- Shipped the thing\n- Shipped the other thing"
+
+    expect(insertExperienceSchema.safeParse(job(body)).success).toBe(true)
+  })
+
+  it("accepts prose, and prose mixed with bullets", () => {
     expect(
-      insertExperienceSchema.safeParse(job(filled(MIN_BULLETS))).success
+      insertExperienceSchema.safeParse(job("Two sentences of it.")).success
+    ).toBe(true)
+
+    expect(
+      insertExperienceSchema.safeParse(job("Led the team.\n\n- And shipped it"))
+        .success
     ).toBe(true)
   })
 
-  it("accepts the maximum number of filled bullets", () => {
-    expect(
-      insertExperienceSchema.safeParse(job(filled(MAX_BULLETS))).success
-    ).toBe(true)
+  it("rejects a job with nothing under it", () => {
+    const result = insertExperienceSchema.safeParse(job("   "))
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toBe(
+      invalid("minChars", { count: 6 })
+    )
+    expect(result.error?.issues[0]?.path).toEqual(["experience", 0, "body"])
   })
 
-  it("ignores blank lines when counting", () => {
-    const withBlanks = [...filled(MIN_BULLETS), "", "   "]
-
-    expect(insertExperienceSchema.safeParse(job(withBlanks)).success).toBe(true)
-  })
-
-  it("rejects fewer than the minimum", () => {
+  it("rejects a body past the cap", () => {
     const result = insertExperienceSchema.safeParse(
-      job(filled(MIN_BULLETS - 1))
+      job("x".repeat(maxBodyLength + 1))
     )
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(
-      invalid("bulletsMin", { count: MIN_BULLETS })
+      invalid("maxChars", { count: maxBodyLength })
     )
   })
 
-  it("rejects more than the maximum", () => {
-    const result = insertExperienceSchema.safeParse(
-      job(filled(MAX_BULLETS + 1))
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.message).toBe(
-      invalid("bulletsMax", { count: MAX_BULLETS })
-    )
-  })
-
-  it("rejects a bullet that is too short", () => {
-    const result = insertExperienceSchema.safeParse(
-      job([...filled(2), "short"])
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.message).toBe(
-      invalid("bulletTooShort", { count: 6 })
-    )
-  })
-
-  it("rejects a bullet that is too long", () => {
-    const result = insertExperienceSchema.safeParse(
-      job([...filled(2), "x".repeat(301)])
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.error?.issues[0]?.message).toBe(
-      invalid("bulletTooLong", { count: 300 })
-    )
-  })
-
-  it("reports the issue on the array, not on one bullet", () => {
-    const result = insertExperienceSchema.safeParse(job([]))
-
-    expect(result.error?.issues[0]?.path).toEqual(["experience", 0, "bullets"])
+  // A school with nothing to add is a school, where a job with nothing under
+  // it is a job the resume says nothing about.
+  it("lets a school leave its body empty", () => {
+    expect(insertEducationSchema.safeParse(school("")).success).toBe(true)
   })
 })
 

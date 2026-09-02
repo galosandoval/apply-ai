@@ -168,11 +168,13 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       return parsed && { componentType: "richText", markdown: parsed.markdown }
     },
     isEmpty: (shape) => !shape.markdown.trim(),
+    // One block per paragraph *and* per list item, because a section written
+    // as nine bullets is as splittable as a job written as nine bullets — see
+    // `renderResumeMarkdown`.
     toBlocks: (shape) =>
-      renderResumeMarkdown(shape.markdown).map((node) => ({
-        kind: "paragraph",
-        space: "inline",
-        node
+      renderResumeMarkdown(shape.markdown).map((block) => ({
+        ...block,
+        space: "inline"
       }))
   },
 

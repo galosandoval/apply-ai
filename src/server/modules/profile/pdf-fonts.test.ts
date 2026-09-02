@@ -42,9 +42,7 @@ const data: ResumeDocumentData = {
       // the column a style chose is wide enough.
       startDate: "September 2016",
       endDate: "December 2018",
-      bullets: [
-        "Wrote the first algorithm, and then described in some detail a general-purpose computing machine capable of operating on symbols rather than only on numbers."
-      ]
+      body: "- Wrote the first algorithm, and then described in some detail a general-purpose computing machine capable of operating on symbols rather than only on numbers."
     }
   ],
   education: []

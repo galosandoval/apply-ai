@@ -127,10 +127,11 @@ its entries, an entry owns its bullets — but what a page is filled with is a
 **list**. A block is the smallest run of the document that is never cut:
 assigned whole to exactly one page, or not at all.
 
-Nine kinds, and the set is closed on purpose, because it is the list of places
+Eight kinds, and the set is closed on purpose, because it is the list of places
 a page break is allowed to fall: the contact header, a section heading and its
-rule, an entry's identity line, one bullet, one education description, one
-rich-text paragraph, one list group, a tag row, an icon row.
+rule, an entry's identity line, one bullet, one paragraph, one list group, a tag
+row, an icon row. A bullet and a paragraph are what a body is made of, wherever
+that body is — under a job, under a school, or in a rich-text section.
 
 Each block carries a stable key — `sectionId:position`, position _within its
 section_ — its section id and its kind. Derived rather than generated, so a
@@ -156,7 +157,9 @@ Four things follow, and each used to live one level up:
   the job's nine, because an element cannot be in two places and a job split
   across a boundary asks exactly that of it. Every bullet is still a real list
   item inside a real list, on whichever sheet it lands, and the discs line up
-  because the indent is a token rather than a position.
+  because the indent is a token rather than a position. This is `renderResumeMarkdown`'s
+  doing rather than each caller's: it returns a block per paragraph and a block
+  per list _item_, so an entry's body and a rich-text section split the same way.
 - **Selection is drawn around a _run_ of blocks** — see below.
 
 `paginate` (`src/lib/paginate.ts`) is the pure function that turns measured
@@ -337,9 +340,22 @@ reconciled with this one forever, for a feature nobody would notice. The honest
 cost is that typing markdown reads as dated to some users, which is exactly why
 the buttons are not optional: a phone keyboard is a bad place for asterisks.
 
-A bullet list _inside_ rich text exists because markdown has one, but the app
-never offers it as a rich-text action from the panel. A list of things gets one
-home: the list component.
+**An entry's body is one of these fields** (#69). `work.bullets` (an array) and
+`school.description` (one string) were the same thing — "the text under this
+entry" — with two types and neither able to mix a paragraph with a list. They
+are one `body` column now, holding the same subset, edited with the same
+toolbar. What is _not_ freed is the entry's identity: employer or school, role
+or degree, and the date range stay typed columns, because that is the structure
+scoring reads and a parser extracts.
+
+Three things follow. A bullet is a `- ` line, so adding, removing and reordering
+one is typing — `setBullets`, the panel's bullet list and the
+`experience.<id>.bullets.<n>` path all went, and the whole body is what one
+write replaces. Existing bullets migrated by joining as `- ` lines, which is
+exactly what they rendered as. And the subset is now load-bearing for
+portability as well as for the page: an export to JSON Resume recovers
+`highlights[]` by walking the list items, which round-trips only while the
+subset stays bold, links and bullets.
 
 ### Autosave: six details worth keeping
 
@@ -456,7 +472,11 @@ and because two of them were reversed.
 
 **Steps 1–2 — an addressable data model, and one template.** `work.description`
 (one column, split on `". "` at render time) became `work.bullets`, so bullet 3
-of job 2 became a real addressable thing rather than a substring boundary. The
+of job 2 became a real addressable thing rather than a substring boundary. It is
+one column again since #69 — `work.body`, markdown — which is not the same
+reversal: a bullet is a real list item the renderer produces from a `- ` line,
+not a substring the renderer guesses at, and what it bought back is a body a
+user can write as prose. The
 skeleton `Resume`, `Resume2InChat` and eight dead subcomponents collapsed into
 `ResumeDocument`; `resume.tsx` went from 1233 lines to 195, and later to
 nothing.
@@ -504,7 +524,9 @@ current total — `src/server/api/routers/resume.test.ts` and
   exactly one bullet; and `email`, `skills.0.all`, `profileId`, `resumeId`, the
   bare `bullets` array, an out-of-range index, a non-numeric index, a
   trailing-dot index, an unknown section, a row belonging to another resume, and
-  another user's resume are all rejected.
+  another user's resume are all rejected. The bullet-index shapes are rejected
+  for a different reason since #69 — there is no such path at all — and the
+  write that replaced one bullet now replaces the whole body.
 - **Parser, 32 checks**: every accepted path shape, 21 rejected ones, and the
   index→id→reparse round trip.
 

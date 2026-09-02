@@ -19,10 +19,7 @@ const resume = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
-      bullets: [
-        "Wrote the first published algorithm for a machine",
-        "Described a general-purpose computer decades early"
-      ]
+      body: "- Wrote the first published algorithm for a machine\n- Described a general-purpose computer decades early"
     }
   ],
   education: [
@@ -74,11 +71,11 @@ const longResume = {
     title: "Senior Engineer, Distributed Computation",
     startDate: `${1840 + index}`,
     endDate: `${1841 + index}`,
-    bullets: Array.from(
+    body: Array.from(
       { length: 8 },
       (_, bullet) =>
-        `Described a general-purpose machine operating on symbols rather than only on numbers, and wrote the notes that became the first published algorithm for one — accomplishment ${bullet + 1}`
-    )
+        `- Described a general-purpose machine operating on symbols rather than only on numbers, and wrote the notes that became the first published algorithm for one — accomplishment ${bullet + 1}`
+    ).join("\n")
   }))
 }
 

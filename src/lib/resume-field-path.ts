@@ -22,14 +22,17 @@ export type { SectionContentTarget }
  * a path arrives as a plain string, so this is the only thing between it and an
  * arbitrary column write.
  *
- * `bullets` is deliberately absent — it's an array, addressed per element. So
- * are `position`, `userId` and `resumeId`: what a row belongs to and where it
- * sits are not string writes.
+ * `body` is one of them, and used to not be: an entry's body was an array of
+ * bullets addressed per element, and is one markdown string now, which is
+ * exactly what a column write is for.
+ *
+ * `position`, `userId` and `resumeId` are absent: what a row belongs to and
+ * where it sits are not string writes.
  */
 export const editableColumns = {
   resume: ["profession"],
-  experience: ["name", "title", "startDate", "endDate"],
-  education: ["name", "degree", "startDate", "endDate", "description"],
+  experience: ["name", "title", "startDate", "endDate", "body"],
+  education: ["name", "degree", "startDate", "endDate", "body"],
   contact: ["fullName", "email", "location", "phone", "linkedIn", "portfolio"]
 } as const
 
@@ -46,7 +49,6 @@ export type ResumeFieldTarget =
       row: string
       column: ExperienceColumn
     }
-  | { section: "experience"; kind: "bullet"; row: string; bulletIndex: number }
   | {
       section: "education"
       kind: "column"
@@ -128,26 +130,11 @@ export function parseResumeFieldPath(path: string): ResumeFieldTarget | null {
 
   if (section === "section") return parseSectionPath(row, segments)
 
-  if (section === "experience" && third === "bullets") {
-    return parseBulletPath(row, segments)
-  }
-
   if (!isRowSection(section)) return null
 
   if (segments.length !== 3 || !third) return null
 
   return rowColumnTarget(section, row, third)
-}
-
-function parseBulletPath(
-  row: string,
-  segments: string[]
-): ResumeFieldTarget | null {
-  const index = parseIndex(segments, 3)
-
-  if (index === null) return null
-
-  return { section: "experience", kind: "bullet", row, bulletIndex: index }
 }
 
 /**
@@ -177,24 +164,6 @@ function parseSectionPath(
   return content ? { section: "section", kind: "content", row, content } : null
 }
 
-/**
- * Reads the index that must be the last segment of `segments`.
- *
- * Digits only, and the arity is checked here too: `Number("")` is 0, so a
- * trailing-dot path would otherwise coerce into a write to element 0.
- */
-function parseIndex(segments: string[], at: number) {
-  if (segments.length !== at + 1) return null
-
-  const token = segments[at]
-
-  return isIndex(token) ? Number(token) : null
-}
-
-function isIndex(token: string | undefined): token is string {
-  return !!token && /^\d+$/.test(token)
-}
-
 /** Re-addresses a target at a different row, e.g. an index swapped for an id. */
 export function withRow(
   target: ResumeFieldTarget,
@@ -215,10 +184,6 @@ export function formatResumeFieldPath(target: ResumeFieldTarget): string {
     return target.kind === "label"
       ? `section.${target.row}.label`
       : `section.${target.row}.content.${formatSectionContentPath(target.content)}`
-  }
-
-  if (target.kind === "bullet") {
-    return `${target.section}.${target.row}.bullets.${target.bulletIndex}`
   }
 
   return `${target.section}.${target.row}.${target.column}`

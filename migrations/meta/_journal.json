@@ -85,6 +85,20 @@
       "when": 1788367262480,
       "tag": "0011_locale_and_language",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788381202816,
+      "tag": "0012_add_entry_body",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788381209598,
+      "tag": "0013_drop_bullets_and_description",
+      "breakpoints": true
     }
   ]
 }

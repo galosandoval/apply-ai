@@ -29,7 +29,7 @@ describe("parseResumeFieldPath — accepted paths", () => {
     })
   })
 
-  it.each(["name", "title", "startDate", "endDate"] as const)(
+  it.each(["name", "title", "startDate", "endDate", "body"] as const)(
     "addresses experience.%s",
     (column) => {
       expect(parseResumeFieldPath(`experience.0.${column}`)).toEqual({
@@ -41,7 +41,7 @@ describe("parseResumeFieldPath — accepted paths", () => {
     }
   )
 
-  it.each(["name", "degree", "startDate", "endDate", "description"] as const)(
+  it.each(["name", "degree", "startDate", "endDate", "body"] as const)(
     "addresses education.%s",
     (column) => {
       expect(parseResumeFieldPath(`education.0.${column}`)).toEqual({
@@ -52,15 +52,6 @@ describe("parseResumeFieldPath — accepted paths", () => {
       })
     }
   )
-
-  it("addresses a single bullet by index", () => {
-    expect(parseResumeFieldPath("experience.0.bullets.2")).toEqual({
-      section: "experience",
-      kind: "bullet",
-      row: "0",
-      bulletIndex: 2
-    })
-  })
 
   it("accepts a row id in place of an index", () => {
     expect(parseResumeFieldPath("experience.abc123.title")).toEqual({
@@ -183,20 +174,18 @@ describe("parseResumeFieldPath — rejected paths", () => {
     "experience.0.profileId",
     "education.0.gpa",
     "education.0.location",
-    // The bullets array itself, rather than one bullet
+    /*
+      A bullet, addressed the way it was when a job held an array of them. The
+      body is one markdown string now: a bullet is a `- ` line inside it, and
+      the whole field is what a write replaces.
+    */
     "experience.0.bullets",
+    "experience.0.bullets.2",
+    "experience.0.body.0",
     // Wrong arity
     "experience",
     "experience.0",
     "education.0",
-    "experience.0.bullets.0.1",
-    // Malformed bullet indices — `Number("")` is 0, so a trailing dot would
-    // otherwise coerce into a write to bullet 0
-    "experience.0.bullets.",
-    "experience.0.bullets.x",
-    "experience.0.bullets.-1",
-    // Education has no bullets
-    "education.0.bullets.0",
     // Unknown section, and an empty row token
     "unknown.0.name",
     "experience..name",
@@ -233,16 +222,16 @@ describe("index → id → reparse round trip", () => {
     expect(parseResumeFieldPath(path)).toEqual(forWrite)
   })
 
-  it("round trips a bullet path", () => {
-    const target = parseResumeFieldPath("experience.0.bullets.3")!
+  it("round trips a body path", () => {
+    const target = parseResumeFieldPath("experience.0.body")!
     const path = formatResumeFieldPath(withRow(target, "cuid-of-job-1"))
 
-    expect(path).toBe("experience.cuid-of-job-1.bullets.3")
+    expect(path).toBe("experience.cuid-of-job-1.body")
     expect(parseResumeFieldPath(path)).toEqual({
       section: "experience",
-      kind: "bullet",
+      kind: "column",
       row: "cuid-of-job-1",
-      bulletIndex: 3
+      column: "body"
     })
   })
 
