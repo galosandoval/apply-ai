@@ -9,7 +9,7 @@ import {
   type DisplaySectionPreset,
   searchSectionCatalog
 } from "~/lib/section-catalog"
-import { MarkdownField } from "~/features/resume/markdown-field"
+import { MarkdownField } from "~/components/markdown-field"
 import {
   type AddedSectionPreset,
   type PanelAction,

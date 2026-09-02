@@ -63,6 +63,7 @@ const fixtureRows = `
     ('w-many', ARRAY['Wrote the first algorithm', 'Described a general computer'], ''),
     ('w-one', ARRAY['Read the notes'], ''),
     ('w-blanks', ARRAY['Shipped it', '', '   '], ''),
+    ('w-wrapped', ARRAY[E'Shipped it,\nand then shipped more'], ''),
     ('w-none', ARRAY[]::text[], '');
 
   INSERT INTO "apply-ai_school" VALUES
@@ -117,6 +118,23 @@ describe.skipIf(!hasTestDatabase)("0013 backfill", () => {
 
   it("drops a blank bullet rather than writing a marker with nothing after it", async () => {
     expect(await bodyOf("work", "w-blanks")).toBe("- Shipped it")
+  })
+
+  /**
+   * The old panel edited a bullet in a textarea and drew it with
+   * `whitespace-pre-line`, so a bullet holding a line break is real data. Left
+   * alone the second line falls outside the `- ` and migrates into a paragraph
+   * beside the list; one list item is what it was, so one line is what it
+   * becomes.
+   */
+  it("folds a bullet's own newlines rather than splitting it in two", async () => {
+    expect(await bodyOf("work", "w-wrapped")).toBe(
+      "- Shipped it, and then shipped more"
+    )
+
+    const blocks = renderResumeMarkdown((await bodyOf("work", "w-wrapped"))!)
+
+    expect(blocks.map((block) => block.kind)).toEqual(["bullet"])
   })
 
   it("leaves a job with no bullets an empty body, never null", async () => {

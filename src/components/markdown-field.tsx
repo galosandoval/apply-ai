@@ -34,12 +34,15 @@ export function MarkdownField({
   value,
   onChange,
   onCommit,
-  id
+  id,
+  placeholder
 }: {
   value: string
   onChange: (value: string) => void
   onCommit: () => void
   id: string
+  /** Only where an empty field needs to say what belongs in it — onboarding. */
+  placeholder?: string
 }) {
   const t = useTranslations("resumeEditor.markdown")
   const textarea = useRef<HTMLTextAreaElement>(null)
@@ -97,6 +100,7 @@ export function MarkdownField({
         id={id}
         onBlur={onCommit}
         onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
         ref={textarea}
         rows={6}
         value={value}

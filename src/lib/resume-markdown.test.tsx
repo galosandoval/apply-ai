@@ -4,8 +4,7 @@ import {
   applyMarkdownAction,
   type MarkdownDraft,
   renderResumeMarkdown,
-  stripMarkdown,
-  toBulletedMarkdown
+  stripMarkdown
 } from "./resume-markdown"
 
 /**
@@ -294,24 +293,4 @@ describe("applyMarkdownAction", () => {
       expect(applyMarkdownAction(action, there)).toEqual(start)
     }
   )
-})
-
-describe("toBulletedMarkdown", () => {
-  it("marks every filled line as a bullet", () => {
-    expect(toBulletedMarkdown("Shipped it\nThen shipped more")).toBe(
-      "- Shipped it\n- Then shipped more"
-    )
-  })
-
-  it("leaves a line that is already a bullet alone", () => {
-    expect(toBulletedMarkdown("- Shipped it\n* Or this way")).toBe(
-      "- Shipped it\n* Or this way"
-    )
-  })
-
-  it("drops blank lines rather than marking them", () => {
-    expect(toBulletedMarkdown("Shipped it\n\n   \nAnd again")).toBe(
-      "- Shipped it\n- And again"
-    )
-  })
 })

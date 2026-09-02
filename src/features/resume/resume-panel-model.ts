@@ -1,5 +1,9 @@
 import toast from "react-hot-toast"
-import { formatResumeFieldPath, rowColumnTarget } from "~/lib/resume-field-path"
+import {
+  editableColumns,
+  formatResumeFieldPath,
+  rowColumnTarget
+} from "~/lib/resume-field-path"
 import { moveItem } from "~/lib/move-item"
 import { type DisplaySectionPreset } from "~/lib/section-catalog"
 import {
@@ -301,13 +305,16 @@ type ColumnOf<List extends RowListName> = Extract<
 /**
  * The columns of one row of a core section, by row list.
  *
- * Checked against the row types rather than trusted: a column this table names
+ * Taken from `editableColumns` rather than restated: the panel may offer
+ * exactly what a path can address, and the two lists drifting apart is a field
+ * the panel edits into a write the parser refuses — or one it silently never
+ * offers. Still checked against the row types, so a column the grammar names
  * but the row does not have is a compile error here, which is what lets the
  * panel read one by name without asking whether it is there.
  */
 const rowColumns = {
-  experience: ["name", "title", "startDate", "endDate", "body"],
-  education: ["name", "degree", "startDate", "endDate", "body"]
+  experience: editableColumns.experience,
+  education: editableColumns.education
 } as const satisfies {
   [List in RowListName]: readonly ColumnOf<List>[]
 }

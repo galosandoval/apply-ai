@@ -170,7 +170,12 @@ function SignUpForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
             )}
           />
           <DialogFooter className="pt-4">
-            <Button onClick={handleSwitchAuth} type="button" variant="link">
+            <Button
+              onClick={handleSwitchAuth}
+              type="button"
+              variant="ghost"
+              size="icon"
+            >
               {t("signUp.switch")}
             </Button>
 

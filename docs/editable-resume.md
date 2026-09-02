@@ -127,11 +127,12 @@ its entries, an entry owns its bullets — but what a page is filled with is a
 **list**. A block is the smallest run of the document that is never cut:
 assigned whole to exactly one page, or not at all.
 
-Eight kinds, and the set is closed on purpose, because it is the list of places
+Nine kinds, and the set is closed on purpose, because it is the list of places
 a page break is allowed to fall: the contact header, a section heading and its
 rule, an entry's identity line, one bullet, one paragraph, one list group, a tag
-row, an icon row. A bullet and a paragraph are what a body is made of, wherever
-that body is — under a job, under a school, or in a rich-text section.
+row, an icon row, one meter row. A bullet and a paragraph are what a body is
+made of, wherever that body is — under a job, under a school, or in a rich-text
+section.
 
 Each block carries a stable key — `sectionId:position`, position _within its
 section_ — its section id and its kind. Derived rather than generated, so a
@@ -279,9 +280,9 @@ Three consequences worth keeping:
 ## Selection
 
 Selection is **item-level, with sections separately selectable**: the header, a
-section, or one row of a core section. A panel holding four jobs and twenty
-bullets is unusable, and a panel holding one textarea is a great deal of
-interface for one string.
+section, or one row of a core section. A panel holding every job and everything
+written under it is unusable, and a panel holding one textarea is a great deal
+of interface for one string.
 
 Everything is keyed by **row identity, never by array index** — the whole point
 of reordering is that an index means something different afterwards.
@@ -347,6 +348,14 @@ are one `body` column now, holding the same subset, edited with the same
 toolbar. What is _not_ freed is the entry's identity: employer or school, role
 or degree, and the date range stay typed columns, because that is the structure
 scoring reads and a parser extracts.
+
+**There is no escape, and that is the one cost.** Text that looks like markdown
+is markdown, so a body holding `**` or `[label](url)` — typed today, or migrated
+from the plain-text columns by `0013` — gains the formatting it appears to ask
+for. A backslash rule would be a fourth rule in a subset whose whole argument is
+that it has three, reconciled forever against the toolbar, `stripMarkdown` and
+the JSON Resume export. That is a standing cost against a shape a resume rarely
+has, and the failure it prevents is a bolded phrase rather than lost text.
 
 Three things follow. A bullet is a `- ` line, so adding, removing and reordering
 one is typing — `setBullets`, the panel's bullet list and the

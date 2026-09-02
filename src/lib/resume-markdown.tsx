@@ -183,25 +183,6 @@ export function stripMarkdown(markdown: string): string {
     .join("\n")
 }
 
-/**
- * Every filled line of `text` as a bullet, leaving alone the ones that already
- * are.
- *
- * Here rather than at the form that wants it, because what makes a line a
- * bullet is this module's to say: a second copy of the marker test is how a
- * form comes to write a prefix the renderer does not read back.
- *
- * Blank lines go — a marker with nothing after it is not a list item.
- */
-export function toBulletedMarkdown(text: string): string {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => (bulletLine.test(line) ? line : bulletPrefix + line))
-    .join("\n")
-}
-
 function stripInline(text: string) {
   return text.replace(inlineMarkup, (_match, bold, label) =>
     bold !== undefined ? String(bold) : String(label ?? "")

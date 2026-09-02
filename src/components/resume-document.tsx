@@ -687,12 +687,7 @@ function sectionBlocksFor(
  * machine-readable for the scoring work.
  */
 function coreShape(doc: Doc, kind: CoreSectionKind): SectionShape {
-  switch (kind) {
-    case "experience":
-      return { componentType: "twoColumn", rows: experienceRows(doc) }
-    case "education":
-      return { componentType: "twoColumn", rows: educationRows(doc) }
-  }
+  return { componentType: "twoColumn", rows: coreRows(doc, kind) }
 }
 
 /** The selection a row of a core section carries, by the row's own id. */
@@ -704,41 +699,36 @@ function rowHandle(doc: Doc, kind: CoreSectionKind, rowId: string | undefined) {
   return handleFor(doc, { kind: "row", list: list.key, rowId })
 }
 
-function experienceRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.experience.map((job) => ({
-    ...entryRow(doc, {
-      start: job.startDate,
-      end: job.endDate,
-      name: job.name,
-      detail: job.title,
-      body: entryBody(job.body)
-    }),
-    select: rowHandle(doc, "experience", job.id)
-  }))
-}
-
-function educationRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.education.map((school) => ({
-    ...entryRow(doc, {
-      start: school.startDate,
-      end: school.endDate,
-      name: school.name,
-      detail: school.degree,
-      body: entryBody(school.body)
-    }),
-    select: rowHandle(doc, "education", school.id)
-  }))
-}
-
 /**
- * An entry's body as the blocks that follow its identity line — one function
- * for a job and for a school, because they are one field.
+ * One core section's rows.
  *
- * Absent rather than empty is a payload assembled before the body existed — a
- * PDF of a document that predates it — which draws as no body at all.
+ * Experience and Education are one function rather than two since an entry's
+ * body became one field (#69): a job and a school differ only in what their
+ * second heading field is called, and two copies of the rest is a style change
+ * that has to be found twice.
  */
-function entryBody(markdown: string | undefined): EntryPart[] {
-  return renderResumeMarkdown(markdown ?? "")
+function coreRows(doc: Doc, kind: CoreSectionKind): TwoColumnRow[] {
+  const entries =
+    kind === "experience"
+      ? doc.data.experience.map((job) => ({ ...job, detail: job.title }))
+      : doc.data.education.map((school) => ({
+          ...school,
+          detail: school.degree
+        }))
+
+  return entries.map((entry) => ({
+    ...entryRow(doc, {
+      start: entry.startDate,
+      end: entry.endDate,
+      name: entry.name,
+      detail: entry.detail,
+      // A school's body column has a default, so a payload may arrive without
+      // one — a PDF of a document assembled before the body existed. Absent
+      // and empty draw the same: no body at all.
+      body: renderResumeMarkdown(entry.body ?? "")
+    }),
+    select: rowHandle(doc, kind, entry.id)
+  }))
 }
 
 /**

@@ -169,9 +169,10 @@
       "endDate": "End Date",
       "endDatePlaceholder": "Ex: May 2021",
       "accomplishments": "Accomplishments",
-      "accomplishmentsPlaceholder": "Collaborated closely with cross-functional teams to ship new features\nCut page load time by 40% by splitting the bundle",
-      "accomplishmentsHint": "One accomplishment per line. Each line is saved as a bullet.",
-      "bodyLabel": "Write 3 to 5 accomplishments"
+      "accomplishmentsPlaceholder": "- Collaborated closely with cross-functional teams to ship new features\n- Cut page load time by 40% by splitting the bundle",
+      "accomplishmentsHint": "Use the List button for accomplishments, or write a paragraph. Bold and links are supported.",
+      "accomplishmentsAdvice": "Write 3 to 5 accomplishments. Be concise, and use numbers and percentages where you have them.",
+      "bodyLabel": "Accomplishments"
     },
     "skills": {
       "title": "Skills",

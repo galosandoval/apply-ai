@@ -14,7 +14,7 @@ import toast from "react-hot-toast"
 import { MyAlert } from "~/components/alert"
 import { MyErrorMessage } from "~/components/my-error-message"
 import { MyInput } from "~/components/my-input"
-import { Textarea } from "~/components/ui/textarea"
+import { MarkdownField } from "~/components/markdown-field"
 import { Button } from "~/components/ui/button"
 import {
   insertExperienceSchema,
@@ -22,7 +22,6 @@ import {
 } from "~/server/db/crud-schema"
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
-import { toBulletedMarkdown } from "~/lib/resume-markdown"
 import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import {
   FormControl,
@@ -101,14 +100,7 @@ export function ExperienceStep() {
   })
 
   const onSubmit = (data: InsertExperienceSchema) => {
-    // Submitting without ever leaving the field is a real path — the button is
-    // reachable by keyboard — so the marker is applied here as well as on blur.
-    const experienceToSubmit = data.experience.map((experience) => ({
-      ...experience,
-      body: toBulletedMarkdown(experience.body)
-    }))
-
-    mutate({ experience: experienceToSubmit })
+    mutate({ experience: data.experience })
   }
 
   useEffect(() => {
@@ -128,7 +120,7 @@ export function ExperienceStep() {
       <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
         Start with your most recent job and work backwards, including the
         company name and location, your title, and how long you worked there.
-        Finish by writing 3 to 5 accomplishments for each job, one per line.
+        Finish by writing 3 to 5 accomplishments for each job.
       </h2>
 
       {fields.map((field, index) => (
@@ -265,7 +257,7 @@ function ExperienceForm({
           <div className="mt-4">
             <MyAlert
               title={t("accomplishments")}
-              description={`Write 3 to 5 accomplishments, one per line. Be concise and try to use numbers and percentages. Each line becomes a bullet point on your resume.`}
+              description={t("accomplishmentsAdvice")}
             />
           </div>
         )}
@@ -279,12 +271,11 @@ function ExperienceForm({
 /**
  * The job's body: one field, holding what the resume prints under the job.
  *
- * The step asks for one accomplishment per line, and the column holds markdown
- * — where a line without a marker is prose. So every filled line is given the
- * `- ` it is going to be read as, on blur rather than on a keystroke: rewriting
- * a line under a caret is how a keystroke ends up somewhere the user did not
- * put it. On blur rather than on submit, too, so that what the form validates
- * and what the user is looking at are both the thing that gets stored.
+ * The same `MarkdownField` the editor's panel uses, so what a user writes here
+ * is stored exactly as typed and reads in onboarding the way it will read in
+ * the editor. The step used to prefix every filled line with `- ` on blur; a
+ * body that is one field precisely so a user may write prose is not a field the
+ * form gets to silently rewrite into a list.
  */
 function BodyField({
   control,
@@ -301,19 +292,17 @@ function BodyField({
       name={`experience.${index}.body`}
       render={({ field }) => (
         <FormItem className="w-full">
-          <FormLabel>
+          <FormLabel htmlFor={field.name}>
             {t("bodyLabel")}
             <span className="text-destructive">*</span>
           </FormLabel>
           <FormControl>
-            <Textarea
-              className="min-h-[100px]"
+            <MarkdownField
+              id={field.name}
+              onChange={field.onChange}
+              onCommit={field.onBlur}
               placeholder={t("accomplishmentsPlaceholder")}
-              {...field}
-              onBlur={() => {
-                field.onChange(toBulletedMarkdown(field.value))
-                field.onBlur()
-              }}
+              value={field.value}
             />
           </FormControl>
           <FormDescription>{t("accomplishmentsHint")}</FormDescription>

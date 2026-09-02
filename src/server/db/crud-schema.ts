@@ -54,8 +54,12 @@ export type UpdateProfileSchema = z.infer<typeof updateProfileSchema>
  * body is one markdown string now, and how the user divides it between prose
  * and list items is theirs to decide. It bounds the field; it does not
  * prescribe a shape.
+ *
+ * The number is the budget the old shape allowed — 8 bullets of 300 — because
+ * a body migrated from bullets that no longer fits is a resume the user cannot
+ * save without cutting words this change never asked them to cut.
  */
-export const maxBodyLength = 2_000
+export const maxBodyLength = 2_400
 
 /** An entry's body: the constrained markdown subset, as one bounded field. */
 const bodySchema = z
