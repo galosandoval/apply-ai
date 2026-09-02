@@ -4,7 +4,8 @@
  * The renderer measures the document and hands the measurements here; this
  * decides the grouping and hands back key arrays. It knows nothing about the
  * DOM, React, or how a resume is styled — which is what makes a break provable
- * from a test rather than from a screenshot.
+ * from a test rather than from a screenshot. The editor and the PDF both
+ * consume what this returns; `docs/editable-resume.md` argues why.
  *
  * Keys rather than blocks on the way out: the contract is about grouping and
  * nothing else, and the renderer re-measures on every edit, so the result has
@@ -48,14 +49,14 @@ type MeasuredBlock = { block: PaginationBlock; height: number }
  * Assigns blocks to pages greedily, in document order.
  *
  * A block goes on the current page if it fits in the remaining height and
- * starts a new one if it does not. Two rules bend that:
+ * starts a new one if it does not. Three rules bend that:
  *
- * - A block taller than a whole page gets a page to itself and overflows.
- *   Dropping or cutting it is the failure this function exists to have stopped.
+ * - A block taller than a whole page gets a page to itself and overflows,
+ *   rather than being dropped or cut — `docs/editable-resume.md`, under "The
+ *   document is a block list".
  * - A page that opens mid-section is charged for the heading the renderer
- *   redraws at the top of it. The repeat is real height on a real page, and a
- *   page budgeted as though it were not there is a page that is one heading too
- *   full every time a section spans a break.
+ *   redraws at the top of it — same doc, under "The continued heading is
+ *   computed".
  * - A heading is never the last block on a page. It travels to the next page
  *   with the block it announces, and where no arrangement can give both a page
  *   they fit on, they overflow together rather than come apart — an overflowing

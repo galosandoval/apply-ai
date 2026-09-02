@@ -183,7 +183,7 @@
       The space between one sheet and the next: the app's background showing
       through between two pieces of paper. Read by `.resume-page-sheet`, which
       is also where it collapses for print. Why the page is a real sheet at all
-      is in `docs/editable-resume.md`.
+      is in `docs/editable-resume.md`, under "The page is a real sheet".
     */
     --resume-page-gap: 1.5rem;
 
@@ -336,7 +336,7 @@
       foot. Derived rather than restated: the number is handed to the code that
       decides where a break lands, and a hand-written copy that drifts from the
       padding the page is drawn with cuts a line of text in half. See
-      `docs/editable-resume.md`.
+      `docs/editable-resume.md`, under "The page is a real sheet".
 
       Here rather than on `:root` for the reason the whole block is here: the
       page padding is re-valued by a style and by reflow, and a `var()` freezes
@@ -696,7 +696,8 @@
     The gap is a margin rather than padding, because it is space *around* the
     sheet and the sheet's own padding is the print margin. In print the gap
     collapses and the break does the separating, so the element boundary and
-    the sheet boundary become the same boundary — see `docs/editable-resume.md`.
+    the sheet boundary become the same boundary — see `docs/editable-resume.md`,
+    under "The page is a real sheet".
 
     Both are between-sheets rules, so neither reaches the last sheet. A trailing
     margin is a gap below nothing, and a trailing `break-after: page` is the

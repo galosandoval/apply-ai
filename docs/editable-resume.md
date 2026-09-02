@@ -84,6 +84,42 @@ rows, and Skills is in the catalog like everything else. It keeps `kind:
 the skills go back into, and a label the user is free to rename cannot answer
 that. See `migrations/0010_skills_section_content.sql`.
 
+### The page is a real sheet (#65, #66)
+
+The document is a **stack of A4 sheets**. It was once one continuous sheet of A4
+_width_ and unbounded height, with a red rule painted across it every 29.7cm to
+suggest where a page would end; a sheet is now an element of exactly A4 in both
+dimensions, carrying the style's page padding on all four sides, drawn on the
+paper's own background with the app's background showing through the gap to the
+next one. That is the whole reason to draw pages at all: the most consequential
+fact about a resume is how long it is, and a stack of sheets says it at a glance
+where a rule ruled over one endless sheet only hinted at it. It also gives page
+two a margin at its head and page one a margin at its foot, neither of which a
+document padded once at the top and once at the bottom could have.
+
+The geometry is tokens, so retuning what a page is stays a style's decision and
+never reaches a component:
+
+| Token                                            | What it fixes                                                                                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--resume-page-width`, `--resume-page-height`    | The sheet — 21cm by 29.7cm. The A4 literal lives here, not in a component.                                                                 |
+| `--resume-space-page-x`, `--resume-space-page-y` | The print margin. Currently one value for every style, re-valued only by reflow — an axis a direction may take, not one any has taken yet. |
+| `--resume-page-gap`                              | The app's background between two sheets. It collapses for print, where there is nothing between two pages to show.                         |
+| `--resume-page-radius`, `--resume-paper`         | The paper itself.                                                                                                                          |
+| `--resume-page-content-height`                   | Derived from the page height and the vertical margin: what a sheet has left for content, and the number `paginate` is given.               |
+
+Derived in CSS rather than restated in JavaScript, because that number decides
+where a break lands: a hand-written copy that drifts from the padding the sheet
+is actually drawn with does not fail a test, it cuts a line of text in half.
+
+Every sheet but the last ends in a forced break, unconditionally rather than
+inside a print media query — on screen it costs nothing, and a rule only the
+print exercises is a rule the print is the first thing to test. The gap is what
+collapses for print, and then the element boundary and the sheet boundary are
+the same boundary. Neither rule reaches the last sheet: a trailing gap is space
+below nothing, and a trailing break is the blank final page Chromium prints for
+it.
+
 ### The document is a block list (#62)
 
 The document is still a nested tree while it is being _built_ — a section owns
@@ -125,9 +161,20 @@ Four things follow, and each used to live one level up:
 
 `paginate` (`src/lib/paginate.ts`) is the pure function that turns measured
 block heights into page assignments: greedy in document order, a block taller
-than a page gets its own page and overflows rather than being dropped, and a
-heading is never the last block on a page. It is a pure function precisely so a
-break can be proved from a test rather than from a screenshot.
+than a page gets its own page and overflows, and a heading is never the last
+block on a page. It is a pure function precisely so a break can be proved from a
+test rather than from a screenshot.
+
+**A block too tall for a page overflows visibly rather than being clipped.** The
+document once had a hard `h-[29.7cm]` and `overflow-hidden`, so everything past
+one page was silently deleted — no scrollbar, no warning, and nothing in the
+PDF's text layer either — see [Page overflow](#page-overflow) for the argument.
+Dropping or cutting an oversized block would be that failure returning by
+another route, so it is given a sheet of its own and allowed to paint past the
+foot of it. The sheets are stacked in reverse order so that the overflow paints
+over the page below rather than disappearing under its opaque background, which
+would be the same clipping arrived at by paint order. The same choice covers the
+sheet at the end that catches whatever the assignment did not name.
 
 `useResumePagination` (`src/features/resume/use-resume-pagination.ts`) is the
 part that has to touch a rendered page. The document renders unpaginated on the
@@ -194,6 +241,35 @@ policy in it. All the policy is in `paginate`, which is tested exhaustively.
 
 **Reflow does not paginate at all.** A phone is not a page; the document renders
 as one continuous flow and the machinery is not engaged.
+
+### The continued heading is computed, not repeated by the browser
+
+A page that picks a section up part-way through opens with that section's
+heading redrawn — the same title and the same rule in the same tokens — so a
+reader arriving at the top of page two knows that an opening bullet belongs to
+Experience.
+
+The native mechanism for a heading repeated on every page is a table `thead`,
+and a **layout table is on the permanent exclusion list** — it is one of the
+named causes of parse failure that the whole style position is built around
+avoiding ([resume-style](./resume-style.md)). A repeated heading is exactly the
+kind of convenience that would smuggle one back in, so the heading is drawn from
+the page assignment instead: `paginate` reports the section a page continues,
+and the renderer decides what that looks like.
+
+Three consequences worth keeping:
+
+- **The repeat carries no block key.** A key is what a measurement is filed
+  under, and two elements answering to one key is a height measured twice. The
+  repeat is a repeat of a block, not a block.
+- **It is marked in the markup** (`data-resume-continued`) rather than in the
+  text. A parser — and a test — has to be able to tell a continued heading from
+  a genuine second section of the same name, and appending "(continued)" would
+  be the renderer editing the user's own section label.
+- **It is paid for in the budget.** The repeat is real height on a real page, so
+  `paginate` charges a page that opens mid-section for one heading. A page
+  budgeted as though it were not there is a page one heading too full every time
+  a section spans a break.
 
 ## Selection
 
@@ -321,6 +397,32 @@ It used to be read off `.next/static` at request time instead. That tied
 printing to a filesystem holding this build's output — true on a container,
 false on a host that serves static assets from a CDN — and re-encoded half a
 megabyte of base64 on every cold start.
+
+### The PDF consumes the preview's assignment (#67)
+
+The browser is handed markup **twice**, and that is the point. The first
+document is the continuous flow, which Chromium lays out so that the blocks can
+be measured in-page exactly as the editor measures them; the second is the same
+document dealt onto sheets by the same `paginate`, from those measurements. Then
+`page.pdf` is asked for a zero margin on all four sides, because the sheets
+carry the margin now — which is what gives page two the margins page one used to
+get for free from the document's own padding.
+
+The alternative is to let Chromium's own fragmenter decide where the printed
+pages break. It would cost one `setContent` less and it is what the route used
+to do, but then the preview and the PDF would be two different functions
+answering the same question, and the file the user sends would not be the
+document they approved. One assignment, produced once, consumed by both, is the
+only arrangement in which the two cannot drift apart again — and drifting apart
+is the failure this area exists to have stopped, not a hypothetical.
+
+The cost is one extra `setContent` inside a browser that is already launched.
+The route throws rather than falls back when there is nothing to measure:
+printing the flow instead would hand the user the very document this exists to
+stop producing, and it would do it silently.
+
+The measurement waits on the real faces for the reason the editor's does: a
+document measured in the fallback breaks in the wrong place.
 
 ## What is tested, and where
 
