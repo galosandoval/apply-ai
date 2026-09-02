@@ -77,14 +77,14 @@ function drafted(overrides: Partial<GeneratedResume> = {}): GeneratedResume {
         title: "Engineer",
         startDate: "2020",
         endDate: "2022",
-        bullets: ["Shipped the thing", "Then shipped the other thing"]
+        body: "- Shipped the thing\n- Then shipped the other thing"
       }
     ],
     education: [
       {
         name: "State University",
         degree: "BSc",
-        description: "",
+        body: "",
         startDate: "2016",
         endDate: "2020",
         gpa: ""
@@ -159,7 +159,7 @@ async function seed() {
     title: "Engineer",
     startDate: "2020",
     endDate: "2022",
-    bullets: ["Shipped the thing"],
+    body: "- Shipped the thing",
     position: 0
   })
 
@@ -216,10 +216,9 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
     const jobs = await db.select().from(work).where(eq(work.resumeId, resumeId))
 
     expect(jobs).toHaveLength(1)
-    expect(jobs[0]?.bullets).toEqual([
-      "Shipped the thing",
-      "Then shipped the other thing"
-    ])
+    expect(jobs[0]?.body).toBe(
+      "- Shipped the thing\n- Then shipped the other thing"
+    )
   })
 
   it("snapshots skills and contact from the account", async () => {
@@ -443,14 +442,14 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
   describe("a response that isn't the agreed shape", () => {
     const malformed: Record<string, unknown> = {
       "a missing profession": { experience: [], education: [], sections: [] },
-      "bullets that aren't strings": drafted({
+      "a body that isn't a string": drafted({
         experience: [
           {
             name: "Acme",
             title: "Engineer",
             startDate: "2020",
             endDate: "2022",
-            bullets: [1, 2] as unknown as string[]
+            body: ["a bullet"] as unknown as string
           }
         ]
       }),

@@ -28,7 +28,7 @@ const data: ResumeDocumentData = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
-      bullets: ["Wrote the first algorithm", "Described a general computer"]
+      body: "- Wrote the first algorithm\n- Described a general computer"
     }
   ],
   education: [
@@ -38,7 +38,7 @@ const data: ResumeDocumentData = {
       degree: "Mathematics",
       startDate: "1830",
       endDate: "1835",
-      description: "Studied under De Morgan"
+      body: "Studied under De Morgan"
     }
   ]
 }
@@ -348,7 +348,7 @@ describe.each(resumeStyles)("the %s style", (style) => {
         {
           ...data.experience[0]!,
           name: "The Analytical Engine Programming and Mechanical Computation Society of Great Britain",
-          bullets: ["Wrote ".repeat(120).trim()]
+          body: `- ${"Wrote ".repeat(120).trim()}`
         }
       ]
     })

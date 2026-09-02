@@ -41,7 +41,7 @@ const short: ResumeDocumentData = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
-      bullets: ["Wrote the first algorithm published for a machine"]
+      body: "- Wrote the first algorithm published for a machine"
     }
   ],
   education: []
@@ -56,11 +56,11 @@ const long: ResumeDocumentData = {
     title: "Senior Engineer, Distributed Computation",
     startDate: `${1840 + index}`,
     endDate: `${1841 + index}`,
-    bullets: Array.from(
+    body: Array.from(
       { length: 6 },
       (_, bullet) =>
-        `Described a general-purpose machine operating on symbols rather than only on numbers, note ${bullet + 1}`
-    )
+        `- Described a general-purpose machine operating on symbols rather than only on numbers, note ${bullet + 1}`
+    ).join("\n")
   }))
 }
 

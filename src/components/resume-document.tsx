@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react"
+import { renderResumeMarkdown } from "~/lib/resume-markdown"
 import {
   customSectionShape,
   type EntryPart,
@@ -328,7 +329,8 @@ function Sheet({
  * assignment rather than repeated by a table `thead`. Why it is computed here,
  * why it carries no block key, why the marker rather than the title says it is
  * a continuation, and why `paginate` reserves its height: see
- * `docs/editable-resume.md`, under "The continued heading is computed".
+ * `docs/editable-resume.md`, under "The continued heading is computed, not
+ * repeated by the browser".
  */
 function continuationHeading(blocks: ResumeBlock[], sectionId: string) {
   const heading = blocks.find(
@@ -484,10 +486,10 @@ const runSpaceClass: Record<ResumeBlockSpace, string> = {
 /**
  * One block, drawn.
  *
- * `break-inside-avoid` sits here rather than on a job or a school: an entry
- * that cannot break is an entry that moves whole to the next sheet, which is
- * how a nine-bullet role comes to waste most of a page. The block is the unit
- * that is never cut, and it is deliberately smaller than an entry.
+ * `break-inside-avoid` sits here rather than on a job or a school: the block is
+ * the unit that is never cut, and it is deliberately smaller than an entry. Why
+ * the entry is the wrong unit is argued in `docs/editable-resume.md`, under
+ * "The document is a block list".
  *
  * The key, the kind, the section and the order are in the markup because
  * measurement happens over the rendered document — in the editor's DOM and in
@@ -636,27 +638,19 @@ function handleFor(doc: Doc, selection: ResumeSelection): SelectHandle | null {
 function Text({
   doc,
   value,
-  className = "",
-  multiline = false
+  className = ""
 }: {
   doc: Doc
   value: string | null | undefined
   className?: string
-  multiline?: boolean
 }) {
-  // Multiline text keeps the newlines it was typed with instead of collapsing
-  // them to a space.
-  const textClassName = multiline
-    ? `${className} whitespace-pre-line`
-    : className
-
   if (!value) {
     return doc.render.isEditor ? (
       <span className={`${className} text-resume-muted`}>&mdash;</span>
     ) : null
   }
 
-  return <span className={textClassName}>{value}</span>
+  return <span className={className}>{value}</span>
 }
 
 /**
@@ -693,12 +687,7 @@ function sectionBlocksFor(
  * machine-readable for the scoring work.
  */
 function coreShape(doc: Doc, kind: CoreSectionKind): SectionShape {
-  switch (kind) {
-    case "experience":
-      return { componentType: "twoColumn", rows: experienceRows(doc) }
-    case "education":
-      return { componentType: "twoColumn", rows: educationRows(doc) }
-  }
+  return { componentType: "twoColumn", rows: coreRows(doc, kind) }
 }
 
 /** The selection a row of a core section carries, by the row's own id. */
@@ -710,49 +699,35 @@ function rowHandle(doc: Doc, kind: CoreSectionKind, rowId: string | undefined) {
   return handleFor(doc, { kind: "row", list: list.key, rowId })
 }
 
-function experienceRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.experience.map((job) => ({
-    ...entryRow(doc, {
-      start: job.startDate,
-      end: job.endDate,
-      name: job.name,
-      detail: job.title,
-      body: job.bullets.map((bullet) => ({
-        kind: "bullet",
-        /*
-          One list per bullet, rather than one list holding every bullet of a
-          job. A list is an element, and an element cannot be in two places —
-          which is what a job split across a page boundary asks of it. Each
-          bullet is still a real list item inside a real list, on whichever
-          sheet it lands on, and the discs line up because the indent is a
-          token rather than a position.
-        */
-        node: (
-          <ul className="list-disc pl-resume-bullet">
-            <li className="whitespace-pre-line">{bullet}</li>
-          </ul>
-        )
-      }))
-    }),
-    select: rowHandle(doc, "experience", job.id)
-  }))
-}
+/**
+ * One core section's rows.
+ *
+ * Experience and Education are one function rather than two since an entry's
+ * body became one field (#69): a job and a school differ only in what their
+ * second heading field is called, and two copies of the rest is a style change
+ * that has to be found twice.
+ */
+function coreRows(doc: Doc, kind: CoreSectionKind): TwoColumnRow[] {
+  const entries =
+    kind === "experience"
+      ? doc.data.experience.map((job) => ({ ...job, detail: job.title }))
+      : doc.data.education.map((school) => ({
+          ...school,
+          detail: school.degree
+        }))
 
-function educationRows(doc: Doc): TwoColumnRow[] {
-  return doc.data.education.map((school) => ({
+  return entries.map((entry) => ({
     ...entryRow(doc, {
-      start: school.startDate,
-      end: school.endDate,
-      name: school.name,
-      detail: school.degree,
-      body: [
-        {
-          kind: "description",
-          node: <Text doc={doc} multiline value={school.description} />
-        }
-      ]
+      start: entry.startDate,
+      end: entry.endDate,
+      name: entry.name,
+      detail: entry.detail,
+      // A school's body column has a default, so a payload may arrive without
+      // one — a PDF of a document assembled before the body existed. Absent
+      // and empty draw the same: no body at all.
+      body: renderResumeMarkdown(entry.body ?? "")
     }),
-    select: rowHandle(doc, "education", school.id)
+    select: rowHandle(doc, kind, entry.id)
   }))
 }
 

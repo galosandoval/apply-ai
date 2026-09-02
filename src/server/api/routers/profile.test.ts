@@ -76,7 +76,7 @@ function extracted(overrides: Partial<ParsedResume> = {}): ParsedResume {
         startDate: "2020",
         endDate: "Present",
         location: "Remote",
-        bullets: ["Shipped the thing"]
+        body: "- Shipped the thing"
       }
     ],
     education: [
@@ -87,7 +87,7 @@ function extracted(overrides: Partial<ParsedResume> = {}): ParsedResume {
         endDate: "2020",
         location: "",
         gpa: "3.9",
-        description: ""
+        body: ""
       }
     ],
     skills: [{ category: "Languages", all: ["TypeScript", "Go"] }],
@@ -112,7 +112,7 @@ async function seed() {
     title: "Engineer",
     startDate: "2019",
     endDate: "2021",
-    bullets: ["Untouched"],
+    body: "- Untouched",
     position: 0
   })
 
@@ -180,7 +180,7 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
     expect(details?.location).toBe("London, UK")
     expect(details?.linkedIn).toBe("linkedin.com/in/ada")
     expect(jobs[0]?.name).toBe("Acme")
-    expect(jobs[0]?.bullets).toEqual(["Shipped the thing"])
+    expect(jobs[0]?.body).toBe("- Shipped the thing")
     expect(schools[0]?.gpa).toBe("3.9")
     expect(groups[0]?.all).toEqual(["TypeScript", "Go"])
   })
@@ -195,7 +195,7 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
             startDate: "2022",
             endDate: "Present",
             location: "",
-            bullets: ["Latest"]
+            body: "- Latest"
           },
           {
             name: "The one before",
@@ -203,7 +203,7 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
             startDate: "2019",
             endDate: "2022",
             location: "",
-            bullets: ["Earlier"]
+            body: "- Earlier"
           }
         ]
       })

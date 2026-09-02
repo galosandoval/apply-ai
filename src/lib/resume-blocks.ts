@@ -32,11 +32,9 @@ export type ResumeBlockKind =
   | "heading"
   /** One entry's identity line — employer or school, role or degree, dates. */
   | "entry"
-  /** One bullet of one experience entry. */
+  /** One bullet of an entry's body, or of a rich-text section. */
   | "bullet"
-  /** One education entry's description. */
-  | "description"
-  /** One paragraph — or one bullet list — of a rich-text section. */
+  /** One paragraph of an entry's body, or of a rich-text section. */
   | "paragraph"
   /** One skills group: its category, its rule and all of its skills. */
   | "listGroup"

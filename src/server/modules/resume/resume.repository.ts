@@ -357,19 +357,6 @@ export async function findAccount(db: DbOrTx, userId: string) {
   return rows[0] ?? null
 }
 
-export async function findJobBullets(
-  db: DbOrTx,
-  resumeId: string,
-  rowId: string
-) {
-  const rows = await db
-    .select({ bullets: work.bullets })
-    .from(work)
-    .where(and(eq(work.id, rowId), eq(work.resumeId, resumeId)))
-
-  return rows[0] ?? null
-}
-
 export async function findAccountSkills(db: DbOrTx, userId: string) {
   return db
     .select()

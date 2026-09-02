@@ -168,11 +168,13 @@ const shapeSpecs: { [Type in SectionComponentType]: ShapeSpec<Type> } = {
       return parsed && { componentType: "richText", markdown: parsed.markdown }
     },
     isEmpty: (shape) => !shape.markdown.trim(),
+    // One block per paragraph *and* per list item, because a section written
+    // as nine bullets is as splittable as a job written as nine bullets — see
+    // `renderResumeMarkdown`.
     toBlocks: (shape) =>
-      renderResumeMarkdown(shape.markdown).map((node) => ({
-        kind: "paragraph",
-        space: "inline",
-        node
+      renderResumeMarkdown(shape.markdown).map((block) => ({
+        ...block,
+        space: "inline"
       }))
   },
 
@@ -470,8 +472,8 @@ function placeholderBlock(): ResumeBlockDraft {
 
 /**
  * One entry as its blocks: the identity line, then whatever its body is made
- * of — one bullet at a time for a job, one description for a school, nothing at
- * all for a custom row.
+ * of — one block per bullet and per paragraph of the one markdown field a job
+ * and a school both have, nothing at all for a custom row.
  *
  * Every block draws in the same two-column frame, so a bullet that has landed
  * on the next page still lines up under where its dates would have been.

@@ -21,7 +21,13 @@ import {
  */
 
 const render = (markdown: string) =>
-  renderToStaticMarkup(<div>{renderResumeMarkdown(markdown)}</div>)
+  renderToStaticMarkup(
+    <div>{renderResumeMarkdown(markdown).map((block) => block.node)}</div>
+  )
+
+/** The kinds the blocks came back as, in order. */
+const kinds = (markdown: string) =>
+  renderResumeMarkdown(markdown).map((block) => block.kind)
 
 describe("renderResumeMarkdown", () => {
   it("renders a paragraph", () => {
@@ -50,12 +56,30 @@ describe("renderResumeMarkdown", () => {
     )
   })
 
-  it("renders a bullet list as real list items", () => {
+  /**
+   * One `<ul>` per item, where a list used to be one element holding all of
+   * them.
+   *
+   * The replacement is deliberate and would otherwise read as a regression: an
+   * element cannot be in two places, and a body of nine bullets splitting
+   * across a page boundary asks exactly that of it. Each item is still a real
+   * list item inside a real list, which is what a parser reads.
+   */
+  it("renders each bullet as its own list", () => {
     const html = render("- first\n- second")
 
-    expect(html).toContain("<li>first</li>")
-    expect(html).toContain("<li>second</li>")
-    expect(html.match(/<ul/g)).toHaveLength(1)
+    expect(html).toContain(">first</li>")
+    expect(html).toContain(">second</li>")
+    expect(html.match(/<ul/g)).toHaveLength(2)
+  })
+
+  it("gives a block per bullet and a block per paragraph", () => {
+    expect(kinds("Intro\n\n- first\n- second\n- third")).toEqual([
+      "paragraph",
+      "bullet",
+      "bullet",
+      "bullet"
+    ])
   })
 
   it("separates a paragraph from the list that follows it", () => {
@@ -63,6 +87,10 @@ describe("renderResumeMarkdown", () => {
 
     expect(html).toContain("<p>Intro line</p>")
     expect(html.indexOf("<p>")).toBeLessThan(html.indexOf("<ul"))
+  })
+
+  it("reopens a paragraph after a list", () => {
+    expect(kinds("- first\nAfter the list")).toEqual(["bullet", "paragraph"])
   })
 
   it("joins wrapped lines into one paragraph and splits on a blank line", () => {

@@ -80,7 +80,7 @@ async function seed() {
       title: "Engineer",
       startDate: "2020",
       endDate: "2022",
-      bullets: ["first bullet", "second bullet", "third bullet"]
+      body: "- first bullet\n- second bullet\n- third bullet"
     },
     {
       id: otherResumesJobId,
@@ -89,7 +89,7 @@ async function seed() {
       title: "Engineer",
       startDate: "2020",
       endDate: "2022",
-      bullets: ["untouched"]
+      body: "- untouched"
     }
   ])
 
@@ -168,14 +168,14 @@ function draft(overrides: Partial<CreateResumeInput> = {}): CreateResumeInput {
         title: "Engineer",
         startDate: "2020",
         endDate: "2022",
-        bullets: ["Wrote the first algorithm", "Described a general computer"]
+        body: "- Wrote the first algorithm\n- Described a general computer"
       },
       {
         name: "Difference Engines",
         title: "Engineer",
         startDate: "2018",
         endDate: "2020",
-        bullets: ["Built the thing", "Then built the other thing"]
+        body: "- Built the thing\n- Then built the other thing"
       }
     ],
     education: [
@@ -261,11 +261,19 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(row?.degree).toBe("MSc")
     })
 
-    it("replaces exactly one bullet", async () => {
+    /**
+     * The whole body at once, where a bullet used to be replaced by index.
+     *
+     * The replacement is deliberate: a bullet is a `- ` line inside one
+     * markdown field now, so rewriting one, adding one and reordering them are
+     * all the same write — and there is no index left for a reorder to leave
+     * pointing at the wrong bullet.
+     */
+    it("replaces a job's whole body", async () => {
       await callerFor(db, fixture.owner.userId).resume.updateField({
         resumeId: fixture.resumeId,
-        path: `experience.${fixture.jobId}.bullets.1`,
-        value: "rewritten"
+        path: `experience.${fixture.jobId}.body`,
+        value: "Led the team.\n\n- rewritten\n- and another"
       })
 
       const [row] = await db
@@ -273,11 +281,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         .from(work)
         .where(eq(work.id, fixture.jobId))
 
-      expect(row?.bullets).toEqual([
-        "first bullet",
-        "rewritten",
-        "third bullet"
-      ])
+      expect(row?.body).toBe("Led the team.\n\n- rewritten\n- and another")
     })
   })
 
@@ -288,10 +292,10 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       "a shared section": () => "skills.0.all",
       "the owning key": () => "userId",
       "the resume's own id": () => "resumeId",
-      "the bullets array itself": (s) => `experience.${s.jobId}.bullets`,
-      "an out-of-range bullet index": (s) => `experience.${s.jobId}.bullets.9`,
-      "a non-numeric bullet index": (s) => `experience.${s.jobId}.bullets.x`,
-      "a trailing-dot bullet index": (s) => `experience.${s.jobId}.bullets.`,
+      "a bullet array a job no longer has": (s) =>
+        `experience.${s.jobId}.bullets`,
+      "a bullet addressed by index": (s) => `experience.${s.jobId}.bullets.1`,
+      "an index inside the body": (s) => `experience.${s.jobId}.body.0`,
       "an unknown section": (s) => `nonsense.${s.jobId}.name`
     }
 
@@ -309,7 +313,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       await expect(
         callerFor(db, fixture.owner.userId).resume.updateField({
           resumeId: fixture.resumeId,
-          path: `experience.${fixture.jobId}.bullets.9`,
+          path: `experience.${fixture.jobId}.bullets.1`,
           value: "should not land"
         })
       ).rejects.toThrow()
@@ -319,11 +323,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         .from(work)
         .where(eq(work.id, fixture.jobId))
 
-      expect(row?.bullets).toEqual([
-        "first bullet",
-        "second bullet",
-        "third bullet"
-      ])
+      expect(row?.body).toBe("- first bullet\n- second bullet\n- third bullet")
     })
   })
 
@@ -1132,11 +1132,15 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
   })
 
   /**
-   * Adding, removing and reordering — the operations inline editing could not
-   * express, because there is nowhere to click for a thing that is not there.
+   * What `setBullets` used to be.
+   *
+   * Adding, removing and reordering a bullet were three operations on an array
+   * column, with their own procedure. A bullet is a `- ` line inside the body
+   * now, so all three are one write of one field — and the ownership check
+   * that mattered is still the one this asserts.
    */
-  describe("setBullets", () => {
-    /** A resume with its drafted rows, ready to add to. */
+  describe("writing a job's body", () => {
+    /** A resume with its drafted rows, ready to edit. */
     async function withResume() {
       const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
@@ -1144,68 +1148,43 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       return { caller, resumeId }
     }
 
-    it("adds a bullet to a job", async () => {
+    const write = (
+      caller: ReturnType<typeof callerFor>,
+      resumeId: string,
+      rowId: string,
+      body: string
+    ) =>
+      caller.resume.updateField({
+        resumeId,
+        path: `experience.${rowId}.body`,
+        value: body
+      })
+
+    it("adds, removes and reorders bullets in one write", async () => {
       const { caller, resumeId } = await withResume()
       const [job] = (await caller.resume.readById({ resumeId })).experience
 
-      await caller.resume.setBullets({
+      await write(
+        caller,
         resumeId,
-        rowId: job!.id,
-        bullets: [...job!.bullets, "Added by hand"]
-      })
-
-      const found = await caller.resume.readById({ resumeId })
-
-      expect(found.experience[0]?.bullets).toEqual([
-        "Wrote the first algorithm",
-        "Described a general computer",
-        "Added by hand"
-      ])
-    })
-
-    it("removes a bullet", async () => {
-      const { caller, resumeId } = await withResume()
-      const [job] = (await caller.resume.readById({ resumeId })).experience
-
-      await caller.resume.setBullets({
-        resumeId,
-        rowId: job!.id,
-        bullets: [job!.bullets[1]!]
-      })
+        job!.id,
+        "- Described a general computer\n- Added by hand"
+      )
 
       expect(
-        (await caller.resume.readById({ resumeId })).experience[0]?.bullets
-      ).toEqual(["Described a general computer"])
-    })
-
-    it("reorders bullets within a job", async () => {
-      const { caller, resumeId } = await withResume()
-      const [job] = (await caller.resume.readById({ resumeId })).experience
-
-      await caller.resume.setBullets({
-        resumeId,
-        rowId: job!.id,
-        bullets: [job!.bullets[1]!, job!.bullets[0]!]
-      })
-
-      expect(
-        (await caller.resume.readById({ resumeId })).experience[0]?.bullets
-      ).toEqual(["Described a general computer", "Wrote the first algorithm"])
+        (await caller.resume.readById({ resumeId })).experience[0]?.body
+      ).toBe("- Described a general computer\n- Added by hand")
     })
 
     it("leaves the other jobs alone", async () => {
       const { caller, resumeId } = await withResume()
       const jobs = (await caller.resume.readById({ resumeId })).experience
 
-      await caller.resume.setBullets({
-        resumeId,
-        rowId: jobs[0]!.id,
-        bullets: []
-      })
+      await write(caller, resumeId, jobs[0]!.id, "")
 
       expect(
-        (await caller.resume.readById({ resumeId })).experience[1]?.bullets
-      ).toEqual(["Built the thing", "Then built the other thing"])
+        (await caller.resume.readById({ resumeId })).experience[1]?.body
+      ).toBe("- Built the thing\n- Then built the other thing")
     })
 
     it("refuses a job belonging to another resume", async () => {
@@ -1215,17 +1194,13 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         .experience
 
       await expect(
-        caller.resume.setBullets({
-          resumeId,
-          rowId: theirs[0]!.id,
-          bullets: ["leaked"]
-        })
+        write(caller, resumeId, theirs[0]!.id, "leaked")
       ).rejects.toThrow(/not found/i)
 
       expect(
         (await caller.resume.readById({ resumeId: otherId })).experience[0]
-          ?.bullets
-      ).toEqual(["Wrote the first algorithm", "Described a general computer"])
+          ?.body
+      ).toBe("- Wrote the first algorithm\n- Described a general computer")
     })
 
     it("refuses another user's resume", async () => {
@@ -1234,11 +1209,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       const stranger = callerFor(db, fixture.stranger.userId)
 
       await expect(
-        stranger.resume.setBullets({
-          resumeId,
-          rowId: job!.id,
-          bullets: ["leaked"]
-        })
+        write(stranger, resumeId, job!.id, "leaked")
       ).rejects.toThrow(/resume not found/i)
     })
   })
@@ -1271,7 +1242,7 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       expect(added.name).toBe("")
       expect(added.title).toBe("")
-      expect(added.bullets).toEqual([])
+      expect(added.body).toBe("")
       expect(added.position).toBe(2)
     })
 

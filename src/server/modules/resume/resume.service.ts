@@ -24,7 +24,6 @@ import {
   type RemoveRowInput,
   type ReorderRowsInput,
   type RowSectionName,
-  type SetBulletsInput,
   type SetStyleInput,
   type UpdateFieldInput
 } from "./resume.schema"
@@ -242,14 +241,14 @@ async function readHistoryFor(db: Database, userId: string) {
         title: job.title,
         startDate: job.startDate,
         endDate: job.endDate,
-        bullets: job.bullets
+        body: job.body
       }))
     ),
     education: JSON.stringify(
       education.map((entry) => ({
         name: entry.name,
         degree: entry.degree,
-        description: entry.description,
+        body: entry.body,
         startDate: entry.startDate,
         endDate: entry.endDate,
         gpa: entry.gpa
@@ -416,7 +415,7 @@ const addableRows: Record<RowSectionName, InsertBlankRow> = {
         title: "",
         startDate: "",
         endDate: "",
-        bullets: []
+        body: ""
       }
     ]),
 
@@ -471,27 +470,6 @@ export async function removeRow(
   )
 
   if (!deleted.length) throw fieldNotFound()
-
-  return { rowId: input.rowId }
-}
-
-/**
- * Replaces a job's whole bullet list — how a bullet is added, removed or moved.
- *
- * `updateField` rewrites one bullet that already exists and cannot change how
- * many there are; taking the array wholesale also means a reorder never leaves
- * an index pointing at a different bullet than the one the user moved.
- */
-export async function setBullets(
-  db: Database,
-  userId: string,
-  input: SetBulletsInput
-) {
-  await assertOwnsResume(db, userId, input.resumeId)
-
-  await writeRow(db, work, input.resumeId, input.rowId, {
-    bullets: input.bullets
-  })
 
   return { rowId: input.rowId }
 }
@@ -574,7 +552,7 @@ export async function reorderRows(
 
 /**
  * Writes one editable string. `path` addresses rows by id
- * (`experience.<id>.bullets.2`), so it survives reordering.
+ * (`experience.<id>.body`), so it survives reordering.
  *
  * The grammar and the set of writable columns live in `~/lib/resume-field-path`,
  * shared with the client so the template, the optimistic cache patch and this
@@ -642,17 +620,6 @@ async function writeTarget(
       return
 
     case "experience":
-      if (target.kind === "bullet") {
-        await updateBullet(db, {
-          resumeId,
-          rowId: target.row,
-          bulletIndex: target.bulletIndex,
-          value
-        })
-
-        return
-      }
-
       await writeRow(db, work, resumeId, target.row, { [target.column]: value })
   }
 }
@@ -702,34 +669,5 @@ async function writeContact(
     userId,
     resumeId,
     [column]: value
-  })
-}
-
-/**
- * Replaces one entry of a job's `bullets` array.
- *
- * Postgres can assign to an array subscript directly, but assigning past the
- * end silently pads the array with NULLs — so the current value is read and
- * bounds-checked inside a transaction rather than written blind.
- */
-async function updateBullet(
-  db: Database,
-  {
-    resumeId,
-    rowId,
-    bulletIndex,
-    value
-  }: { resumeId: string; rowId: string; bulletIndex: number; value: string }
-) {
-  await db.transaction(async (tx) => {
-    const found = await repo.findJobBullets(tx, resumeId, rowId)
-
-    if (!found || bulletIndex >= found.bullets.length) throw fieldNotFound()
-
-    const bullets = found.bullets.map((bullet, index) =>
-      index === bulletIndex ? value : bullet
-    )
-
-    await writeRow(tx, work, resumeId, rowId, { bullets })
   })
 }

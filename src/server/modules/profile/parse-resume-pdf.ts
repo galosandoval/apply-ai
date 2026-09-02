@@ -1,6 +1,6 @@
 import { PDFParse } from "pdf-parse"
 import { z } from "zod"
-import { MAX_BULLETS, maxSkills } from "~/server/db/crud-schema"
+import { maxSkills } from "~/server/db/crud-schema"
 
 /**
  * Shape the model is asked to return. Every field is lenient on purpose — a
@@ -23,7 +23,7 @@ export const parsedResumeSchema = z.object({
       startDate: z.string().default(""),
       endDate: z.string().default(""),
       location: z.string().default(""),
-      bullets: z.string().array().default([])
+      body: z.string().default("")
     })
     .array()
     .default([]),
@@ -35,7 +35,7 @@ export const parsedResumeSchema = z.object({
       endDate: z.string().default(""),
       location: z.string().default(""),
       gpa: z.string().default(""),
-      description: z.string().default("")
+      body: z.string().default("")
     })
     .array()
     .default([]),
@@ -52,6 +52,15 @@ export type ParsedResume = z.infer<typeof parsedResumeSchema>
 
 const maxExperience = 5
 const maxEducation = 4
+
+/**
+ * How many bullets one job's body may be asked for.
+ *
+ * A cap on the extraction rather than on the column: the body is one markdown
+ * string and the user may write it however they like, but a model handed a
+ * dense resume will otherwise return a page of them.
+ */
+const maxBodyBullets = 8
 
 /** Guards against pathological PDFs blowing up the prompt. */
 const maxTextLength = 20_000
@@ -143,7 +152,8 @@ Rules:
 - Copy every value in the resume's own language and wording. Never translate, expand, or reformat what it says.
 - Dates are free text: keep whatever form the resume writes them in, and keep its own word for a role that is still current.
 - "profession" is the person's current job title or the headline at the top of the resume.
-- For each job, "bullets" is the list of accomplishment bullet points, one string per bullet, at most ${MAX_BULLETS}. Keep the person's own wording and metrics. If the job is written as a paragraph, split it into one bullet per sentence.
+- For each job, "body" is what the resume writes under it, as markdown: one "- " line per accomplishment, at most ${maxBodyBullets}, and a plain line for anything written as prose. Keep the person's own wording and metrics.
+- For each school, "body" is whatever the resume writes under it, in the same markdown form. Empty when it writes nothing.
 - Group skills into at most ${maxSkills} categories, using the resume's own headings for them. If it lists skills without categories, put them all under one category named the way the resume names that part of the page.
 - Return at most ${maxExperience} jobs and ${maxEducation} schools, most recent first.
 
@@ -151,7 +161,7 @@ Respond with RFC8259 compliant JSON only, no explanations, in exactly this forma
 {
   "firstName": "", "lastName": "", "profession": "", "location": "", "phone": "",
   "linkedIn": "", "portfolio": "",
-  "experience": [{ "name": "", "title": "", "startDate": "", "endDate": "", "location": "", "bullets": [""] }],
-  "education": [{ "name": "", "degree": "", "startDate": "", "endDate": "", "location": "", "gpa": "", "description": "" }],
+  "experience": [{ "name": "", "title": "", "startDate": "", "endDate": "", "location": "", "body": "" }],
+  "education": [{ "name": "", "degree": "", "startDate": "", "endDate": "", "location": "", "gpa": "", "body": "" }],
   "skills": [{ "category": "", "all": [""] }]
 }`

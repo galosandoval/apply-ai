@@ -5,12 +5,11 @@ import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
 import {
   type DisplaySectionPreset,
   searchSectionCatalog
 } from "~/lib/section-catalog"
-import { MarkdownField } from "~/features/resume/markdown-field"
+import { MarkdownField } from "~/components/markdown-field"
 import {
   type AddedSectionPreset,
   type PanelAction,
@@ -139,7 +138,7 @@ function Field({
   )
 }
 
-/** The input the field's shape asks for: a line, a paragraph, or markdown. */
+/** The input the field's shape asks for: a line, or markdown with its toolbar. */
 function FieldControl({
   field,
   id,
@@ -162,18 +161,6 @@ function FieldControl({
     )
   }
 
-  if (field.input === "textarea") {
-    return (
-      <Textarea
-        id={id}
-        onBlur={onCommit}
-        onChange={(event) => onChange(event.target.value)}
-        rows={3}
-        value={field.value}
-      />
-    )
-  }
-
   return (
     <Input
       id={id}
@@ -185,8 +172,8 @@ function FieldControl({
 }
 
 /**
- * A repeated thing: the bullets of a job, the entries of a section, the items
- * of a list.
+ * A repeated thing: the entries of a core section, the elements of a custom
+ * section's content.
  *
  * Move up and move down rather than dragging. The requirement is that
  * reordering exists, and two buttons work on a phone, in a screen reader, and

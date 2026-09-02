@@ -47,6 +47,36 @@ export const updateProfileSchema = createInsertSchema(user, {
 
 export type UpdateProfileSchema = z.infer<typeof updateProfileSchema>
 
+/**
+ * The longest an entry's body may be.
+ *
+ * One cap on the whole body rather than a count and a per-bullet length: the
+ * body is one markdown string now, and how the user divides it between prose
+ * and list items is theirs to decide. It bounds the field; it does not
+ * prescribe a shape.
+ *
+ * The number is the budget the old shape allowed — 8 bullets of 300 — because
+ * a body migrated from bullets that no longer fits is a resume the user cannot
+ * save without cutting words this change never asked them to cut.
+ */
+export const maxBodyLength = 2_400
+
+/** An entry's body: the constrained markdown subset, as one bounded field. */
+const bodySchema = z
+  .string()
+  .max(maxBodyLength, invalid("maxChars", { count: maxBodyLength }))
+
+/**
+ * The same field where a step insists on one.
+ *
+ * A job with nothing under it is a job the resume says nothing about, and
+ * onboarding is what asks for it — where the editor's own write allows an empty
+ * body, for a row the user has just added.
+ */
+const requiredBodySchema = bodySchema
+  .trim()
+  .min(6, invalid("minChars", { count: 6 }))
+
 export const insertEducationSchema = z.object({
   education: createInsertSchema(school, {
     id: (schema) => schema.id.optional(),
@@ -58,10 +88,7 @@ export const insertEducationSchema = z.object({
       schema.name
         .min(3, invalid("minChars", { count: 3 }))
         .max(255, invalid("maxChars", { count: 255 })),
-    description: (schema) =>
-      schema.description
-        .max(500, invalid("maxChars", { count: 500 }))
-        .optional(),
+    body: () => bodySchema,
     location: (schema) =>
       schema.location.max(255, invalid("maxChars", { count: 255 })).optional(),
     startDate: (schema) => schema.startDate.min(4).max(50),
@@ -79,42 +106,6 @@ export const insertEducationSchema = z.object({
 
 export type InsertEducationSchema = z.infer<typeof insertEducationSchema>
 
-export const MIN_BULLETS = 1
-export const MAX_BULLETS = 8
-
-const MAX_BULLET_LENGTH = 300
-
-/**
- * One accomplishment per entry, so the length cap is per bullet rather than per
- * job — a single runaway sentence is what breaks the layout, not the count.
- *
- * The checks live in a `superRefine` without a `path` so every message lands on
- * the array itself. Onboarding edits bullets as one line-separated textarea and
- * renders a single `FormMessage` for it; an issue reported on `bullets.2` would
- * block submit with nothing on screen to explain why. Blank lines are ignored
- * here for the same reason — the user is mid-typing, not writing an empty
- * bullet, and they're stripped before the array is saved.
- */
-const bulletsSchema = z
-  .string()
-  .array()
-  .superRefine((bullets, ctx) => {
-    const filled = bullets.filter((bullet) => bullet.trim())
-
-    const issue =
-      filled.length < MIN_BULLETS
-        ? invalid("bulletsMin", { count: MIN_BULLETS })
-        : filled.length > MAX_BULLETS
-          ? invalid("bulletsMax", { count: MAX_BULLETS })
-          : filled.some((bullet) => bullet.trim().length < 6)
-            ? invalid("bulletTooShort", { count: 6 })
-            : filled.some((bullet) => bullet.length > MAX_BULLET_LENGTH)
-              ? invalid("bulletTooLong", { count: MAX_BULLET_LENGTH })
-              : null
-
-    if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue })
-  })
-
 export const insertExperienceSchema = z.object({
   experience: createInsertSchema(work, {
     id: (schema) => schema.id.optional(),
@@ -122,7 +113,6 @@ export const insertExperienceSchema = z.object({
       schema.name
         .min(3, invalid("minChars", { count: 3 }))
         .max(255, invalid("maxChars", { count: 255 })),
-    bullets: bulletsSchema,
     endDate: (schema) =>
       schema.endDate.min(3, invalid("minChars", { count: 3 })).max(50),
     startDate: (schema) =>
@@ -133,6 +123,13 @@ export const insertExperienceSchema = z.object({
         .max(255, invalid("maxChars", { count: 255 }))
   })
     .omit({ userId: true, resumeId: true })
+    /*
+      Required, where the column has a default and so is optional everywhere
+      else: a job with nothing under it is a job the resume says nothing about,
+      and this is the step that asks for it. The editor's own write allows an
+      empty body, for a row the user has just added.
+    */
+    .extend({ body: requiredBodySchema })
     .array()
     .min(1)
     .max(5)

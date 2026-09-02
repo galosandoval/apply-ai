@@ -148,8 +148,16 @@ export const work = pgTable("work", {
   endDate: text("end_date").notNull(),
   title: text("title").notNull(),
   location: text("location"),
-  /** One accomplishment per entry. Rendered as the job's bullet list. */
-  bullets: text("bullets").array().notNull(),
+  /**
+   * Everything under the identity line, as the constrained markdown subset —
+   * see `~/lib/resume-markdown`.
+   *
+   * One column rather than a `bullets` array, because "the text under this
+   * entry" is one thing and a user has both prose and a list to put in it. A
+   * bullet is a `- ` line, which is what the array's elements migrated to and
+   * what they still render as.
+   */
+  body: text("body").default("").notNull(),
   /** Order within the Experience section. Row order was `ORDER BY id` before. */
   position: integer("position").default(0).notNull(),
   userId: text("user_id").references(() => user.id),
@@ -175,7 +183,8 @@ export const school = pgTable("school", {
   degree: text("degree").notNull(),
   location: text("location"),
   gpa: text("gpa"),
-  description: text("description"),
+  /** The same markdown body a job has — see `work.body`. */
+  body: text("body").default("").notNull(),
   /** Order within the Education section. */
   position: integer("position").default(0).notNull(),
   userId: text("user_id").references(() => user.id),

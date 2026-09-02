@@ -17,7 +17,7 @@ export const generatedResumeSchema = z.object({
     z.object({
       name: z.string(),
       degree: z.string(),
-      description: z.string(),
+      body: z.string(),
       startDate: z.string(),
       endDate: z.string(),
       gpa: z.string()
@@ -29,7 +29,13 @@ export const generatedResumeSchema = z.object({
       title: z.string(),
       startDate: z.string(),
       endDate: z.string(),
-      bullets: z.array(z.string())
+      /**
+       * Everything under the job, as the markdown subset the document renders:
+       * a `- ` line per accomplishment, a plain line for prose. One field
+       * rather than an array of bullets, because that is what the column holds
+       * and a resume is allowed to mix the two.
+       */
+      body: z.string()
     })
   ),
   /**
@@ -102,7 +108,8 @@ Rules:
 - Every employer, school, job title, date, number and skill in your answer must appear in the user's history. Never invent one, and never move an accomplishment from one employer to another.
 - Where the posting describes something the user has genuinely done, describe it in the posting's own vocabulary. Never claim a technology, responsibility or result the history does not support, and do not repeat phrases from the posting for their own sake.
 - Rewriting and reordering the history to lead with what this posting asks for is the job. Adding to it is not.
-- Each job gets 3 to 6 accomplishments, one sentence each.
+- Each job's "body" is markdown: one "- " line per accomplishment, 3 to 6 of them, one sentence each. Write a plain line instead of a bullet only where the history is genuinely prose.
+- A school's "body" is the same markdown, and empty when there is nothing to say.
 - Keep the resume to one page.
 
 Sections:
@@ -120,7 +127,8 @@ Reglas:
 - Toda empresa, institución, puesto, fecha, cifra y habilidad que aparezca en tu respuesta debe estar en el historial de la persona. Nunca inventes ninguna, y nunca traslades un logro de una empresa a otra.
 - Cuando la vacante describa algo que la persona sí ha hecho, descríbelo con el vocabulario de la propia vacante. Nunca atribuyas una tecnología, una responsabilidad o un resultado que el historial no respalde, ni repitas frases de la vacante por repetirlas.
 - Reescribir y reordenar el historial para empezar por lo que esta vacante pide es el trabajo. Agregarle cosas no lo es.
-- Cada puesto lleva de 3 a 6 logros, de una oración cada uno.
+- El "body" de cada puesto es markdown: una línea que empieza por "- " por cada logro, de 3 a 6, de una oración cada uno. Escribe una línea sin viñeta solo cuando el historial sea de verdad un párrafo.
+- El "body" de cada formación es el mismo markdown, y va vacío cuando no hay nada que decir.
 - El currículum no pasa de una página.
 
 Secciones:

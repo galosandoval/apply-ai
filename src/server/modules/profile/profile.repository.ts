@@ -159,7 +159,7 @@ export async function upsertEducation(db: DbOrTx, values: SchoolValues[]) {
       target: school.id,
       set: {
         degree: sql`excluded.degree`,
-        description: sql`excluded.description`,
+        body: sql`excluded.body`,
         endDate: sql`excluded.end_date`,
         gpa: sql`excluded.gpa`,
         location: sql`excluded.location`,
@@ -187,7 +187,7 @@ export async function upsertExperience(db: DbOrTx, values: WorkValues[]) {
       target: work.id,
       set: {
         name: sql`excluded.name`,
-        bullets: sql`excluded.bullets`,
+        body: sql`excluded.body`,
         endDate: sql`excluded.end_date`,
         title: sql`excluded.title`,
         startDate: sql`excluded.start_date`,

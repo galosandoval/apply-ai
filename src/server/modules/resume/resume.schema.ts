@@ -72,25 +72,6 @@ export const removeRowSchema = resumeIdSchema.extend({
 export type RemoveRowInput = z.infer<typeof removeRowSchema>
 
 /**
- * A job's whole bullet list.
- *
- * `updateField` replaces one bullet that already exists; this is how the set of
- * them changes — added, removed, reordered — for the same reason
- * `section.setContent` exists beside a per-string write. Taking the whole array
- * also means a reorder cannot leave an index pointing at a different bullet.
- *
- * The caps are deliberately looser than the onboarding form's two-to-eight
- * accomplishments: this is the write a user makes while editing, and a resume
- * mid-edit is allowed to have no bullets on a job they are about to fill in.
- * They exist to bound the payload, not to enforce a shape.
- */
-export const setBulletsSchema = resumeIdSchema.extend({
-  rowId,
-  bullets: z.array(z.string().max(1_000)).max(20)
-})
-export type SetBulletsInput = z.infer<typeof setBulletsSchema>
-
-/**
  * Choosing a typographic direction.
  *
  * The accent is not in the input: each style fixes its own, and the server is

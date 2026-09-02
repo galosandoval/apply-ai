@@ -14,7 +14,7 @@ import toast from "react-hot-toast"
 import { MyAlert } from "~/components/alert"
 import { MyErrorMessage } from "~/components/my-error-message"
 import { MyInput } from "~/components/my-input"
-import { Textarea } from "~/components/ui/textarea"
+import { MarkdownField } from "~/components/markdown-field"
 import { Button } from "~/components/ui/button"
 import {
   insertExperienceSchema,
@@ -38,21 +38,12 @@ import { useErrorText } from "~/components/use-error-text"
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
     name: "",
-    bullets: [],
+    body: "",
     startDate: "",
     endDate: "",
     title: ""
   }
 ]
-
-/**
- * Bullets are stored as an array but collected as one textarea, so a line is a
- * bullet. Blank lines survive `toBullets` on purpose: stripping them as the user
- * types would swallow the newline they just pressed. `onSubmit` drops them.
- */
-const toBullets = (text: string) => text.split("\n")
-
-const fromBullets = (bullets: string[]) => bullets.join("\n")
 
 const maxExperience = 4
 
@@ -86,7 +77,7 @@ export function ExperienceStep() {
         ? profile.experience.map((experience) => ({
             id: experience.id,
             name: experience.name,
-            bullets: experience.bullets,
+            body: experience.body,
             startDate: experience.startDate,
             endDate: experience.endDate,
             title: experience.title
@@ -109,12 +100,7 @@ export function ExperienceStep() {
   })
 
   const onSubmit = (data: InsertExperienceSchema) => {
-    const experienceToSubmit = data.experience.map((experience) => ({
-      ...experience,
-      bullets: experience.bullets.map((bullet) => bullet.trim()).filter(Boolean)
-    }))
-
-    mutate({ experience: experienceToSubmit })
+    mutate({ experience: data.experience })
   }
 
   useEffect(() => {
@@ -134,7 +120,7 @@ export function ExperienceStep() {
       <h2 className="max-w-md pb-4 text-sm text-muted-foreground">
         Start with your most recent job and work backwards, including the
         company name and location, your title, and how long you worked there.
-        Finish by writing 3 to 5 accomplishments for each job, one per line.
+        Finish by writing 3 to 5 accomplishments for each job.
       </h2>
 
       {fields.map((field, index) => (
@@ -271,18 +257,27 @@ function ExperienceForm({
           <div className="mt-4">
             <MyAlert
               title={t("accomplishments")}
-              description={`Write 3 to 5 accomplishments, one per line. Be concise and try to use numbers and percentages. Each line becomes a bullet point on your resume.`}
+              description={t("accomplishmentsAdvice")}
             />
           </div>
         )}
       </div>
 
-      <BulletsField control={control} index={index} />
+      <BodyField control={control} index={index} />
     </div>
   )
 }
 
-function BulletsField({
+/**
+ * The job's body: one field, holding what the resume prints under the job.
+ *
+ * The same `MarkdownField` the editor's panel uses, so what a user writes here
+ * is stored exactly as typed and reads in onboarding the way it will read in
+ * the editor. The step used to prefix every filled line with `- ` on blur; a
+ * body that is one field precisely so a user may write prose is not a field the
+ * form gets to silently rewrite into a list.
+ */
+function BodyField({
   control,
   index
 }: {
@@ -294,22 +289,20 @@ function BulletsField({
   return (
     <FormField
       control={control}
-      name={`experience.${index}.bullets`}
+      name={`experience.${index}.body`}
       render={({ field }) => (
         <FormItem className="w-full">
-          <FormLabel>
-            {t("bulletsLabel")}
+          <FormLabel htmlFor={field.name}>
+            {t("bodyLabel")}
             <span className="text-destructive">*</span>
           </FormLabel>
           <FormControl>
-            <Textarea
-              className="min-h-[100px]"
+            <MarkdownField
+              id={field.name}
+              onChange={field.onChange}
+              onCommit={field.onBlur}
               placeholder={t("accomplishmentsPlaceholder")}
-              name={field.name}
-              ref={field.ref}
-              onBlur={field.onBlur}
-              value={fromBullets(field.value)}
-              onChange={(e) => field.onChange(toBullets(e.target.value))}
+              value={field.value}
             />
           </FormControl>
           <FormDescription>{t("accomplishmentsHint")}</FormDescription>

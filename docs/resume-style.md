@@ -49,14 +49,11 @@ live axis, not a dead token; giving a direction a separate heading face is one
 declaration in its overlay and nothing else. See _Four ways this mechanism
 bites_ for why it is declared where it is.
 
-The page the layout sits on is shared too, and it is a **stack of real A4
-sheets** rather than one continuous roll. Page width and height, the print
-margin, the paper, the corner radius and the gap between two sheets are all
-tokens rather than literals in a component. They are not one of the five axes:
+The page the layout sits on is shared too, and it is not one of the five axes:
 all three directions print the same margin on the same paper, and reflow is the
 only thing that re-values it. A direction that wanted its own page margin would
 be re-valuing a token rather than asking for a mechanism, which is the property
-worth keeping. Where the breaks fall, and why the sheets are real elements, is
+worth keeping. What the page is made of, and why, is
 [editable-resume](./editable-resume.md#the-page-is-a-real-sheet-65-66).
 
 The date range **wraps** inside its column rather than being held on one line.

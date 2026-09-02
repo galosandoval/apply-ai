@@ -11,7 +11,7 @@ import {
 } from "react-hook-form"
 import toast from "react-hot-toast"
 import { MyErrorMessage } from "~/components/my-error-message"
-import { MyTextarea } from "~/components/my-textarea"
+import { MarkdownField } from "~/components/markdown-field"
 import { MyInput } from "~/components/my-input"
 import { Button } from "~/components/ui/button"
 import {
@@ -21,7 +21,13 @@ import {
 import { api } from "~/utils/api"
 import { useUser } from "~/utils/useUser"
 import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
-import { FormField } from "~/components/ui/form"
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 import { useErrorText } from "~/components/use-error-text"
@@ -29,7 +35,7 @@ import { useErrorText } from "~/components/use-error-text"
 const initialSchool: InsertEducationSchema["education"] = [
   {
     degree: "",
-    description: "",
+    body: "",
     name: "",
     endDate: "",
     gpa: "",
@@ -68,7 +74,7 @@ export function EducationStep() {
             endDate: school.endDate,
             name: school.name,
             startDate: school.startDate,
-            description: school.description,
+            body: school.body,
             gpa: school.gpa,
             location: school.location
           }))
@@ -83,7 +89,7 @@ export function EducationStep() {
             endDate: school.endDate,
             name: school.name,
             startDate: school.startDate,
-            description: school.description,
+            body: school.body,
             gpa: school.gpa,
             location: school.location
           }))
@@ -295,13 +301,25 @@ function EducationForm({
 
       <FormField
         control={control}
-        name={`education.${index}.description`}
+        name={`education.${index}.body`}
+        // The same markdown field a school's body is edited with everywhere
+        // else — the editor's panel and Experience's own step. A body that is
+        // one field is one control, or onboarding writes a body the editor
+        // then offers a different set of tools for.
         render={({ field }) => (
-          <MyTextarea
-            field={field}
-            label={t("extra")}
-            placeholder={t("extraPlaceholder")}
-          />
+          <FormItem className="w-full">
+            <FormLabel htmlFor={field.name}>{t("extra")}</FormLabel>
+            <FormControl>
+              <MarkdownField
+                id={field.name}
+                onChange={field.onChange}
+                onCommit={field.onBlur}
+                placeholder={t("extraPlaceholder")}
+                value={field.value ?? ""}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )}
       />
     </div>

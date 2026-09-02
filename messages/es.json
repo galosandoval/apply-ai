@@ -169,9 +169,10 @@
       "endDate": "Fecha de fin",
       "endDatePlaceholder": "Ej: Mayo 2021",
       "accomplishments": "Logros",
-      "accomplishmentsPlaceholder": "Colaboré con equipos multidisciplinarios para lanzar nuevas funciones\nReduje el tiempo de carga de la página un 40 % dividiendo el paquete",
-      "accomplishmentsHint": "Un logro por línea.",
-      "bulletsLabel": "Escribe de 3 a 5 logros"
+      "accomplishmentsPlaceholder": "- Colaboré con equipos multidisciplinarios para lanzar nuevas funciones\n- Reduje el tiempo de carga de la página un 40 % dividiendo el paquete",
+      "accomplishmentsHint": "Usa el botón Lista para tus logros, o escribe un párrafo. Puedes usar negrita y enlaces.",
+      "accomplishmentsAdvice": "Escribe de 3 a 5 logros. Sé concreto, y usa cifras y porcentajes cuando los tengas.",
+      "bodyLabel": "Logros"
     },
     "skills": {
       "title": "Habilidades",
@@ -220,7 +221,6 @@
     "sections": "Secciones",
     "header": "Encabezado",
     "entries": "Entradas",
-    "bullets": "Viñetas",
     "untitledEntry": "Entrada",
     "untitledSection": "Sección",
     "sectionName": "Nombre",
@@ -237,14 +237,15 @@
       "name": "Empresa",
       "title": "Puesto",
       "startDate": "Inicio",
-      "endDate": "Fin"
+      "endDate": "Fin",
+      "body": "Detalles"
     },
     "education": {
       "name": "Institución",
       "degree": "Título",
       "startDate": "Inicio",
       "endDate": "Fin",
-      "description": "Descripción"
+      "body": "Detalles"
     },
     "up": "Subir",
     "down": "Bajar",
@@ -274,11 +275,6 @@
         "add": "Agregar sección",
         "empty": "Aún no hay secciones.",
         "untitled": "Sección sin título"
-      },
-      "bullet": {
-        "add": "Agregar viñeta",
-        "empty": "Aún no hay viñetas.",
-        "untitled": "Viñeta sin texto"
       },
       "row": {
         "add": "Agregar fila",
@@ -310,8 +306,7 @@
         "empty": "Aún no hay grupos.",
         "untitled": "Grupo sin título"
       }
-    },
-    "bullet": "Viñeta {index}"
+    }
   },
   "sectionCatalog": {
     "groups": {
@@ -455,10 +450,6 @@
   "validation": {
     "minChars": "Debe tener al menos {count, plural, one {# carácter} other {# caracteres}}",
     "maxChars": "Debe tener menos de {count, plural, one {# carácter} other {# caracteres}}",
-    "bulletsMin": "Escribe al menos {count, plural, one {# logro} other {# logros}}",
-    "bulletsMax": "Escribe como máximo {count, plural, one {# logro} other {# logros}}",
-    "bulletTooShort": "Cada logro debe tener más de {count} caracteres",
-    "bulletTooLong": "Cada logro debe tener menos de {count} caracteres",
     "postingRequired": "Primero pega la descripción del puesto",
     "postingTooLong": "Esa descripción es demasiado larga",
     "pdfTooLarge": "Ese PDF es demasiado grande"
