@@ -7,9 +7,9 @@ export type Account = { email: string; password: string }
  *
  * `playwright.config.ts` already sets the context's `Accept-Language`, which
  * settles a fresh run. This settles the rest: the cookie outranks
- * `Accept-Language`, so no earlier visit to `/es` in the same context can
- * leave a later navigation on a Spanish page being searched for English
- * accessible names.
+ * `Accept-Language` and the switcher writes it, so no earlier visit to `/es`
+ * in the same context can leave a later navigation on a Spanish page being
+ * searched for English accessible names.
  */
 export async function pinEnglish(page: Page) {
   await page.context().addCookies([

@@ -97,8 +97,9 @@ export async function updateDetails(
  * The account's interface language.
  *
  * Its own function rather than another optional field on `updateDetails`: this
- * column is not profile content the onboarding forms write, it is a standalone
- * preference — and it is read on every resume creation.
+ * column is not profile content the onboarding forms write, it is a preference
+ * the locale switcher writes on its own, and it is read on every resume
+ * creation.
  */
 export async function updateLocale(
   db: DbOrTx,

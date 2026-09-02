@@ -6,6 +6,11 @@
     "signOut": "Cerrar sesión",
     "login": "Iniciar sesión"
   },
+  "localeSwitcher": {
+    "label": "Idioma",
+    "en": "English",
+    "es": "Español"
+  },
   "auth": {
     "signUp": {
       "title": "Crear cuenta",

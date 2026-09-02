@@ -110,7 +110,7 @@ export async function updateDetails(
  * Records the language the account reads the app in.
  *
  * Only the interface: resumes already written keep their own `language`, so
- * changing it never retitles a document that has been sent. New resumes are
+ * switching never retitles a document that has been sent. New resumes are
  * written in whatever this last recorded.
  */
 export async function setLocale(

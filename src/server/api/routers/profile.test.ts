@@ -350,9 +350,8 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
   })
 
   /**
-   * The writer for a column the app otherwise only reads. Nothing in the
-   * interface calls it yet — there is no language picker — so this is the
-   * only thing standing between `user.locale` and being unreachable.
+   * The column existed a step before anything wrote to it. This is that
+   * writer — and the reason a new resume comes out in the right language.
    */
   describe("profile.setLocale", () => {
     it("records the caller's interface language", async () => {

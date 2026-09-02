@@ -26,7 +26,7 @@ export default defineConfig({
      * nothing else has decided one — so a machine set to Spanish would send
      * `/` to `/es` and fail these specs for a reason that has nothing to do
      * with what they test. `locale.spec.ts` is the exception: it asks for
-     * `/es` by URL, which outranks any negotiation.
+     * `/es` on purpose, by URL and through the switcher.
      */
     locale: "en-US",
     trace: "on-first-retry"

@@ -6,6 +6,11 @@
     "signOut": "Sign Out",
     "login": "Login"
   },
+  "localeSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "es": "Español"
+  },
   "auth": {
     "signUp": {
       "title": "Sign Up",

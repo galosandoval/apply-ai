@@ -34,15 +34,11 @@ export const profileRouter = createTRPCRouter({
     ),
 
   /**
-   * The interface language, on the account.
+   * The interface language, written by the locale switcher.
    *
-   * The URL is what changes the page — `/es` renders Spanish for anyone who
-   * asks for it, signed in or not. This is the separate question of what a
-   * *new resume* is written in, which is read from `user.locale` at creation
-   * and so has to be recorded rather than inferred per request.
-   *
-   * Nothing in the interface calls this yet: there is no language picker, by
-   * decision. Until something does, every account stays on the `'en'` default.
+   * The switcher navigates first and calls this after: the URL is what changes
+   * the page, and this is what makes the choice outlive the cookie — and what
+   * a new resume is written in, since `user.locale` is read at creation.
    */
   setLocale: protectedProcedure
     .input(setLocaleSchema)

@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/navigation-menu"
 import { signOut } from "~/lib/auth-client"
 import { appPath } from "~/lib/path"
+import { LocaleSwitcher } from "./locale-switcher"
 import { Logo } from "./logo"
 
 /** A shortcut back into onboarding, for working on it without re-registering. */
@@ -52,6 +53,9 @@ export function ProtectedNavbar({ children }: { children?: React.ReactNode }) {
             <NavLink href={appPath.onboarding}>{t("onboarding")}</NavLink>
           )}
           <NavLink href={appPath.resume}>{t("resumes")}</NavLink>
+          <NavigationMenuItem>
+            <LocaleSwitcher persist />
+          </NavigationMenuItem>
           <NavigationMenuItem asChild>
             <button
               className={navigationMenuTriggerStyle()}
