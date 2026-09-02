@@ -14,8 +14,7 @@
  * be looking at it in whichever interface language.
  */
 
-import { hasLocale } from "next-intl"
-import { routing } from "~/i18n/routing"
+import { type Locale, routing } from "~/i18n/routing"
 
 type Messages = Record<string, unknown>
 
@@ -34,19 +33,22 @@ function lookup(messages: Messages, path: string) {
   return typeof value === "string" ? value : undefined
 }
 
-async function readMessages(locale: string) {
+async function readMessages(locale: Locale) {
   return (await import(`../../../../messages/${locale}.json`))
     .default as Messages
 }
 
 /**
- * Resolves one heading from a message path.
+ * Resolves one heading from a message path, falling back to what the caller
+ * would otherwise have written.
  *
- * Returns `null` for a path neither language has, which is how an unknown
- * preset id is told apart from a translated one — the caller keeps whatever
- * the client displayed rather than writing a raw key onto the resume.
+ * The fallback is a required argument rather than a `null` return every caller
+ * remembers to handle: there is no call site that can do anything useful with
+ * "no heading", and a path neither language has is how an unknown preset id
+ * arrives — the caller keeps whatever the client displayed rather than writing
+ * a raw key onto the resume.
  */
-export type SectionLabeler = (path: string) => string | null
+export type SectionLabeler = (path: string, fallback: string) => string
 
 /**
  * A labeler for one resume's language, with the same English fallback the UI
@@ -54,21 +56,19 @@ export type SectionLabeler = (path: string) => string | null
  * on a document someone sends out is not.
  */
 export async function sectionLabelerFor(
-  language: string
+  language: Locale
 ): Promise<SectionLabeler> {
-  const locale = hasLocale(routing.locales, language)
-    ? language
-    : routing.defaultLocale
-
   const [messages, english] = await Promise.all([
-    readMessages(locale),
-    locale === routing.defaultLocale
+    readMessages(language),
+    language === routing.defaultLocale
       ? Promise.resolve(null)
       : readMessages(routing.defaultLocale)
   ])
 
-  return (path) =>
-    lookup(messages, path) ?? (english ? lookup(english, path) : null) ?? null
+  return (path, fallback) =>
+    lookup(messages, path) ??
+    (english ? lookup(english, path) : undefined) ??
+    fallback
 }
 
 /** The heading a core or generated section is created with. */

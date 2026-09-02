@@ -2,7 +2,9 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { asc, eq } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { toDownloadPayload } from "~/features/resume/resume-field-lens"
 import { callerFor } from "~/server/api/test-caller"
+import { downloadPdfSchema } from "~/server/db/crud-schema"
 import { type CreateResumeInput } from "~/server/modules/resume/resume.schema"
 import {
   connectTestDatabase,
@@ -419,6 +421,26 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         "Experiencia",
         "Formación académica"
       ])
+    })
+
+    it("carries the language through to what the print route is posted", async () => {
+      await db
+        .update(user)
+        .set({ locale: "es" })
+        .where(eq(user.id, fixture.owner.userId))
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const found = await caller.resume.readById({ resumeId })
+
+      // The column on its own is not the feature: the file only downloads as
+      // `curriculum.pdf` if the language reaches the request, and the payload
+      // is the one place between the two that can drop it.
+      expect(toDownloadPayload(found).language).toBe("es")
+      expect(downloadPdfSchema.parse(toDownloadPayload(found)).language).toBe(
+        "es"
+      )
     })
 
     it("snapshots skills and contact onto the resume", async () => {

@@ -1,6 +1,7 @@
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
+import { type Locale } from "~/i18n/routing"
 import { generatedSectionKinds } from "~/server/modules/resume/section.service"
 
 /**
@@ -68,7 +69,7 @@ export type DraftInput = {
    * job worked in Spanish, and either way it is the user who decided what
    * language their resume is in, not the company that wrote the advert.
    */
-  language: string
+  language: Locale
 }
 
 /** Strips characters that would let pasted text restructure the prompt. */
@@ -132,11 +133,14 @@ Secciones:
 Escribe el currículum entero en español neutro de Latinoamérica, sea cual sea el idioma de la vacante. Usa un registro profesional y evita el voseo y los regionalismos.`
 
 /**
- * The prompt each language is written with. English is the fallback: a locale
- * with no prompt of its own is a resume in a language nobody proofread, which
- * is worse than one in the language the app already shipped in.
+ * The prompt each language is written with.
+ *
+ * Exhaustive over `Locale` on purpose, rather than a lookup with an English
+ * fallback: a locale that ships without a prompt of its own would quietly
+ * produce resumes in a language nobody asked for, and a type error at the
+ * table is where that should be found.
  */
-const generationPrompts: Record<string, string> = {
+const generationPrompts: Record<Locale, string> = {
   en: englishPrompt,
   es: spanishPrompt
 }
@@ -149,7 +153,7 @@ const generationPrompts: Record<string, string> = {
  * validate for us — is a typed failure rather than a shape nobody checked.
  */
 export async function generateResume(input: DraftInput) {
-  const prompt = generationPrompts[input.language] ?? englishPrompt
+  const prompt = generationPrompts[input.language]
 
   const { object } = await generateObject({
     model: openai("gpt-4.1"),

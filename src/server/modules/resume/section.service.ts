@@ -76,7 +76,7 @@ export function defaultSections(
 ): NewSection[] {
   return coreSectionDefaults.map((section) => ({
     ...section,
-    label: label(sectionLabelPath(section.kind)) ?? section.label,
+    label: label(sectionLabelPath(section.kind), section.label),
     content: section.kind === "skills" ? { groups: skillGroups } : null
   }))
 }
@@ -129,29 +129,37 @@ export type GeneratedSectionKind = (typeof generatedSectionKinds)[number]
  * A summary is the part of a resume most specific to the posting, so it sits
  * above the core sections; strengths are a footnote to a history, so below.
  */
-const generatedSectionAllowlist: Record<
-  GeneratedSectionKind,
-  {
-    componentType: SectionComponentType
-    placement: Placement
-    /** Turns the model's entries into the shape that component renders. */
-    content: (entries: string[]) => AnySectionContent
-  }
-> = {
-  summary: {
-    componentType: "richText",
-    placement: "above",
-    // One entry per paragraph, joined the way markdown separates them.
-    content: (entries) => ({ markdown: entries.join("\n\n") })
-  },
-  strengths: {
-    componentType: "tagList",
-    placement: "below",
-    // Short capability phrases, drawn as marks a reader takes in at a
-    // glance rather than a second, weaker Experience.
-    content: (entries) => ({ tags: entries })
-  }
+type GeneratedSectionRule = {
+  componentType: SectionComponentType
+  placement: Placement
+  /** Turns the model's entries into the shape that component renders. */
+  content: (entries: string[]) => AnySectionContent
 }
+
+const generatedSectionAllowlist = new Map<
+  GeneratedSectionKind,
+  GeneratedSectionRule
+>([
+  [
+    "summary",
+    {
+      componentType: "richText",
+      placement: "above",
+      // One entry per paragraph, joined the way markdown separates them.
+      content: (entries) => ({ markdown: entries.join("\n\n") })
+    }
+  ],
+  [
+    "strengths",
+    {
+      componentType: "tagList",
+      placement: "below",
+      // Short capability phrases, drawn as marks a reader takes in at a
+      // glance rather than a second, weaker Experience.
+      content: (entries) => ({ tags: entries })
+    }
+  ]
+])
 
 /** One extra section as the model asked for it, before the allowlist is applied. */
 type RequestedSection = { kind: GeneratedSectionKind; entries: string[] }
@@ -176,13 +184,11 @@ export function sectionsFromGeneration(
   const taken = new Set<string>()
 
   const accepted = requested.flatMap((section) => {
-    // `hasOwn` rather than a truthiness check: the kind is a string the model
-    // wrote, and `generated["constructor"]` finds `Object.prototype`'s and
-    // walks straight past one. The schema already rejects it — this is what
-    // keeps that true for any other caller.
-    const allowed = Object.hasOwn(generatedSectionAllowlist, section.kind)
-      ? generatedSectionAllowlist[section.kind]
-      : undefined
+    // A `Map` rather than an object: the kind is a string the model wrote, and
+    // `generated["constructor"]` reaches `Object.prototype`'s on a plain
+    // object. The schema already rejects it — a `Map` is what keeps that true
+    // for any other caller, without a guard anyone can forget to write.
+    const allowed = generatedSectionAllowlist.get(section.kind)
     const entries = section.entries.filter((entry) => entry.trim())
 
     if (!allowed || taken.has(section.kind) || !entries.length) return []
@@ -194,7 +200,7 @@ export function sectionsFromGeneration(
         placement: allowed.placement,
         section: {
           kind: "custom" as const,
-          label: label(sectionLabelPath(section.kind)) ?? section.kind,
+          label: label(sectionLabelPath(section.kind), section.kind),
           componentType: allowed.componentType,
           content: allowed.content(entries)
         }
@@ -270,7 +276,7 @@ async function presetLabel(
   const language = await repo.findResumeLanguage(db, resumeId)
   const label = await sectionLabelerFor(language)
 
-  return label(presetLabelPath(input.presetId)) ?? input.label
+  return label(presetLabelPath(input.presetId), input.label)
 }
 
 /**

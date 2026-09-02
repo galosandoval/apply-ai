@@ -7,6 +7,7 @@
  */
 
 import { type ResumeDocumentData } from "~/components/resume-document"
+import { type DownloadPdfSchema } from "~/server/db/crud-schema"
 import { type ResumeFieldTarget } from "~/lib/resume-field-path"
 import {
   readSectionContentString,
@@ -172,4 +173,17 @@ export function toDocumentData(resume: SavedResume): ResumeDocumentData {
     style: resume.style,
     accent: resume.accent
   }
+}
+
+/**
+ * What the print route is posted: the document, plus the language it is
+ * written in.
+ *
+ * The language is not part of `ResumeDocumentData` because nothing on the page
+ * is drawn from it — it names the file the reader ends up with, which only the
+ * route decides. Keeping it out of the document data is what stops the on-screen
+ * renderer from being handed a field it has no use for.
+ */
+export function toDownloadPayload(resume: SavedResume): DownloadPdfSchema {
+  return { ...toDocumentData(resume), language: resume.language }
 }

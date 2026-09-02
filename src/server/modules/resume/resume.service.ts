@@ -5,7 +5,7 @@ import {
   parseResumeFieldPath,
   type ResumeFieldTarget
 } from "~/lib/resume-field-path"
-import { routing } from "~/i18n/routing"
+import { type Locale, toLocale } from "~/i18n/routing"
 import { assertOwnsResume } from "~/server/api/ownership"
 import {
   generatedResumeSchema,
@@ -102,7 +102,7 @@ type CreateOptions = {
    */
   sections?: sections.NewSection[]
   /** The language it is written in. Defaults to the account's `locale`. */
-  language?: string
+  language?: Locale
 }
 
 /**
@@ -196,10 +196,10 @@ async function readAccountSeed(db: Database, userId: string) {
 type AccountSeed = Awaited<ReturnType<typeof readAccountSeed>>
 
 /** The account's interface language — what a new resume is written in. */
-async function readUserLocale(db: Database, userId: string) {
+async function readUserLocale(db: Database, userId: string): Promise<Locale> {
   const account = await repo.findAccount(db, userId)
 
-  return account?.locale ?? routing.defaultLocale
+  return toLocale(account?.locale)
 }
 
 /**
@@ -284,7 +284,7 @@ export async function generate(
   // The account's own language, not the one the request came in on: this is
   // the resume's language from here on, and it is what the model is told to
   // write in.
-  const language = account.details?.locale ?? routing.defaultLocale
+  const language = toLocale(account.details?.locale)
 
   const drafted = await generateResume({
     profession: account.details?.profession ?? "",

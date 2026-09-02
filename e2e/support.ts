@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test"
+import { baseURL } from "../playwright.config"
 
 export type Account = { email: string; password: string }
 
@@ -12,8 +13,11 @@ export type Account = { email: string; password: string }
  * searched for English accessible names.
  */
 export async function pinEnglish(page: Page) {
+  // Scoped by `url` rather than by a `domain` spelt out here: the host is the
+  // config's to decide, and a copy of it in this file is one that goes stale
+  // without failing loudly.
   await page.context().addCookies([
-    { name: "NEXT_LOCALE", value: "en", domain: "localhost", path: "/" }
+    { name: "NEXT_LOCALE", value: "en", url: baseURL }
   ])
 }
 

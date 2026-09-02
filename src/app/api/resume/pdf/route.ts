@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server"
+import { type Locale, toLocale } from "~/i18n/routing"
 import { getServerAuthSession } from "~/server/auth"
 import { downloadPdfSchema } from "~/server/db/crud-schema"
 import { renderResumePdf } from "~/server/modules/profile/render-resume-pdf"
@@ -47,10 +48,10 @@ export async function POST(req: NextRequest) {
  * an accent.
  */
 function pdfFilename(language: string | undefined) {
-  const names: Record<string, string> = {
+  const names: Record<Locale, string> = {
     en: "resume.pdf",
     es: "curriculum.pdf"
   }
 
-  return names[language ?? "en"] ?? "resume.pdf"
+  return names[toLocale(language)]
 }

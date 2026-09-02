@@ -5,7 +5,13 @@ import { defineConfig, devices } from "@playwright/test"
  * `reuseExistingServer` would then run the whole suite against that.
  */
 const port = process.env.PLAYWRIGHT_PORT ?? "3100"
-const baseURL = `http://localhost:${port}`
+
+/**
+ * Exported because `support.ts` pins the locale cookie against it. A cookie is
+ * scoped to a host, and a second copy of that host in the helpers is one that
+ * silently stops matching the moment this moves.
+ */
+export const baseURL = `http://localhost:${port}`
 
 /**
  * Three flows only — sign up, sign in, download a PDF. These exist because the

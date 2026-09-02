@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
 import { type PgUpdateSetSource } from "drizzle-orm/pg-core"
+import { type Locale, toLocale } from "~/i18n/routing"
 import { type ContactColumn, type ResumeColumn } from "~/lib/resume-field-path"
 import { type ResumeStyleStamp } from "~/lib/resume-style"
 import { type DbOrTx } from "~/server/db/types"
@@ -44,16 +45,22 @@ export async function findResume(db: DbOrTx, resumeId: string) {
  * The language the resume is written in, for the headings written into it.
  *
  * Its own read rather than a column off `findResume`: a caller that needs the
- * language is not loading a resume, and `'en'` for a row that has vanished is
- * the same answer the column's default gives.
+ * language is not loading a resume, and the default locale for a row that has
+ * vanished is the same answer the column's default gives.
+ *
+ * Narrowed to a `Locale` here, at the read, so no caller downstream has to
+ * decide what an unshipped tag in a `text` column means.
  */
-export async function findResumeLanguage(db: DbOrTx, resumeId: string) {
+export async function findResumeLanguage(
+  db: DbOrTx,
+  resumeId: string
+): Promise<Locale> {
   const rows = await db
     .select({ language: resume.language })
     .from(resume)
     .where(eq(resume.id, resumeId))
 
-  return rows[0]?.language ?? "en"
+  return toLocale(rows[0]?.language)
 }
 
 export async function listResumes(db: DbOrTx, userId: string) {
