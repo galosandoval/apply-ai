@@ -49,22 +49,14 @@ export async function measurePrintedFlow(
  * never navigates: no round trip, no session to forward, and no requirement
  * that the server be able to reach its own public URL.
  *
- * It is handed markup twice, and that is the point. The first document is the
- * continuous flow, which the browser lays out so it can be measured; the second
- * is the same document dealt onto sheets by the same `paginate` the editor
- * calls, from measurements taken by the same `measureResumeDocument`. So the
- * PDF consumes the assignment the preview showed rather than one Chromium
- * arrived at on its own, and the two cannot drift apart. The cost is one extra
- * `setContent` inside a browser that is already launched.
- *
- * Throws rather than falls back when there is nothing to measure: printing the
- * flow instead would hand the user the very document this route exists to stop
- * producing, and it would do it silently.
- *
- * The margin comes with the sheets. Each page element carries the style's page
- * padding on all four sides, so `page.pdf` is asked for a zero margin on all
- * four — which is what gives page two the margins page one used to get for free
- * from the document's own padding.
+ * It is handed markup twice. The first document is the continuous flow, which
+ * the browser lays out so it can be measured; the second is the same document
+ * dealt onto sheets by the same `paginate` the editor calls, from measurements
+ * taken by the same `measureResumeDocument`. It throws rather than falls back
+ * when there is nothing to measure, and asks `page.pdf` for a zero margin on
+ * all four sides because the sheets carry the margin themselves. Why the PDF is
+ * printed this way rather than left to Chromium's own fragmenter is argued in
+ * `docs/editable-resume.md`, under "The PDF consumes the preview's assignment".
  *
  * Where the browser comes from is `launch-print-browser.ts`'s problem — it
  * differs per host, and nothing else here does.

@@ -9,10 +9,9 @@ import { type SelectHandle } from "~/lib/resume-selection"
  * *list*. A block is the smallest run of the document that is never cut: it is
  * assigned whole to exactly one page, or it is not assigned at all.
  *
- * That is the whole reason this type exists. `break-inside: avoid` on a job
- * asks the browser to keep a job whole, which is how a nine-bullet role comes
- * to throw itself onto the next page and waste most of a sheet. The block is
- * the unit that replaces it, and it is deliberately smaller than an entry.
+ * The block is deliberately smaller than an entry, so a job may split between
+ * two of its own bullets. Why the entry is the wrong unit is argued in
+ * `docs/editable-resume.md`, under "The document is a block list".
  *
  * Nothing here knows how a block is drawn. The node is opaque, the spacing is
  * a name rather than a value, and the key is arithmetic — so the list can be

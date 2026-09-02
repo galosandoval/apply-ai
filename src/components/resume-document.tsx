@@ -167,16 +167,15 @@ export function ResumeDocument({
 
   return (
     /*
-      Normal flow, not a fixed page height with `overflow-hidden`: content past
-      the first page used to be silently deleted from the document. The page
+      Normal flow, not a fixed page height with `overflow-hidden`. The page
       still has a printable width in page mode; height is whatever the content
       needs. What one sheet has room for is `--resume-page-content-height`, for
       whoever asks.
 
       An assignment turns that flow into a stack of sheets, and the sheets do
-      have the height — but still nothing that hides what does not fit. A page
-      visibly too full is a bug the user can see; a page that quietly ate a
-      paragraph is not.
+      have the height — but still nothing that hides what does not fit. Why
+      nothing here may clip: `docs/editable-resume.md`, under "The document is
+      a block list".
     */
     <div
       className={documentClassName(
@@ -212,8 +211,7 @@ const paperClassName = "bg-resume-paper px-resume-page-x py-resume-page-y"
  * than the size of whatever happens to be on it. The margin is padding *inside*
  * the sheet, on all four sides, because the border box is the paper.
  *
- * Nothing here hides an overflow, deliberately: read the comment in
- * `ResumeDocument` about the page that used to clip. `relative` is what makes
+ * Nothing here hides an overflow, deliberately, and `relative` is what makes
  * that promise true rather than merely unhidden — see `Sheet`. The gap to the
  * next sheet and the break that ends it are `.resume-page-sheet` in
  * `global.css`, which a utility cannot say.
@@ -261,9 +259,8 @@ function PageStack({
 
         An assignment is a measurement of a document as it was a moment ago, and
         a block added since is a block no page claims. Drawing them is the same
-        choice the overflowing page is: a resume with an unexpected last page is
-        a document the user can see is wrong, and one that quietly lost a job is
-        not. The next measurement replaces the assignment and the page goes.
+        choice the overflowing page is, for the reason the doc gives. The next
+        measurement replaces the assignment and the page goes.
 
         It is marked, because it is not one of the pages that were assigned: a
         parser counting the assignment against the markup would otherwise find
@@ -290,10 +287,9 @@ function PageStack({
  *
  * `--resume-page-order` stacks the sheets in reverse: the first page paints
  * above the second, the second above the third. Without it a block too tall for
- * its page runs *under* the next sheet's opaque background, which is the
- * clipping the document comment forbids, arrived at by paint order instead of
- * by `overflow-hidden`. Reversed, the overflow lands on top of the page below
- * and is a bug the user can see — which is the whole point.
+ * its page runs *under* the next sheet's opaque background — clipping arrived
+ * at by paint order instead of by `overflow-hidden`, which
+ * `docs/editable-resume.md` argues is the one thing a page may not do.
  *
  * It is markup rather than style because it counts the sheets, and CSS cannot;
  * `.resume-page-sheet` in `global.css` is what reads it.
@@ -328,21 +324,11 @@ function Sheet({
 /**
  * The heading of the section a page picks up part-way through, redrawn.
  *
- * The same title and the same rule in the same tokens, so a reader arriving at
- * the top of page two knows what they are looking at. The native mechanism for
- * this is a table `thead`, and a layout table is on the permanent exclusion
- * list — see `docs/resume-style.md`. So the heading is repeated from the
- * assignment instead.
- *
- * It carries no block key. The key is what a measurement is filed under, and
- * two elements answering to one key is a height measured twice; this element is
- * a repeat of a block rather than a block. `data-resume-continued` is how a
- * parser — or a test — tells it from a genuine second section of the same name,
- * and the title itself is left alone: appending "(continued)" would be the
- * renderer editing the user's own section name.
- *
- * The height it costs is not free, and `paginate` reserves it: a page that
- * opens mid-section is measured with one heading already on it.
+ * The same title and the same rule in the same tokens, redrawn from the page
+ * assignment rather than repeated by a table `thead`. Why it is computed here,
+ * why it carries no block key, why the marker rather than the title says it is
+ * a continuation, and why `paginate` reserves its height: see
+ * `docs/editable-resume.md`, under "The continued heading is computed".
  */
 function continuationHeading(blocks: ResumeBlock[], sectionId: string) {
   const heading = blocks.find(

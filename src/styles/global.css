@@ -180,13 +180,10 @@
     --resume-paper: #ffffff;
 
     /*
-      The space between one sheet and the next.
-
-      The app's background showing through between two pieces of paper, which
-      is the whole reason a second page reads as a second page at a glance.
-      Read by `.resume-page-sheet`, which is also where it collapses for print
-      — on paper the sheets are actually separate and there is nothing between
-      them to show.
+      The space between one sheet and the next: the app's background showing
+      through between two pieces of paper. Read by `.resume-page-sheet`, which
+      is also where it collapses for print. Why the page is a real sheet at all
+      is in `docs/editable-resume.md`, under "The page is a real sheet".
     */
     --resume-page-gap: 1.5rem;
 
@@ -228,7 +225,6 @@
       var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
     --resume-name-weight: 700;
-    --resume-name-case: uppercase;
     --resume-title-weight: 500;
     --resume-title-case: none;
     --resume-title-style: normal;
@@ -337,10 +333,10 @@
 
     /*
       What one sheet has room for: the page less the margin at its head and
-      foot. Derived rather than restated, because the number is handed to the
-      code that decides where a break lands — and a hand-written copy that drifts
-      from the padding the page is drawn with does not fail a test, it cuts a
-      line of text in half.
+      foot. Derived rather than restated: the number is handed to the code that
+      decides where a break lands, and a hand-written copy that drifts from the
+      padding the page is drawn with cuts a line of text in half. See
+      `docs/editable-resume.md`, under "The page is a real sheet".
 
       Here rather than on `:root` for the reason the whole block is here: the
       page padding is re-valued by a style and by reflow, and a `var()` freezes
@@ -388,7 +384,6 @@
     --resume-leading-ratio: 1.32;
 
     --resume-name-weight: 600;
-    --resume-name-case: none;
     --resume-title-weight: 400;
     --resume-title-style: italic;
     --resume-heading-weight: 600;
@@ -438,7 +433,6 @@
     --resume-leading-ratio: 1.4;
 
     --resume-name-weight: 700;
-    --resume-name-case: uppercase;
     --resume-title-weight: 500;
     --resume-title-style: normal;
     --resume-heading-weight: 600;
@@ -482,7 +476,6 @@
     --resume-leading-display: 1.05;
 
     --resume-name-weight: 800;
-    --resume-name-case: none;
     --resume-title-weight: 500;
     --resume-title-style: normal;
     --resume-heading-weight: 800;
@@ -614,7 +607,6 @@
   .resume-name {
     font-family: var(--resume-font-heading);
     font-weight: var(--resume-name-weight);
-    text-transform: var(--resume-name-case);
   }
 
   .resume-title {
@@ -701,12 +693,11 @@
   /*
     What separates one sheet from the next.
 
-    The gap is the app's background between two pieces of paper — a margin
-    rather than padding, because it is space *around* the sheet and the sheet's
-    own padding is the print margin. In print there is nothing between two
-    pages to show, so the gap collapses and the break does the separating: the
-    element boundary and the sheet boundary become the same boundary, which is
-    the point of drawing pages at all.
+    The gap is a margin rather than padding, because it is space *around* the
+    sheet and the sheet's own padding is the print margin. In print the gap
+    collapses and the break does the separating, so the element boundary and
+    the sheet boundary become the same boundary — see `docs/editable-resume.md`,
+    under "The page is a real sheet".
 
     Both are between-sheets rules, so neither reaches the last sheet. A trailing
     margin is a gap below nothing, and a trailing `break-after: page` is the
