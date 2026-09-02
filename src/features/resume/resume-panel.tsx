@@ -10,9 +10,9 @@ import {
   type DisplaySectionPreset,
   searchSectionCatalog
 } from "~/lib/section-catalog"
-import { type SectionComponentType } from "~/lib/section-content"
 import { MarkdownField } from "~/features/resume/markdown-field"
 import {
+  type AddedSectionPreset,
   type PanelAction,
   type PanelField,
   type PanelList,
@@ -38,7 +38,7 @@ export function ResumePanel({
   onChange: (path: string, value: string) => void
   onCommit: () => void
   /** Offered on the resume itself, which is the thing that owns sections. */
-  onAddSection?: (label: string, componentType: SectionComponentType) => void
+  onAddSection?: (preset: AddedSectionPreset) => void
   /**
    * Back to the resume. Present whenever something is selected: clicking past
    * the document also clears it, but on a phone the document is behind a tab
@@ -308,7 +308,7 @@ function List({
 function AddSection({
   onAdd
 }: {
-  onAdd: (label: string, componentType: SectionComponentType) => void
+  onAdd: (preset: AddedSectionPreset) => void
 }) {
   const t = useTranslations("resumePanel")
   const [query, setQuery] = useState("")
@@ -316,7 +316,7 @@ function AddSection({
   const groups = searchSectionCatalog(query, catalogT)
 
   const add = (preset: DisplaySectionPreset) => {
-    onAdd(preset.label, preset.componentType)
+    onAdd(preset)
     setQuery("")
   }
 

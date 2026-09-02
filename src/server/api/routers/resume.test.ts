@@ -402,6 +402,25 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(found.jobDescription).toBe("Senior TypeScript engineer, remote")
     })
 
+    it("takes the language from the account and writes the headings in it", async () => {
+      await db
+        .update(user)
+        .set({ locale: "es" })
+        .where(eq(user.id, fixture.owner.userId))
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.language).toBe("es")
+      expect(found.sections.map((row) => row.label)).toEqual([
+        "Habilidades",
+        "Experiencia",
+        "Formación académica"
+      ])
+    })
+
     it("snapshots skills and contact onto the resume", async () => {
       const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
@@ -787,6 +806,42 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(added?.kind).toBe("custom")
       expect(added?.componentType).toBe("list")
       expect(added?.content).toEqual({ items: [] })
+    })
+
+    it("writes the heading the preset is called, not the one it was sent", async () => {
+      const { caller, resumeId } = await withResume()
+
+      // What the picker displayed is in the *interface's* language; the
+      // resume's own language decides what goes onto the document.
+      const { sectionId } = await caller.section.add({
+        resumeId,
+        label: "Proyectos",
+        presetId: "projects",
+        componentType: "twoColumn"
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.find((row) => row.id === sectionId)?.label).toBe(
+        "Projects"
+      )
+    })
+
+    it("keeps the label it was sent for a preset the messages don't know", async () => {
+      const { caller, resumeId } = await withResume()
+
+      const { sectionId } = await caller.section.add({
+        resumeId,
+        label: "Certificates",
+        presetId: "not-a-preset",
+        componentType: "list"
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.find((row) => row.id === sectionId)?.label).toBe(
+        "Certificates"
+      )
     })
 
     it("renames a section through the path grammar", async () => {

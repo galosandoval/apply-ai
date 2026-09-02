@@ -1,4 +1,5 @@
 import { createInsertSchema } from "drizzle-zod"
+import { invalid } from "~/lib/validation-message"
 import { school, user, work } from "./schema"
 import { z } from "zod"
 
@@ -6,19 +7,19 @@ const contactSchema = z.object({
   phone: z.string().optional(),
   linkedIn: z.string().optional(),
   portfolio: z.string().optional(),
-  location: z.string().min(3, "Must be at least 3 characters")
+  location: z.string().min(3, invalid("minChars", { count: 3 }))
 })
 
 export const insertContactSchema = z
   .object({
     firstName: z
       .string()
-      .min(1, "Must be at least 1 characters")
-      .max(50, "Must be less than 50 characters"),
+      .min(1, invalid("minChars", { count: 1 }))
+      .max(50, invalid("maxChars", { count: 50 })),
     lastName: z
       .string()
-      .min(1, "Must be at least 1 characters")
-      .max(50, "Must be less than 50 characters"),
+      .min(1, invalid("minChars", { count: 1 }))
+      .max(50, invalid("maxChars", { count: 50 })),
 
     profession: z.string().min(3).max(255)
   })
@@ -36,8 +37,8 @@ export type InsertContactSchema = z.infer<typeof insertContactSchema>
 export const updateProfileSchema = createInsertSchema(user, {
   profession: (schema) =>
     schema.profession
-      .min(3, "Must be at least 3 characters")
-      .max(255, "Must be less than 255 characters")
+      .min(3, invalid("minChars", { count: 3 }))
+      .max(255, invalid("maxChars", { count: 255 }))
 }).pick({
   firstName: true,
   lastName: true,
@@ -51,18 +52,18 @@ export const insertEducationSchema = z.object({
     id: (schema) => schema.id.optional(),
     degree: (schema) =>
       schema.degree
-        .min(3, "Must be at least 3 characters")
-        .max(255, "Must be less than 255 characters"),
+        .min(3, invalid("minChars", { count: 3 }))
+        .max(255, invalid("maxChars", { count: 255 })),
     name: (schema) =>
       schema.name
-        .min(3, "Must be at least 3 characters")
-        .max(255, "Must be less than 255 characters"),
+        .min(3, invalid("minChars", { count: 3 }))
+        .max(255, invalid("maxChars", { count: 255 })),
     description: (schema) =>
       schema.description
-        .max(500, "Must be less than 500 characters")
+        .max(500, invalid("maxChars", { count: 500 }))
         .optional(),
     location: (schema) =>
-      schema.location.max(255, "Must be less than 255 characters").optional(),
+      schema.location.max(255, invalid("maxChars", { count: 255 })).optional(),
     startDate: (schema) => schema.startDate.min(4).max(50),
     endDate: (schema) => schema.endDate.min(4).max(50),
     gpa: (schema) => schema.gpa.optional()
@@ -102,13 +103,13 @@ const bulletsSchema = z
 
     const issue =
       filled.length < MIN_BULLETS
-        ? `Write at least ${MIN_BULLETS} accomplishments`
+        ? invalid("bulletsMin", { count: MIN_BULLETS })
         : filled.length > MAX_BULLETS
-          ? `Write at most ${MAX_BULLETS} accomplishments`
+          ? invalid("bulletsMax", { count: MAX_BULLETS })
           : filled.some((bullet) => bullet.trim().length < 6)
-            ? "Each accomplishment must be more than 6 characters"
+            ? invalid("bulletTooShort", { count: 6 })
             : filled.some((bullet) => bullet.length > MAX_BULLET_LENGTH)
-              ? `Each accomplishment must be less than ${MAX_BULLET_LENGTH} characters`
+              ? invalid("bulletTooLong", { count: MAX_BULLET_LENGTH })
               : null
 
     if (issue) ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue })
@@ -119,17 +120,17 @@ export const insertExperienceSchema = z.object({
     id: (schema) => schema.id.optional(),
     name: (schema) =>
       schema.name
-        .min(3, "Must be at least 3 characters")
-        .max(255, "Must be less than 255 characters"),
+        .min(3, invalid("minChars", { count: 3 }))
+        .max(255, invalid("maxChars", { count: 255 })),
     bullets: bulletsSchema,
     endDate: (schema) =>
-      schema.endDate.min(3, "Must be at least 3 characters").max(50),
+      schema.endDate.min(3, invalid("minChars", { count: 3 })).max(50),
     startDate: (schema) =>
-      schema.startDate.min(3, "Must be at least 3 characters").max(50),
+      schema.startDate.min(3, invalid("minChars", { count: 3 })).max(50),
     title: (schema) =>
       schema.title
-        .min(3, "Must be at least 3 characters")
-        .max(255, "Must be less than 255 characters")
+        .min(3, invalid("minChars", { count: 3 }))
+        .max(255, invalid("maxChars", { count: 255 }))
   })
     .omit({ userId: true, resumeId: true })
     .array()
@@ -184,8 +185,8 @@ export const insertResumeSchema = z
   .object({
     profession: z
       .string()
-      .min(3, "Must be at least 3 characters")
-      .max(255, "Must be less than 255 characters"),
+      .min(3, invalid("minChars", { count: 3 }))
+      .max(255, invalid("maxChars", { count: 255 })),
     /** The posting this was drafted against, kept on the resume. */
     jobDescription: z.string().max(20_000),
     contact: resumeContactSchema
@@ -232,7 +233,13 @@ export const downloadPdfSchema = insertResumeSchema
      * default and ignores an accent that is not a hex colour.
      */
     style: z.string().max(32).optional(),
-    accent: z.string().max(32).optional()
+    accent: z.string().max(32).optional(),
+    /**
+     * The document's own language, which names the file it downloads as.
+     * Optional and loose for the same reason the style is: the route falls back
+     * to English for anything it does not recognise.
+     */
+    language: z.string().max(8).optional()
   })
 
 export type DownloadPdfSchema = z.infer<typeof downloadPdfSchema>

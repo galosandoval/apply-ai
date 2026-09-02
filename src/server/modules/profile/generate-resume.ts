@@ -1,6 +1,7 @@
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
+import { generatedSectionKinds } from "~/server/modules/resume/section.service"
 
 /**
  * The shape the model must return.
@@ -31,13 +32,18 @@ export const generatedResumeSchema = z.object({
     })
   ),
   /**
-   * The extra sections, as *requested* rather than as accepted: `label` is a
-   * plain string because a schema the model writes the labels for cannot
-   * enforce an allowlist. What is actually rendered is decided by
-   * `sectionsFromGeneration`, in the module that owns what a section is.
+   * The extra sections, as *requested* rather than as accepted: the model names
+   * a `kind` from a fixed set instead of writing a heading, so the same
+   * generation can be asked for in any language and still produce sections this
+   * app knows how to draw. What is actually rendered — and what the heading
+   * says — is decided by `sectionsFromGeneration`, in the module that owns what
+   * a section is.
    */
   sections: z.array(
-    z.object({ label: z.string(), entries: z.array(z.string()) })
+    z.object({
+      kind: z.enum(generatedSectionKinds),
+      entries: z.array(z.string())
+    })
   )
 })
 
@@ -55,6 +61,14 @@ export type DraftInput = {
   experience: string
   education: string
   jobDescription: string
+  /**
+   * The language to write in, from `resume.language`.
+   *
+   * Passed explicitly and never inferred: a posting is often in English for a
+   * job worked in Spanish, and either way it is the user who decided what
+   * language their resume is in, not the company that wrote the advert.
+   */
+  language: string
 }
 
 /** Strips characters that would let pasted text restructure the prompt. */
@@ -63,9 +77,15 @@ function cleanupString(input: string): string {
 }
 
 /**
- * The one prompt that writes a resume.
+ * The prompt that writes a resume, one per language.
  *
- * The anti-fabrication rule is the point of it. A generator told to produce
+ * A translated prompt rather than an English prompt with "answer in Spanish"
+ * appended: the second gets a Spanish resume written to English conventions,
+ * and the conventions are half of what a resume is. Each one is written in the
+ * language it produces, so the model is reading the register it is being asked
+ * to write in.
+ *
+ * The anti-fabrication rule is the point of both. A generator told to produce
  * keywords for a recruiter and told nothing about invention will manufacture
  * the coverage it is rewarded for, and the user finds out in an interview. The
  * posting's vocabulary is still used — bounded to what the history supports.
@@ -75,7 +95,7 @@ function cleanupString(input: string): string {
  * resume optimises for systems a decade out of date and reads badly to the
  * human who decides.
  */
-const generationPrompt = `You write a resume for one specific job posting, using only what the user has actually done.
+const englishPrompt = `You write a resume for one specific job posting, using only what the user has actually done.
 
 Rules:
 - Every employer, school, job title, date, number and skill in your answer must appear in the user's history. Never invent one, and never move an accomplishment from one employer to another.
@@ -86,10 +106,40 @@ Rules:
 
 Sections:
 - Always return the user's experience and education.
-- You may also return up to two extra sections, and only these, each as one entry of "sections":
-  - "Summary": 1 to 2 short paragraphs written for this posting, one entry per paragraph.
-  - "Strengths": 3 to 6 short capability phrases that are not tied to a single employer, one entry each. A few words each, noun phrases — not sentences, and not punctuated as sentences.
-- Omit either if the history does not support it. Any other section is discarded.`
+- You may also return up to two extra sections, and only these, each as one entry of "sections", named by its "kind":
+  - "summary": 1 to 2 short paragraphs written for this posting, one entry per paragraph.
+  - "strengths": 3 to 6 short capability phrases that are not tied to a single employer, one entry each. A few words each, noun phrases — not sentences, and not punctuated as sentences.
+- Omit either if the history does not support it.
+
+Write every word of the resume in English, whatever language the job posting is in.`
+
+const spanishPrompt = `Escribes un currículum para una vacante concreta, usando únicamente lo que la persona ha hecho de verdad.
+
+Reglas:
+- Toda empresa, institución, puesto, fecha, cifra y habilidad que aparezca en tu respuesta debe estar en el historial de la persona. Nunca inventes ninguna, y nunca traslades un logro de una empresa a otra.
+- Cuando la vacante describa algo que la persona sí ha hecho, descríbelo con el vocabulario de la propia vacante. Nunca atribuyas una tecnología, una responsabilidad o un resultado que el historial no respalde, ni repitas frases de la vacante por repetirlas.
+- Reescribir y reordenar el historial para empezar por lo que esta vacante pide es el trabajo. Agregarle cosas no lo es.
+- Cada puesto lleva de 3 a 6 logros, de una oración cada uno.
+- El currículum no pasa de una página.
+
+Secciones:
+- Devuelve siempre la experiencia y la formación de la persona.
+- Puedes devolver además hasta dos secciones extra, y solo estas, cada una como una entrada de "sections", nombrada por su "kind":
+  - "summary": 1 o 2 párrafos breves escritos para esta vacante, una entrada por párrafo.
+  - "strengths": de 3 a 6 frases cortas de capacidad que no dependan de un solo empleo, una entrada cada una. De pocas palabras, sintagmas nominales, sin forma de oración y sin puntuación de oración.
+- Omite cualquiera de las dos si el historial no la respalda.
+
+Escribe el currículum entero en español neutro de Latinoamérica, sea cual sea el idioma de la vacante. Usa un registro profesional y evita el voseo y los regionalismos.`
+
+/**
+ * The prompt each language is written with. English is the fallback: a locale
+ * with no prompt of its own is a resume in a language nobody proofread, which
+ * is worse than one in the language the app already shipped in.
+ */
+const generationPrompts: Record<string, string> = {
+  en: englishPrompt,
+  es: spanishPrompt
+}
 
 /**
  * Drafts a resume. The seam tests stub, and the only place the model is called.
@@ -99,10 +149,12 @@ Sections:
  * validate for us — is a typed failure rather than a shape nobody checked.
  */
 export async function generateResume(input: DraftInput) {
+  const prompt = generationPrompts[input.language] ?? englishPrompt
+
   const { object } = await generateObject({
     model: openai("gpt-4.1"),
     schema: generatedResumeSchema,
-    prompt: `${generationPrompt}
+    prompt: `${prompt}
 
 Profession: ${input.profession}
 Work Experience: ${cleanupString(input.experience)}

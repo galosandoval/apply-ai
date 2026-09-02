@@ -331,7 +331,7 @@ function PdfPreviewButton({ resume }: { resume: DownloadPdfSchema }) {
       type="button"
       variant="secondary"
     >
-      Preview PDF
+      {t("previewPdf")}
     </Button>
   )
 }

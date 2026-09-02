@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl"
 import { useRouter } from "~/i18n/navigation"
 import { type ChangeEvent, type FormEvent, useState } from "react"
 import { PromptInput } from "~/components/prompt-input"
+import { useErrorText } from "~/components/use-error-text"
 import { appPath } from "~/lib/path"
 import { testPrompt } from "~/lib/test-prompt"
 import { api } from "~/utils/api"
@@ -28,6 +29,7 @@ const initialInput = process.env.NODE_ENV === "development" ? testPrompt : ""
  */
 export function GenerateResumeForm() {
   const t = useTranslations("dashboard")
+  const errorText = useErrorText()
   const router = useRouter()
   const [jobDescription, setJobDescription] = useState(initialInput)
 
@@ -67,7 +69,7 @@ export function GenerateResumeForm() {
       */}
       {generate.isError ? (
         <p role="alert" className="text-sm text-destructive">
-          {generate.error.message} {t("retry")}
+          {errorText(generate.error)} {t("retry")}
         </p>
       ) : null}
     </form>

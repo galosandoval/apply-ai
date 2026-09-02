@@ -15,12 +15,14 @@ import toast from "react-hot-toast"
 import { useUser } from "~/utils/useUser"
 import { useAppForm } from "~/components/use-app-form"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
+import { useErrorText } from "~/components/use-error-text"
 
 export function ContactStep() {
   return <NameAndContactForm />
 }
 
 function NameAndContactForm() {
+  const errorText = useErrorText()
   const t = useTranslations("onboarding.contact")
   const { goToStep } = useOnboardingStep()
   const utils = api.useContext()
@@ -55,7 +57,7 @@ function NameAndContactForm() {
 
   const { mutate } = api.profile.upsertNameAndContact.useMutation({
     onError: (error) => {
-      toast.error(error.message)
+      toast.error(errorText(error))
       goToStep("contact")
     },
 

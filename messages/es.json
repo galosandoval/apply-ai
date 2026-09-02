@@ -1,1 +1,9 @@
-{}
+{
+  "sectionLabels": {
+    "experience": "Experiencia",
+    "education": "Formación académica",
+    "skills": "Habilidades",
+    "summary": "Resumen profesional",
+    "strengths": "Fortalezas"
+  }
+}

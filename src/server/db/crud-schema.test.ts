@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { invalid } from "~/lib/validation-message"
 import {
   insertExperienceSchema,
   insertSkillsSchema,
@@ -8,6 +9,10 @@ import {
 } from "./crud-schema"
 
 /**
+ * The messages are keys rather than sentences — the schemas are shared with the
+ * server and have no locale to write in, so what they produce is resolved where
+ * it is drawn. See `~/lib/validation-message`.
+ *
  * The bullets `superRefine` is the only non-trivial validator here: it counts
  * *filled* bullets rather than array entries, because onboarding edits them as
  * one line-separated textarea and a blank line is a user mid-typing.
@@ -54,7 +59,7 @@ describe("bullets", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(
-      `Write at least ${MIN_BULLETS} accomplishments`
+      invalid("bulletsMin", { count: MIN_BULLETS })
     )
   })
 
@@ -65,7 +70,7 @@ describe("bullets", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(
-      `Write at most ${MAX_BULLETS} accomplishments`
+      invalid("bulletsMax", { count: MAX_BULLETS })
     )
   })
 
@@ -76,7 +81,7 @@ describe("bullets", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(
-      "Each accomplishment must be more than 6 characters"
+      invalid("bulletTooShort", { count: 6 })
     )
   })
 
@@ -87,7 +92,7 @@ describe("bullets", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe(
-      "Each accomplishment must be less than 300 characters"
+      invalid("bulletTooLong", { count: 300 })
     )
   })
 

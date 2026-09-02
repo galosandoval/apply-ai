@@ -287,8 +287,8 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
       stub.mockResolvedValue(
         drafted({
           sections: [
-            { label: "Strengths", entries: ["Mentoring", "Incident response"] },
-            { label: "Summary", entries: ["First paragraph", "Second"] }
+            { kind: "strengths", entries: ["Mentoring", "Incident response"] },
+            { kind: "summary", entries: ["First paragraph", "Second"] }
           ]
         })
       )
@@ -317,15 +317,12 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
       })
     })
 
-    it("drops a section outside the allowlist and creates the rest", async () => {
+    it("drops a section with no entries and creates the rest", async () => {
       stub.mockResolvedValue(
         drafted({
           sections: [
-            { label: "References", entries: ["Available on request"] },
-            // A label that is a key of `Object.prototype`: an allowlist kept in
-            // an object literal finds one of those and walks past the guard.
-            { label: "constructor", entries: ["Not a section"] },
-            { label: "Summary", entries: ["Written for the posting"] }
+            { kind: "strengths", entries: ["   "] },
+            { kind: "summary", entries: ["Written for the posting"] }
           ]
         })
       )
@@ -344,6 +341,24 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
       ])
     })
 
+    it("rejects a kind outside the allowlist without writing anything", async () => {
+      // The kinds are an enum in the schema now, so a section this app cannot
+      // draw is refused where the response is validated rather than quietly
+      // dropped further in.
+      stubMalformed({
+        ...drafted(),
+        sections: [{ kind: "references", entries: ["On request"] }]
+      })
+
+      await expect(
+        callerFor(db, fixture.owner).resume.generate({
+          jobDescription: posting
+        })
+      ).rejects.toBeInstanceOf(TRPCError)
+
+      expect(await db.select().from(resume)).toEqual([])
+    })
+
     it("creates only the core sections when nothing extra came back", async () => {
       stub.mockResolvedValue(drafted())
 
@@ -357,6 +372,70 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
         "skills",
         "experience",
         "education"
+      ])
+    })
+  })
+
+  describe("the account's language", () => {
+    /** Everything below generates for an account that reads Spanish. */
+    const generateInSpanish = async () => {
+      await db
+        .update(user)
+        .set({ locale: "es" })
+        .where(eq(user.id, fixture.owner))
+
+      stub.mockResolvedValue(
+        drafted({
+          sections: [{ kind: "summary", entries: ["Escrito para la vacante"] }]
+        })
+      )
+
+      return callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+    }
+
+    it("tells the model which language to write in", async () => {
+      await generateInSpanish()
+
+      expect(stub).toHaveBeenCalledWith(
+        expect.objectContaining({ language: "es" })
+      )
+    })
+
+    it("freezes the language onto the resume", async () => {
+      const { resumeId } = await generateInSpanish()
+
+      const [row] = await db
+        .select()
+        .from(resume)
+        .where(eq(resume.id, resumeId))
+
+      expect(row?.language).toBe("es")
+    })
+
+    it("writes the headings in that language", async () => {
+      const { resumeId } = await generateInSpanish()
+
+      expect((await sectionsOf(resumeId)).map((row) => row.label)).toEqual([
+        "Resumen profesional",
+        "Habilidades",
+        "Experiencia",
+        "Formación académica"
+      ])
+    })
+
+    it("leaves an English account's resume in English", async () => {
+      stub.mockResolvedValue(drafted())
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      expect((await sectionsOf(resumeId)).map((row) => row.label)).toEqual([
+        "Skills",
+        "Experience",
+        "Education"
       ])
     })
   })

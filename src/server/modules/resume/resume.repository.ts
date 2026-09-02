@@ -40,6 +40,22 @@ export async function findResume(db: DbOrTx, resumeId: string) {
   return rows[0] ?? null
 }
 
+/**
+ * The language the resume is written in, for the headings written into it.
+ *
+ * Its own read rather than a column off `findResume`: a caller that needs the
+ * language is not loading a resume, and `'en'` for a row that has vanished is
+ * the same answer the column's default gives.
+ */
+export async function findResumeLanguage(db: DbOrTx, resumeId: string) {
+  const rows = await db
+    .select({ language: resume.language })
+    .from(resume)
+    .where(eq(resume.id, resumeId))
+
+  return rows[0]?.language ?? "en"
+}
+
 export async function listResumes(db: DbOrTx, userId: string) {
   return db
     .select({
@@ -325,7 +341,8 @@ export async function findAccount(db: DbOrTx, userId: string) {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      profession: user.profession
+      profession: user.profession,
+      locale: user.locale
     })
     .from(user)
     .where(eq(user.id, userId))

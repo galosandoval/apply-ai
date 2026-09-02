@@ -5,6 +5,7 @@ import {
   insertExperienceSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
+import { invalid } from "~/lib/validation-message"
 
 /**
  * API contracts for the profile module.
@@ -40,7 +41,7 @@ export type AddExperienceInput = z.infer<typeof addExperienceSchema>
 const maxPdfBase64Length = 11_000_000
 
 export const importFromPdfSchema = z.object({
-  fileBase64: z.string().min(1).max(maxPdfBase64Length, "That PDF is too large")
+  fileBase64: z.string().min(1).max(maxPdfBase64Length, invalid("pdfTooLarge"))
 })
 export type ImportFromPdfInput = z.infer<typeof importFromPdfSchema>
 
