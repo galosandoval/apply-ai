@@ -2,6 +2,13 @@
 
 import { useLocale, useTranslations } from "next-intl"
 import { useTransition } from "react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "~/components/ui/select"
 import { usePathname, useRouter } from "~/i18n/navigation"
 import { routing, type Locale } from "~/i18n/routing"
 import { api } from "~/utils/api"
@@ -40,18 +47,22 @@ export function LocaleSwitcher({ persist = false }: { persist?: boolean }) {
   }
 
   return (
-    <select
-      aria-label={t("label")}
-      className="h-11 rounded-md border border-neutral-200 bg-background px-2 text-sm"
+    <Select
       disabled={isPending}
-      onChange={(event) => handleChange(event.target.value as Locale)}
+      onValueChange={(next) => handleChange(next as Locale)}
       value={locale}
     >
-      {routing.locales.map((option) => (
-        <option key={option} value={option}>
-          {t(option)}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger aria-label={t("label")} className="h-11 w-auto gap-2">
+        <SelectValue />
+      </SelectTrigger>
+
+      <SelectContent>
+        {routing.locales.map((option) => (
+          <SelectItem key={option} value={option}>
+            {t(option)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
