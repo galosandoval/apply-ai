@@ -333,14 +333,12 @@
 
     /*
       What one sheet has room for: the page less the margin at its head and
-      foot. Derived rather than restated: the number is handed to the code that
-      decides where a break lands, and a hand-written copy that drifts from the
-      padding the page is drawn with cuts a line of text in half. See
-      `docs/editable-resume.md`, under "The page is a real sheet".
+      foot. Why it is derived here rather than restated in JavaScript is argued
+      in `docs/editable-resume.md`, under "The page is a real sheet".
 
       Here rather than on `:root` for the reason the whole block is here: the
-      page padding is re-valued by a style and by reflow, and a `var()` freezes
-      at the element it is declared on.
+      page padding is re-valued by reflow, and a `var()` freezes at the element
+      it is declared on.
     */
     --resume-page-content-height: calc(
       var(--resume-page-height) - var(--resume-space-page-y) * 2
@@ -694,19 +692,12 @@
     What separates one sheet from the next.
 
     The gap is a margin rather than padding, because it is space *around* the
-    sheet and the sheet's own padding is the print margin. In print the gap
-    collapses and the break does the separating, so the element boundary and
-    the sheet boundary become the same boundary — see `docs/editable-resume.md`,
-    under "The page is a real sheet".
+    sheet and the sheet's own padding is the print margin.
 
-    Both are between-sheets rules, so neither reaches the last sheet. A trailing
-    margin is a gap below nothing, and a trailing `break-after: page` is the
-    blank final page Chromium prints for it — a two-page resume that comes out
-    of the PDF three pages long.
-
-    `break-after` is unconditional rather than print-only. On screen it costs
-    nothing — there are no pages to break onto — and a rule that only exists
-    inside a media query is a rule the print is the first thing to test.
+    Both are between-sheets rules, so neither reaches the last sheet. Why the
+    gap collapses for print, why `break-after` is unconditional rather than
+    print-only, and why neither may reach the last sheet are argued in
+    `docs/editable-resume.md`, under "The page is a real sheet".
   */
   .resume-page-sheet:not(:last-child) {
     margin-bottom: var(--resume-page-gap);

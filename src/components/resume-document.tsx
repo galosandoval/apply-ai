@@ -328,7 +328,8 @@ function Sheet({
  * assignment rather than repeated by a table `thead`. Why it is computed here,
  * why it carries no block key, why the marker rather than the title says it is
  * a continuation, and why `paginate` reserves its height: see
- * `docs/editable-resume.md`, under "The continued heading is computed".
+ * `docs/editable-resume.md`, under "The continued heading is computed, not
+ * repeated by the browser".
  */
 function continuationHeading(blocks: ResumeBlock[], sectionId: string) {
   const heading = blocks.find(
@@ -484,10 +485,10 @@ const runSpaceClass: Record<ResumeBlockSpace, string> = {
 /**
  * One block, drawn.
  *
- * `break-inside-avoid` sits here rather than on a job or a school: an entry
- * that cannot break is an entry that moves whole to the next sheet, which is
- * how a nine-bullet role comes to waste most of a page. The block is the unit
- * that is never cut, and it is deliberately smaller than an entry.
+ * `break-inside-avoid` sits here rather than on a job or a school: the block is
+ * the unit that is never cut, and it is deliberately smaller than an entry. Why
+ * the entry is the wrong unit is argued in `docs/editable-resume.md`, under
+ * "The document is a block list".
  *
  * The key, the kind, the section and the order are in the markup because
  * measurement happens over the rendered document — in the editor's DOM and in

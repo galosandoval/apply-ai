@@ -168,13 +168,15 @@ test rather than from a screenshot.
 **A block too tall for a page overflows visibly rather than being clipped.** The
 document once had a hard `h-[29.7cm]` and `overflow-hidden`, so everything past
 one page was silently deleted — no scrollbar, no warning, and nothing in the
-PDF's text layer either — see [Page overflow](#page-overflow) for the argument.
-Dropping or cutting an oversized block would be that failure returning by
+PDF's text layer either — see [Page overflow](#page-overflow) for how that got
+here. Dropping or cutting an oversized block would be that failure returning by
 another route, so it is given a sheet of its own and allowed to paint past the
-foot of it. The sheets are stacked in reverse order so that the overflow paints
-over the page below rather than disappearing under its opaque background, which
-would be the same clipping arrived at by paint order. The same choice covers the
-sheet at the end that catches whatever the assignment did not name.
+foot of it: a page that is visibly too full is a bug the user can see, and a
+page that silently ate a paragraph is not. The sheets are stacked in reverse
+order so that the overflow paints over the page below rather than disappearing
+under its opaque background, which would be the same clipping arrived at by
+paint order. The same choice covers the sheet at the end that catches whatever
+the assignment did not name.
 
 `useResumePagination` (`src/features/resume/use-resume-pagination.ts`) is the
 part that has to touch a rendered page. The document renders unpaginated on the
@@ -513,9 +515,8 @@ one page was **silently clipped** — no scrollbar, no warning, the text simply
 was not in the document, and therefore not in the PDF's text layer either. The
 fixed height and `overflow-hidden` are gone and the page is normal flow.
 
-This is why a block taller than a page is given its own page and allowed to
-overflow rather than being cut: a page that is visibly too full is a bug the
-user can see, and a page that silently ate a paragraph is not.
+This is the failure the no-clipping rule exists to have stopped — see
+[The document is a block list](#the-document-is-a-block-list-62).
 
 ### Reversed along the way
 

@@ -56,7 +56,7 @@ type MeasuredBlock = { block: PaginationBlock; height: number }
  *   document is a block list".
  * - A page that opens mid-section is charged for the heading the renderer
  *   redraws at the top of it — same doc, under "The continued heading is
- *   computed".
+ *   computed, not repeated by the browser".
  * - A heading is never the last block on a page. It travels to the next page
  *   with the block it announces, and where no arrangement can give both a page
  *   they fit on, they overflow together rather than come apart — an overflowing
