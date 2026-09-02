@@ -36,7 +36,17 @@ export const user = pgTable("user", {
 
   firstName: text("first_name"),
   lastName: text("last_name"),
-  profession: text("profession").default("").notNull()
+  profession: text("profession").default("").notNull(),
+
+  /**
+   * The language the app is shown in, as a `routing.locales` tag.
+   *
+   * On the account rather than in a cookie so the preference follows the user
+   * across devices, and `text` rather than an enum so adding a locale is a
+   * deploy rather than a migration. It is also the language a new resume is
+   * written in — see `resume.language`.
+   */
+  locale: text("locale").default("en").notNull()
 })
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -218,6 +228,16 @@ export const resume = pgTable("resume", {
   accent: text("accent")
     .default(resumeStyleCatalog[defaultResumeStyle].accent)
     .notNull(),
+  /**
+   * The language the document itself is written in, taken from `user.locale`
+   * when the resume is created and never re-derived.
+   *
+   * A resume owns everything it renders, and its prose is no exception: someone
+   * who switches the interface to Spanish has not asked for the English resume
+   * they already sent to be rewritten. It selects the generation prompt and the
+   * language the section headings are written in.
+   */
+  language: text("language").default("en").notNull(),
   userId: text("user_id").references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })

@@ -10,10 +10,7 @@ import {
   resumeStyleStamp,
   toResumeStyle
 } from "~/lib/resume-style"
-import {
-  type AnySectionContent,
-  type SectionComponentType
-} from "~/lib/section-content"
+import { type AnySectionContent } from "~/lib/section-content"
 import { api } from "~/utils/api"
 import {
   readFieldValue,
@@ -21,6 +18,7 @@ import {
   writeField
 } from "~/features/resume/resume-field-lens"
 import {
+  type AddedSectionPreset,
   buildPanel,
   type PanelField,
   type PanelModel,
@@ -627,9 +625,14 @@ function useSectionMutations(cache: ResumeCache, fields: PendingFields) {
   const setContent = api.section.setContent.useMutation(settle)
 
   return {
-    addSection: (label: string, componentType: SectionComponentType) => {
+    addSection: (preset: AddedSectionPreset) => {
       fields.flush()
-      addSection.mutate({ resumeId, label, componentType })
+      addSection.mutate({
+        resumeId,
+        label: preset.label,
+        presetId: preset.id,
+        componentType: preset.componentType
+      })
     },
 
     removeSection: (sectionId: string) => {

@@ -24,6 +24,7 @@ import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import { FormField } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
+import { useErrorText } from "~/components/use-error-text"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -40,6 +41,7 @@ const initialSchool: InsertEducationSchema["education"] = [
 const maxSchools = 4
 
 export function EducationStep() {
+  const errorText = useErrorText()
   const t = useTranslations("onboarding.education")
   const { goToStep } = useOnboardingStep()
   const { id } = useUser()
@@ -50,7 +52,7 @@ export function EducationStep() {
 
   const { mutate } = api.profile.addEducation.useMutation({
     onError: (error) => {
-      toast.error(error.message)
+      toast.error(errorText(error))
       goToStep("education")
     },
 

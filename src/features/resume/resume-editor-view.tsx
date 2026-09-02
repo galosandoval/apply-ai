@@ -15,7 +15,10 @@ import {
 } from "~/lib/resume-style"
 import { type DownloadPdfSchema } from "~/server/db/crud-schema"
 import { ResumePanel } from "~/features/resume/resume-panel"
-import { toDocumentData } from "~/features/resume/resume-field-lens"
+import {
+  toDocumentData,
+  toDownloadPayload
+} from "~/features/resume/resume-field-lens"
 import { useResumePagination } from "~/features/resume/use-resume-pagination"
 import {
   type SaveState,
@@ -74,7 +77,7 @@ function Editor({ resumeId }: { resumeId: string }) {
             style={editor.style}
           />
           <SaveStatus state={editor.saveState} />
-          <PdfPreviewButton resume={toDocumentData(editor.resume)} />
+          <PdfPreviewButton resume={toDownloadPayload(editor.resume)} />
         </div>
       </div>
 
@@ -331,7 +334,7 @@ function PdfPreviewButton({ resume }: { resume: DownloadPdfSchema }) {
       type="button"
       variant="secondary"
     >
-      Preview PDF
+      {t("previewPdf")}
     </Button>
   )
 }

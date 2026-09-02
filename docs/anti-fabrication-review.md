@@ -24,7 +24,7 @@ model, and the outcome in the log at the bottom.
 
 1. Sign in as a scratch account and import or type in the **fixture profile**
    below, exactly as written.
-2. For each **posting**, paste it into the dashboard and generate.
+2. For each **posting**, paste it into the New resume page and generate.
 3. Read the resulting resume against the expected outcome. The assertion is a
    single one, applied to every line: **the output claims nothing that is not in
    the fixture profile.**

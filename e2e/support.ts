@@ -1,6 +1,25 @@
 import { expect, type Page } from "@playwright/test"
+import { baseURL } from "../playwright.config"
 
 export type Account = { email: string; password: string }
+
+/**
+ * Pins a page to English before its first navigation.
+ *
+ * `playwright.config.ts` already sets the context's `Accept-Language`, which
+ * settles a fresh run. This settles the rest: the cookie outranks
+ * `Accept-Language` and the switcher writes it, so no earlier visit to `/es`
+ * in the same context can leave a later navigation on a Spanish page being
+ * searched for English accessible names.
+ */
+export async function pinEnglish(page: Page) {
+  // Scoped by `url` rather than by a `domain` spelt out here: the host is the
+  // config's to decide, and a copy of it in this file is one that goes stale
+  // without failing loudly.
+  await page.context().addCookies([
+    { name: "NEXT_LOCALE", value: "en", url: baseURL }
+  ])
+}
 
 /** Unique per run: sign-up fails on a duplicate email, as it should. */
 export function newAccount(): Account {
@@ -12,6 +31,7 @@ export function newAccount(): Account {
 
 /** Signs up through the real modal. better-auth signs the new user straight in. */
 export async function signUp(page: Page, account: Account) {
+  await pinEnglish(page)
   await page.goto("/")
   await page.getByRole("button", { name: "Get Started" }).first().click()
 

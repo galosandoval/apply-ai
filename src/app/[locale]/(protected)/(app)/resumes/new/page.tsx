@@ -1,6 +1,6 @@
 import { type Metadata } from "next"
 import { getTranslations } from "next-intl/server"
-import { DashboardView } from "~/features/dashboard/dashboard-view"
+import { NewResumeView } from "~/features/resume/new-resume-view"
 
 export async function generateMetadata({
   params
@@ -10,9 +10,9 @@ export async function generateMetadata({
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: "meta" })
 
-  return { title: t("dashboard") }
+  return { title: t("newResume") }
 }
 
 export default function Page() {
-  return <DashboardView />
+  return <NewResumeView />
 }

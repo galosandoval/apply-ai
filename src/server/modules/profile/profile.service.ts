@@ -7,6 +7,7 @@ import {
   type AddExperienceInput,
   type ImportFromPdfInput,
   type ReplaceSkillsInput,
+  type SetLocaleInput,
   type UpdateDetailsInput,
   type UpsertNameAndContactInput
 } from "./profile.schema"
@@ -103,6 +104,21 @@ export async function updateDetails(
   input: UpdateDetailsInput
 ) {
   return repo.updateDetails(db, userId, { profession: input.profession })
+}
+
+/**
+ * Records the language the account reads the app in.
+ *
+ * Only the interface: resumes already written keep their own `language`, so
+ * switching never retitles a document that has been sent. New resumes are
+ * written in whatever this last recorded.
+ */
+export async function setLocale(
+  db: Database,
+  userId: string,
+  input: SetLocaleInput
+) {
+  return repo.updateLocale(db, userId, input.locale)
 }
 
 /** Replaces the profile's education with `input.education`. */

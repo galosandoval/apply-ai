@@ -2,7 +2,9 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { asc, eq } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { toDownloadPayload } from "~/features/resume/resume-field-lens"
 import { callerFor } from "~/server/api/test-caller"
+import { downloadPdfSchema } from "~/server/db/crud-schema"
 import { type CreateResumeInput } from "~/server/modules/resume/resume.schema"
 import {
   connectTestDatabase,
@@ -402,6 +404,45 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(found.jobDescription).toBe("Senior TypeScript engineer, remote")
     })
 
+    it("takes the language from the account and writes the headings in it", async () => {
+      await db
+        .update(user)
+        .set({ locale: "es" })
+        .where(eq(user.id, fixture.owner.userId))
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.language).toBe("es")
+      expect(found.sections.map((row) => row.label)).toEqual([
+        "Habilidades",
+        "Experiencia",
+        "Formación académica"
+      ])
+    })
+
+    it("carries the language through to what the print route is posted", async () => {
+      await db
+        .update(user)
+        .set({ locale: "es" })
+        .where(eq(user.id, fixture.owner.userId))
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const found = await caller.resume.readById({ resumeId })
+
+      // The column on its own is not the feature: the file only downloads as
+      // `curriculum.pdf` if the language reaches the request, and the payload
+      // is the one place between the two that can drop it.
+      expect(toDownloadPayload(found).language).toBe("es")
+      expect(downloadPdfSchema.parse(toDownloadPayload(found)).language).toBe(
+        "es"
+      )
+    })
+
     it("snapshots skills and contact onto the resume", async () => {
       const caller = callerFor(db, fixture.owner.userId)
       const { resumeId } = await caller.resume.create(draft())
@@ -787,6 +828,42 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
       expect(added?.kind).toBe("custom")
       expect(added?.componentType).toBe("list")
       expect(added?.content).toEqual({ items: [] })
+    })
+
+    it("writes the heading the preset is called, not the one it was sent", async () => {
+      const { caller, resumeId } = await withResume()
+
+      // What the picker displayed is in the *interface's* language; the
+      // resume's own language decides what goes onto the document.
+      const { sectionId } = await caller.section.add({
+        resumeId,
+        label: "Proyectos",
+        presetId: "projects",
+        componentType: "twoColumn"
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.find((row) => row.id === sectionId)?.label).toBe(
+        "Projects"
+      )
+    })
+
+    it("keeps the label it was sent for a preset the messages don't know", async () => {
+      const { caller, resumeId } = await withResume()
+
+      const { sectionId } = await caller.section.add({
+        resumeId,
+        label: "Certificates",
+        presetId: "not-a-preset",
+        componentType: "list"
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.find((row) => row.id === sectionId)?.label).toBe(
+        "Certificates"
+      )
     })
 
     it("renames a section through the path grammar", async () => {

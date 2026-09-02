@@ -127,14 +127,24 @@ export async function extractResumeFields(text: string) {
   }
 }
 
+/**
+ * Reading a document, not authoring one.
+ *
+ * Deliberately language-neutral: every value it returns is the resume's own
+ * text, so it is copied across in whatever language and whatever conventions
+ * the document already uses. Worked examples of English dates and English skill
+ * headings would have made the extraction quietly translate a Spanish resume on
+ * its way into the onboarding forms.
+ */
 const extractionPrompt = `You extract structured data from a resume. The user message is the raw text of a resume PDF, so the layout may be jumbled.
 
 Rules:
 - Only use information present in the resume. Never invent employers, schools, dates, or numbers. Use an empty string for anything missing.
-- Dates are free text, formatted like "Sept 2017". Use "Present" for a current role.
+- Copy every value in the resume's own language and wording. Never translate, expand, or reformat what it says.
+- Dates are free text: keep whatever form the resume writes them in, and keep its own word for a role that is still current.
 - "profession" is the person's current job title or the headline at the top of the resume.
 - For each job, "bullets" is the list of accomplishment bullet points, one string per bullet, at most ${MAX_BULLETS}. Keep the person's own wording and metrics. If the job is written as a paragraph, split it into one bullet per sentence.
-- Group skills into at most ${maxSkills} categories (for example "Languages", "Frameworks"). If the resume lists skills without categories, put them all under a single "Skills" category.
+- Group skills into at most ${maxSkills} categories, using the resume's own headings for them. If it lists skills without categories, put them all under one category named the way the resume names that part of the page.
 - Return at most ${maxExperience} jobs and ${maxEducation} schools, most recent first.
 
 Respond with RFC8259 compliant JSON only, no explanations, in exactly this format:

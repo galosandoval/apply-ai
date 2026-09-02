@@ -14,6 +14,7 @@ import {
 
 import { cn } from "~/lib/utils"
 import { Label } from "~/components/ui/label"
+import { useValidationText } from "~/components/use-validation-text"
 
 const Form = FormProvider
 
@@ -147,7 +148,8 @@ const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message) : children
+  const text = useValidationText()
+  const body = error ? text(String(error?.message)) : children
 
   if (!body) {
     return null

@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server"
+import { type Locale, toLocale } from "~/i18n/routing"
 import { getServerAuthSession } from "~/server/auth"
 import { downloadPdfSchema } from "~/server/db/crud-schema"
 import { renderResumePdf } from "~/server/modules/profile/render-resume-pdf"
@@ -31,7 +32,26 @@ export async function POST(req: NextRequest) {
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": 'attachment; filename="resume.pdf"'
+      "Content-Disposition": `attachment; filename="${pdfFilename(parsed.data.language)}"`
     }
   })
+}
+
+/**
+ * What the file is called once it is on the reader's disk — the one string this
+ * route puts in front of a person.
+ *
+ * Named from the document's own language rather than the request's: the file
+ * outlives the session that downloaded it, and a Spanish resume filed under
+ * `resume.pdf` is a Spanish resume nobody can find again. ASCII only, because
+ * a `filename` a header can carry without the encoded form is worth more than
+ * an accent.
+ */
+function pdfFilename(language: string | undefined) {
+  const names: Record<Locale, string> = {
+    en: "resume.pdf",
+    es: "curriculum.pdf"
+  }
+
+  return names[toLocale(language)]
 }

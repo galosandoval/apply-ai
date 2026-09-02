@@ -1,10 +1,12 @@
 import { z } from "zod"
+import { routing } from "~/i18n/routing"
 import {
   insertContactSchema,
   insertEducationSchema,
   insertExperienceSchema,
   updateProfileSchema
 } from "~/server/db/crud-schema"
+import { invalid } from "~/lib/validation-message"
 
 /**
  * API contracts for the profile module.
@@ -26,6 +28,16 @@ export type UpsertNameAndContactInput = z.infer<
 export const updateDetailsSchema = updateProfileSchema
 export type UpdateDetailsInput = z.infer<typeof updateDetailsSchema>
 
+/**
+ * The interface language the switcher is asking for.
+ *
+ * An enum of `routing.locales` rather than a free string: the column is `text`
+ * so that adding a locale is a deploy, but a tag the app does not ship is a tag
+ * every later read has to fall back from.
+ */
+export const setLocaleSchema = z.object({ locale: z.enum(routing.locales) })
+export type SetLocaleInput = z.infer<typeof setLocaleSchema>
+
 export const addEducationSchema = insertEducationSchema
 export type AddEducationInput = z.infer<typeof addEducationSchema>
 
@@ -40,7 +52,7 @@ export type AddExperienceInput = z.infer<typeof addExperienceSchema>
 const maxPdfBase64Length = 11_000_000
 
 export const importFromPdfSchema = z.object({
-  fileBase64: z.string().min(1).max(maxPdfBase64Length, "That PDF is too large")
+  fileBase64: z.string().min(1).max(maxPdfBase64Length, invalid("pdfTooLarge"))
 })
 export type ImportFromPdfInput = z.infer<typeof importFromPdfSchema>
 

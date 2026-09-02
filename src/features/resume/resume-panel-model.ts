@@ -1,6 +1,7 @@
 import toast from "react-hot-toast"
 import { formatResumeFieldPath, rowColumnTarget } from "~/lib/resume-field-path"
 import { moveItem } from "~/lib/move-item"
+import { type DisplaySectionPreset } from "~/lib/section-catalog"
 import {
   type ResumeSelection,
   type RowListName,
@@ -11,7 +12,6 @@ import {
   type AnySectionContent,
   moveSectionContentEntry,
   removeSectionContentEntry,
-  type SectionComponentType,
   sectionContentEntries,
   sectionContentFields,
   sectionContentNoun,
@@ -73,6 +73,18 @@ export type PanelModel = {
 }
 
 /**
+ * The catalog entry a new section is created from.
+ *
+ * The id travels with the label because the server rewrites the heading in the
+ * resume's own language, and only the id survives translation — see
+ * `addSectionSchema`.
+ */
+export type AddedSectionPreset = Pick<
+  DisplaySectionPreset,
+  "id" | "label" | "componentType"
+>
+
+/**
  * Everything the panel can do that changes the *set* of things on the resume,
  * rather than one string on it.
  *
@@ -84,7 +96,7 @@ export type StructureActions = {
   addRow: (list: RowListName) => void
   removeRow: (list: RowListName, rowId: string) => void
   reorderRows: (list: RowListName, rowIds: string[]) => void
-  addSection: (label: string, componentType: SectionComponentType) => void
+  addSection: (preset: AddedSectionPreset) => void
   removeSection: (sectionId: string) => void
   reorderSections: (sectionIds: string[]) => void
   setContent: (sectionId: string, content: AnySectionContent) => void

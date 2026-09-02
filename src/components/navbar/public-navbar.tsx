@@ -5,6 +5,7 @@ import {
   NavigationMenuItem,
   NavigationMenuList
 } from "~/components/ui/navigation-menu"
+import { LocaleSwitcher } from "./locale-switcher"
 import { Logo } from "./logo"
 
 /** Rendered by the `(public)` route group, so no session check decides it. */
@@ -17,6 +18,9 @@ export function PublicNavbar() {
         <Logo />
         <NavigationMenu className="w-full justify-between">
           <NavigationMenuList>
+            <NavigationMenuItem>
+              <LocaleSwitcher />
+            </NavigationMenuItem>
             <NavigationMenuItem asChild>
               <AuthModal label={t("login")} initialModal="login" />
             </NavigationMenuItem>

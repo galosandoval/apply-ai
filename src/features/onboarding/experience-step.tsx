@@ -33,6 +33,7 @@ import {
 } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
+import { useErrorText } from "~/components/use-error-text"
 
 const initialExperience: InsertExperienceSchema["experience"] = [
   {
@@ -56,6 +57,7 @@ const fromBullets = (bullets: string[]) => bullets.join("\n")
 const maxExperience = 4
 
 export function ExperienceStep() {
+  const errorText = useErrorText()
   const t = useTranslations("onboarding.experience")
   const { goToStep } = useOnboardingStep()
 
@@ -67,7 +69,7 @@ export function ExperienceStep() {
 
   const { mutate } = api.profile.addWork.useMutation({
     onError: (error) => {
-      toast.error(error.message)
+      toast.error(errorText(error))
       goToStep("experience")
     },
 

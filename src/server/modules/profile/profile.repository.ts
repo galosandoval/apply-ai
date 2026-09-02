@@ -1,4 +1,5 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm"
+import { type Locale } from "~/i18n/routing"
 import { type DbOrTx } from "~/server/db/types"
 import { contact, school, skill, user, work } from "~/server/db/schema"
 
@@ -90,6 +91,22 @@ export async function updateDetails(
   values: ProfileDetails
 ) {
   return db.update(user).set(values).where(eq(user.id, userId))
+}
+
+/**
+ * The account's interface language.
+ *
+ * Its own function rather than another optional field on `updateDetails`: this
+ * column is not profile content the onboarding forms write, it is a preference
+ * the locale switcher writes on its own, and it is read on every resume
+ * creation.
+ */
+export async function updateLocale(
+  db: DbOrTx,
+  userId: string,
+  locale: Locale
+) {
+  return db.update(user).set({ locale }).where(eq(user.id, userId))
 }
 
 type ContactValues = {

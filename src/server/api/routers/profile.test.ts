@@ -348,4 +348,43 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
       expect(schools).toEqual([])
     })
   })
+
+  /**
+   * The column existed a step before anything wrote to it. This is that
+   * writer — and the reason a new resume comes out in the right language.
+   */
+  describe("profile.setLocale", () => {
+    it("records the caller's interface language", async () => {
+      await callerFor(db, fixture.owner).profile.setLocale({ locale: "es" })
+
+      const rows = await db
+        .select({ locale: user.locale })
+        .from(user)
+        .where(eq(user.id, fixture.owner))
+
+      expect(rows[0]?.locale).toBe("es")
+    })
+
+    it("leaves every other account alone", async () => {
+      await callerFor(db, fixture.owner).profile.setLocale({ locale: "es" })
+
+      const rows = await db
+        .select({ locale: user.locale })
+        .from(user)
+        .where(eq(user.id, fixture.stranger))
+
+      expect(rows[0]?.locale).toBe("en")
+    })
+
+    it("refuses a locale the app does not ship", async () => {
+      await expect(
+        callerFor(db, fixture.owner).profile.setLocale({
+          // The switcher can only send a locale it renders; a hand-rolled
+          // request cannot leave the column reading something nothing falls
+          // back from.
+          locale: "fr" as "es"
+        })
+      ).rejects.toThrow()
+    })
+  })
 })

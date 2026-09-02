@@ -1,10 +1,15 @@
 {
   "nav": {
-    "dashboard": "Dashboard",
+    "newResume": "New resume",
     "onboarding": "Onboarding",
     "resumes": "Resumes",
     "signOut": "Sign Out",
     "login": "Login"
+  },
+  "localeSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "es": "Español"
   },
   "auth": {
     "signUp": {
@@ -56,7 +61,7 @@
       },
       "copyPaste": {
         "title": "Copy/Paste",
-        "description": "Copy the job description of the position you are applying for. On the dashboard, paste the job description onto the input field and hit enter to generate your resume."
+        "description": "Copy the job description of the position you are applying for. On the New resume page, paste the job description onto the input field and hit enter to generate your resume."
       },
       "download": {
         "title": "Download your resume",
@@ -78,14 +83,16 @@
     "appName": "ApplyAI",
     "description": "Created by Galo Sandoval to make the job application process easier.",
     "home": "Sign up",
-    "dashboard": "Dashboard",
+    "newResume": "New resume",
     "resumes": "Your resumes",
     "editResume": "Edit resume",
     "onboarding": "Set up your profile",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service"
   },
-  "dashboard": {
+  "newResume": {
+    "heading": "New resume",
+    "blurb": "Paste the job posting you're applying to. Your resume is written from the history saved on your profile, tailored to what the posting asks for.",
     "writing": "Writing your resume...",
     "retry": "Your posting is still here — send it again to retry.",
     "promptLabel": "Prompt",
@@ -187,6 +194,7 @@
     "notFound": "Resume not found.",
     "styleLabel": "Resume style",
     "pdfFailed": "Could not render the PDF.",
+    "previewPdf": "Preview PDF",
     "saveFailed": "Could not save that change.",
     "save": {
       "idle": "Changes save automatically",
@@ -436,5 +444,32 @@
     "level": "Level (0-100)",
     "category": "Category",
     "items": "Items, separated by commas"
+  },
+  "sectionLabels": {
+    "experience": "Experience",
+    "education": "Education",
+    "skills": "Skills",
+    "summary": "Summary",
+    "strengths": "Strengths"
+  },
+  "validation": {
+    "minChars": "Must be at least {count, plural, one {# character} other {# characters}}",
+    "maxChars": "Must be less than {count, plural, one {# character} other {# characters}}",
+    "bulletsMin": "Write at least {count, plural, one {# accomplishment} other {# accomplishments}}",
+    "bulletsMax": "Write at most {count, plural, one {# accomplishment} other {# accomplishments}}",
+    "bulletTooShort": "Each accomplishment must be more than {count} characters",
+    "bulletTooLong": "Each accomplishment must be less than {count} characters",
+    "postingRequired": "Paste the job posting first",
+    "postingTooLong": "That posting is too long",
+    "pdfTooLarge": "That PDF is too large"
+  },
+  "errors": {
+    "BAD_REQUEST": "We couldn’t accept that change.",
+    "UNAUTHORIZED": "Log in again to keep going.",
+    "FORBIDDEN": "That isn’t yours to change.",
+    "NOT_FOUND": "We couldn’t find that.",
+    "TIMEOUT": "That took too long. Try again.",
+    "TOO_MANY_REQUESTS": "Too many requests at once. Wait a moment and try again.",
+    "INTERNAL_SERVER_ERROR": "Something went wrong on our side. Try again."
   }
 }

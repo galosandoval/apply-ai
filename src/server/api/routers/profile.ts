@@ -4,6 +4,7 @@ import {
   addExperienceSchema,
   importFromPdfSchema,
   replaceSkillsSchema,
+  setLocaleSchema,
   updateDetailsSchema,
   upsertNameAndContactSchema
 } from "~/server/modules/profile/profile.schema"
@@ -30,6 +31,19 @@ export const profileRouter = createTRPCRouter({
     .input(updateDetailsSchema)
     .mutation(({ input, ctx }) =>
       profileService.updateDetails(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /**
+   * The interface language, written by the locale switcher.
+   *
+   * The switcher navigates first and calls this after: the URL is what changes
+   * the page, and this is what makes the choice outlive the cookie — and what
+   * a new resume is written in, since `user.locale` is read at creation.
+   */
+  setLocale: protectedProcedure
+    .input(setLocaleSchema)
+    .mutation(({ input, ctx }) =>
+      profileService.setLocale(ctx.db, ctx.session.user.id, input)
     ),
 
   addEducation: protectedProcedure

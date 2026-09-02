@@ -27,6 +27,7 @@ import Image from "next/image"
 import { useAppForm } from "~/components/use-app-form"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 import { appPath } from "~/lib/path"
+import { useErrorText } from "~/components/use-error-text"
 
 const initialSkills: InsertSkillsSchema["skills"] = [
   {
@@ -37,6 +38,7 @@ const initialSkills: InsertSkillsSchema["skills"] = [
 ]
 
 export function SkillsStep() {
+  const errorText = useErrorText()
   const t = useTranslations("onboarding.skills")
   const router = useRouter()
   const { goToStep } = useOnboardingStep()
@@ -48,11 +50,11 @@ export function SkillsStep() {
 
   const { mutate } = api.profile.upsertSkills.useMutation({
     onError: (error) => {
-      toast.error(error.message)
+      toast.error(errorText(error))
       goToStep("skills")
     },
 
-    onMutate: () => router.push(appPath.dashboard)
+    onMutate: () => router.push(appPath.newResume)
   })
 
   const form = useAppForm(insertSkillsSchema, {

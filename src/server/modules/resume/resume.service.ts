@@ -5,6 +5,7 @@ import {
   parseResumeFieldPath,
   type ResumeFieldTarget
 } from "~/lib/resume-field-path"
+import { type Locale, toLocale } from "~/i18n/routing"
 import { assertOwnsResume } from "~/server/api/ownership"
 import {
   generatedResumeSchema,
@@ -15,6 +16,7 @@ import { school, work } from "~/server/db/schema"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
 import * as repo from "./resume.repository"
+import { sectionLabelerFor } from "./section-labels"
 import {
   type AddRowInput,
   type CreateResumeInput,
@@ -87,28 +89,48 @@ export async function readById(db: Database, userId: string, resumeId: string) {
 }
 
 /**
+ * What a caller already knows about the resume being created, so it is not
+ * looked up twice: the sections a generation produced, and the language it was
+ * drafted in. Everything here has an answer the account can supply, so a
+ * caller that has neither passes nothing.
+ */
+type CreateOptions = {
+  /**
+   * What a generation produced — the core three with its own arranged around
+   * them. A resume created any other way gets the core three, which is why
+   * they are the default rather than the caller's to remember.
+   */
+  sections?: sections.NewSection[]
+  /** The language it is written in. Defaults to the account's `locale`. */
+  language?: Locale
+}
+
+/**
  * Creates a resume from a draft, snapshotting everything it renders.
  *
  * One transaction: a resume that saved its jobs but not its skills would render
  * as a document with a section silently missing.
  *
- * `resumeSections` is what a generation produced — the core three with its own
- * arranged around them. A resume created any other way gets the core three,
- * which is why they are the default rather than the caller's to remember.
+ * The language is taken from the account once, here, and stored on the row: a
+ * resume owns everything it renders, and switching the interface to English
+ * later must not retitle a Spanish document.
  */
 export async function create(
   db: Database,
   userId: string,
   input: CreateResumeInput,
-  resumeSections?: sections.NewSection[]
+  options: CreateOptions = {}
 ) {
+  const language = options.language ?? (await readUserLocale(db, userId))
+
   // Read before the transaction opens: the default sections carry the
   // account's skills as content, so building them is a query and not a
   // rearrangement of what the caller passed.
   const list =
-    resumeSections ??
+    options.sections ??
     sections.defaultSections(
-      skillGroupsFrom(await repo.findAccountSkills(db, userId))
+      skillGroupsFrom(await repo.findAccountSkills(db, userId)),
+      await sectionLabelerFor(language)
     )
 
   const resumeId = await db.transaction(async (tx) => {
@@ -116,6 +138,7 @@ export async function create(
       id: createId(),
       profession: input.profession,
       jobDescription: input.jobDescription,
+      language,
       userId
     })
 
@@ -171,6 +194,13 @@ async function readAccountSeed(db: Database, userId: string) {
 }
 
 type AccountSeed = Awaited<ReturnType<typeof readAccountSeed>>
+
+/** The account's interface language — what a new resume is written in. */
+async function readUserLocale(db: Database, userId: string): Promise<Locale> {
+  const account = await repo.findAccount(db, userId)
+
+  return toLocale(account?.locale)
+}
 
 /**
  * The contact details and skills a new resume is snapshotted from.
@@ -251,10 +281,16 @@ export async function generate(
     readHistoryFor(db, userId)
   ])
 
+  // The account's own language, not the one the request came in on: this is
+  // the resume's language from here on, and it is what the model is told to
+  // write in.
+  const language = toLocale(account.details?.locale)
+
   const drafted = await generateResume({
     profession: account.details?.profession ?? "",
     ...history,
-    jobDescription: input.jobDescription
+    jobDescription: input.jobDescription,
+    language
   })
 
   // Re-validated rather than trusted: a response that isn't the agreed shape is
@@ -281,10 +317,14 @@ export async function generate(
       experience: parsed.data.experience,
       education: parsed.data.education
     },
-    sections.sectionsFromGeneration(
-      parsed.data.sections,
-      skillGroupsFrom(account.skills)
-    )
+    {
+      language,
+      sections: sections.sectionsFromGeneration(
+        parsed.data.sections,
+        skillGroupsFrom(account.skills),
+        await sectionLabelerFor(language)
+      )
+    }
   )
 }
 

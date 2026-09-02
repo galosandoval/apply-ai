@@ -8,8 +8,17 @@ import { resumeIdSchema, rowId } from "./resume.schema"
 // enforcement, not a UI convention: what a core section *is* stays out of
 // reach, so its typed rows stay machine-readable.
 
+/**
+ * `label` is what the picker displayed; `presetId` is which catalog entry it
+ * came from. Both, because they answer different questions: the id lets the
+ * server write the heading in the *resume's* language rather than the
+ * interface's, and the label is what a preset the message files don't know
+ * falls back to. The catalog itself stays on the client — see
+ * `~/lib/section-catalog`.
+ */
 export const addSectionSchema = resumeIdSchema.extend({
   label: z.string().min(1).max(60),
+  presetId: z.string().min(1).max(40).optional(),
   componentType: z.enum(sectionComponentTypes)
 })
 export type AddSectionInput = z.infer<typeof addSectionSchema>

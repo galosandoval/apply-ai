@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { resumeStyles } from "~/lib/resume-style"
 import { insertResumeSchema } from "~/server/db/crud-schema"
+import { invalid } from "~/lib/validation-message"
 
 // API contracts for the resume module.
 //
@@ -30,8 +31,8 @@ export type CreateResumeInput = z.infer<typeof createResumeSchema>
 export const generateResumeSchema = z.object({
   jobDescription: z
     .string()
-    .min(1, "Paste the job posting first")
-    .max(20_000, "That posting is too long")
+    .min(1, invalid("postingRequired"))
+    .max(20_000, invalid("postingTooLong"))
 })
 export type GenerateInput = z.infer<typeof generateResumeSchema>
 

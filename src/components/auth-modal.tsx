@@ -213,7 +213,7 @@ function LoginForm({ handleSwitchAuth }: { handleSwitchAuth: () => void }) {
       return
     }
 
-    router.push(appPath.dashboard)
+    router.push(appPath.newResume)
   }
 
   return (
