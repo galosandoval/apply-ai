@@ -1,9 +1,468 @@
 {
+  "nav": {
+    "dashboard": "Panel",
+    "onboarding": "Configuración",
+    "resumes": "Currículums",
+    "signOut": "Cerrar sesión",
+    "login": "Iniciar sesión"
+  },
+  "auth": {
+    "signUp": {
+      "title": "Crear cuenta",
+      "description": "Al crear una cuenta guardamos tu trabajo para que puedas retomarlo después.",
+      "submit": "Crear cuenta",
+      "submitting": "Creando cuenta",
+      "switch": "Iniciar sesión"
+    },
+    "login": {
+      "title": "Iniciar sesión",
+      "description": "Inicia sesión para ver tus currículums guardados y crear nuevos.",
+      "submit": "Iniciar sesión",
+      "submitting": "Iniciando sesión",
+      "switch": "Crear cuenta"
+    },
+    "fields": {
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar contraseña"
+    },
+    "validation": {
+      "passwordsDoNotMatch": "Las contraseñas no coinciden"
+    },
+    "errors": {
+      "USER_ALREADY_EXISTS": "Ya existe una cuenta con ese correo electrónico.",
+      "INVALID_EMAIL_OR_PASSWORD": "Esos datos no coinciden con ninguna cuenta",
+      "INVALID_EMAIL": "Eso no parece un correo electrónico válido.",
+      "PASSWORD_TOO_SHORT": "Tu contraseña debe tener al menos 8 caracteres.",
+      "PASSWORD_TOO_LONG": "Tu contraseña debe tener 50 caracteres o menos.",
+      "signUpFailed": "No se pudo crear la cuenta",
+      "loginFailed": "Esos datos no coinciden con ninguna cuenta"
+    }
+  },
+  "landing": {
+    "hero": {
+      "title": "Creador de currículums con IA",
+      "description": "Crea un currículum profesional en minutos con nuestro editor fácil de usar. Destaca ante los empleadores con un CV pulido y bien diseñado.",
+      "cta": "Comenzar",
+      "finePrint": "No se requiere tarjeta de crédito. Prueba gratis de 14 días.",
+      "imageAlt": "Portada"
+    },
+    "howItWorks": {
+      "title": "Cómo funciona",
+      "description": "Deja que nuestra IA te ayude a crear el currículum perfecto. Destaca con componentes de diseño cuidado que puedes copiar y pegar en tus aplicaciones. Accesible. Personalizable. Código abierto.",
+      "profile": {
+        "title": "Guarda tu perfil",
+        "description": "Completa tus datos de contacto, experiencia laboral, formación académica y habilidades para empezar. Nunca usaremos tus datos."
+      },
+      "copyPaste": {
+        "title": "Copia y pega",
+        "description": "Copia la descripción del puesto al que estás postulando. En el panel, pégala en el campo de texto y presiona Enter para generar tu currículum."
+      },
+      "download": {
+        "title": "Descarga tu currículum",
+        "description": "Descarga tu currículum en formato PDF. Compártelo con los empleadores y consigue el trabajo."
+      }
+    },
+    "testimonial": {
+      "title": "Testimonio",
+      "quote": "El creador de currículums fue facilísimo de usar y las plantillas son fantásticas. ¡Conseguí el trabajo!\" - Sarah T."
+    },
+    "footer": {
+      "copyright": "© 2024 ApplyAI Todos los derechos reservados.",
+      "privacy": "Privacidad",
+      "terms": "Términos del servicio",
+      "contact": "Contacto"
+    }
+  },
+  "meta": {
+    "appName": "ApplyAI",
+    "description": "Creado por Galo Sandoval para hacer más fácil el proceso de postulación.",
+    "home": "Crear cuenta",
+    "dashboard": "Panel",
+    "resumes": "Tus currículums",
+    "editResume": "Editar currículum",
+    "onboarding": "Configura tu perfil",
+    "privacyPolicy": "Política de privacidad",
+    "termsOfService": "Términos del servicio"
+  },
+  "dashboard": {
+    "writing": "Escribiendo tu currículum...",
+    "retry": "Tu descripción sigue aquí: envíala de nuevo para reintentar.",
+    "promptLabel": "Instrucción",
+    "promptPlaceholder": "Pega aquí la descripción del puesto"
+  },
+  "resumeList": {
+    "loading": "Cargando...",
+    "noJobDescription": "No se guardó ninguna descripción del puesto",
+    "delete": "Eliminar",
+    "deleteFailed": "No se pudo eliminar ese currículum."
+  },
+  "onboarding": {
+    "steps": {
+      "import": "Importar",
+      "contact": "Contacto",
+      "education": "Formación",
+      "experience": "Experiencia laboral",
+      "skills": "Habilidades"
+    },
+    "import": {
+      "title": "Empieza con tu currículum actual",
+      "upload": "Sube un PDF",
+      "reading": "Leyendo tu currículum...",
+      "imported": "Se importaron {experience, plural, one {# empleo} other {# empleos}}, {education, plural, one {# institución} other {# instituciones}} y {skills, plural, one {# grupo de habilidades} other {# grupos de habilidades}}.",
+      "notPdf": "Ese archivo no es un PDF.",
+      "tooLarge": "Ese PDF es muy grande. Debe pesar menos de 8 MB.",
+      "unreadable": "No se pudo leer ese archivo."
+    },
+    "contact": {
+      "title": "¿Cómo pueden contactarte los empleadores?",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "profession": "Profesión",
+      "professionPlaceholder": "Ej: Ingeniera de software",
+      "location": "Ubicación",
+      "locationPlaceholder": "Ej: Los Ángeles, CA",
+      "phone": "Teléfono",
+      "linkedIn": "URL de LinkedIn",
+      "linkedInPlaceholder": "Ej: https://www.linkedin.com/in/...",
+      "website": "URL del sitio web",
+      "websitePlaceholder": "Ej: https://github.com/galosandoval",
+      "loading": "Cargando...",
+      "next": "Siguiente: Formación académica"
+    },
+    "education": {
+      "title": "Formación académica",
+      "addFirst": "Agregar una institución",
+      "addAnother": "Agregar otra",
+      "next": "Siguiente: Experiencia laboral",
+      "institution": "Nombre de la institución",
+      "institutionPlaceholder": "Ej: Universidad de California, Berkeley",
+      "start": "Inicio",
+      "startPlaceholder": "Ej: Sept 2017",
+      "end": "Fin",
+      "endPlaceholder": "Ej: Mayo 2021",
+      "degree": "Título o certificado",
+      "degreePlaceholder": "Ej: Ciencias de la computación",
+      "location": "Ubicación",
+      "locationPlaceholder": "Ej: Berkeley, CA",
+      "gpa": "Promedio",
+      "gpaPlaceholder": "Solo si tu promedio fue de 3.5 o más",
+      "extra": "Algo más que quieras que sepa quien contrata",
+      "extraPlaceholder": "Ej: Fui presidente del club de computación."
+    },
+    "experience": {
+      "title": "Experiencia",
+      "next": "Siguiente: Habilidades",
+      "company": "Nombre de la empresa",
+      "companyPlaceholder": "Ej: Google",
+      "jobTitle": "Puesto",
+      "jobTitlePlaceholder": "Ej: Ingeniera de software",
+      "startDate": "Fecha de inicio",
+      "startDatePlaceholder": "Ej: Sept 2017",
+      "endDate": "Fecha de fin",
+      "endDatePlaceholder": "Ej: Mayo 2021",
+      "accomplishments": "Logros",
+      "accomplishmentsPlaceholder": "Colaboré con equipos multidisciplinarios para lanzar nuevas funciones\nReduje el tiempo de carga de la página un 40 % dividiendo el paquete",
+      "accomplishmentsHint": "Un logro por línea.",
+      "bulletsLabel": "Escribe de 3 a 5 logros"
+    },
+    "skills": {
+      "title": "Habilidades",
+      "imageAlt": "Habilidades",
+      "done": "Listo: Empieza a generar currículums",
+      "all": "Todas",
+      "allPlaceholder": "Ej: Atención al cliente, soporte al cliente",
+      "categoryPlaceholders": [
+        "Ej: Habilidades blandas",
+        "Ej: Habilidades técnicas",
+        "Ej: Conocimientos técnicos",
+        "Ej: Frontend",
+        "Ej: Backend",
+        "Ej: Adicionales"
+      ]
+    }
+  },
+  "resumeEditor": {
+    "loading": "Cargando...",
+    "notFound": "Currículum no encontrado.",
+    "styleLabel": "Estilo del currículum",
+    "pdfFailed": "No se pudo generar el PDF.",
+    "previewPdf": "Vista previa del PDF",
+    "saveFailed": "No se pudo guardar ese cambio.",
+    "save": {
+      "idle": "Los cambios se guardan automáticamente",
+      "failed": "No se pudo guardar",
+      "saving": "Guardando…",
+      "saved": "Guardado"
+    },
+    "searchSections": "Buscar secciones",
+    "markdown": {
+      "bulletListLabel": "Lista",
+      "bulletListTitle": "Lista con viñetas",
+      "boldTitle": "Negrita",
+      "linkTitle": "Enlace"
+    },
+    "fullName": "Nombre completo",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "modeEdit": "Editar",
+    "modeResume": "Currículum"
+  },
+  "resumePanel": {
+    "resume": "Currículum",
+    "sections": "Secciones",
+    "header": "Encabezado",
+    "entries": "Entradas",
+    "bullets": "Viñetas",
+    "untitledEntry": "Entrada",
+    "untitledSection": "Sección",
+    "sectionName": "Nombre",
+    "profession": "Profesión",
+    "contact": {
+      "fullName": "Nombre completo",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "location": "Ubicación",
+      "linkedIn": "LinkedIn",
+      "portfolio": "Portafolio"
+    },
+    "experience": {
+      "name": "Empresa",
+      "title": "Puesto",
+      "startDate": "Inicio",
+      "endDate": "Fin"
+    },
+    "education": {
+      "name": "Institución",
+      "degree": "Título",
+      "startDate": "Inicio",
+      "endDate": "Fin",
+      "description": "Descripción"
+    },
+    "up": "Subir",
+    "down": "Bajar",
+    "remove": "Quitar",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "addSectionTitle": "Agregar una sección",
+    "searchSections": "Buscar secciones",
+    "noSectionMatch": "Ninguna sección coincide con “{query}”. Agrega una sección de Texto y ponle el nombre que quieras.",
+    "errors": {
+      "add": "No se pudo agregar.",
+      "remove": "No se pudo quitar.",
+      "move": "No se pudo mover."
+    },
+    "nouns": {
+      "job": {
+        "add": "Agregar empleo",
+        "empty": "Aún no hay empleos.",
+        "untitled": "Empleo sin título"
+      },
+      "school": {
+        "add": "Agregar institución",
+        "empty": "Aún no hay instituciones.",
+        "untitled": "Institución sin nombre"
+      },
+      "section": {
+        "add": "Agregar sección",
+        "empty": "Aún no hay secciones.",
+        "untitled": "Sección sin título"
+      },
+      "bullet": {
+        "add": "Agregar viñeta",
+        "empty": "Aún no hay viñetas.",
+        "untitled": "Viñeta sin texto"
+      },
+      "row": {
+        "add": "Agregar fila",
+        "empty": "Aún no hay filas.",
+        "untitled": "Fila sin título"
+      },
+      "item": {
+        "add": "Agregar elemento",
+        "empty": "Aún no hay elementos.",
+        "untitled": "Elemento sin título"
+      },
+      "tag": {
+        "add": "Agregar etiqueta",
+        "empty": "Aún no hay etiquetas.",
+        "untitled": "Etiqueta sin nombre"
+      },
+      "entry": {
+        "add": "Agregar entrada",
+        "empty": "Aún no hay entradas.",
+        "untitled": "Entrada sin título"
+      },
+      "level": {
+        "add": "Agregar nivel",
+        "empty": "Aún no hay niveles.",
+        "untitled": "Nivel sin nombre"
+      },
+      "group": {
+        "add": "Agregar grupo",
+        "empty": "Aún no hay grupos.",
+        "untitled": "Grupo sin título"
+      }
+    },
+    "bullet": "Viñeta {index}"
+  },
+  "sectionCatalog": {
+    "groups": {
+      "writing": "Redacción",
+      "work": "Trabajo",
+      "credentials": "Credenciales",
+      "skills": "Habilidades",
+      "personal": "Personal"
+    },
+    "presets": {
+      "text": {
+        "label": "Texto",
+        "hint": "Un título y texto con formato: la sección simple"
+      },
+      "summary": {
+        "label": "Resumen",
+        "hint": "Un párrafo breve de apertura"
+      },
+      "objective": {
+        "label": "Objetivo",
+        "hint": "Lo que estás buscando"
+      },
+      "goal": {
+        "label": "Meta",
+        "hint": "Aquello hacia lo que trabajas"
+      },
+      "additional": {
+        "label": "Información adicional",
+        "hint": "Todo lo que no encaja en otra parte"
+      },
+      "projects": {
+        "label": "Proyectos",
+        "hint": "Qué construiste y cuándo"
+      },
+      "achievements": {
+        "label": "Logros",
+        "hint": "Resultados que merecen su propia sección"
+      },
+      "publications": {
+        "label": "Publicaciones",
+        "hint": "Artículos, papers, notas"
+      },
+      "patents": {
+        "label": "Patentes",
+        "hint": "Solicitadas u otorgadas"
+      },
+      "speaking": {
+        "label": "Charlas",
+        "hint": "Ponencias, paneles, talleres"
+      },
+      "volunteering": {
+        "label": "Voluntariado",
+        "hint": "Trabajo no remunerado que vale la pena mostrar"
+      },
+      "extracurriculars": {
+        "label": "Actividades extracurriculares",
+        "hint": "Clubes, equipos, sociedades"
+      },
+      "certificates": {
+        "label": "Certificados",
+        "hint": "Qué obtuviste y cuándo"
+      },
+      "licenses": {
+        "label": "Licencias",
+        "hint": "Licencias que tienes"
+      },
+      "awards": {
+        "label": "Premios",
+        "hint": "Reconocimientos y distinciones"
+      },
+      "courses": {
+        "label": "Cursos",
+        "hint": "Formación más allá de un título"
+      },
+      "memberships": {
+        "label": "Membresías",
+        "hint": "Colegios y asociaciones profesionales"
+      },
+      "conferences": {
+        "label": "Congresos",
+        "hint": "Dónde asististe o presentaste"
+      },
+      "military": {
+        "label": "Servicio militar",
+        "hint": "Fuerza, rango, fechas"
+      },
+      "tools": {
+        "label": "Herramientas",
+        "hint": "Nombres cortos, que se leen de un vistazo"
+      },
+      "languages": {
+        "label": "Idiomas",
+        "hint": "Un nivel por idioma, dibujado como barra"
+      },
+      "graphs": {
+        "label": "Gráficas",
+        "hint": "Cualquier cosa que califiques sobre cien"
+      },
+      "hobbies": {
+        "label": "Pasatiempos",
+        "hint": "Lo que haces fuera del trabajo"
+      },
+      "interests": {
+        "label": "Intereses",
+        "hint": "Temas que sigues"
+      },
+      "socialMedia": {
+        "label": "Redes sociales",
+        "hint": "Un ícono y un usuario por red"
+      },
+      "portfolio": {
+        "label": "Portafolio",
+        "hint": "Enlaces que merecen un ícono"
+      },
+      "references": {
+        "label": "Referencias",
+        "hint": "Un nombre y cómo contactarlo"
+      }
+    }
+  },
+  "sectionContent": {
+    "text": "Texto",
+    "left": "Izquierda",
+    "right": "Derecha",
+    "item": "Elemento",
+    "tag": "Etiqueta",
+    "icon": "Ícono",
+    "label": "Etiqueta",
+    "name": "Nombre",
+    "level": "Nivel (0-100)",
+    "category": "Categoría",
+    "items": "Elementos, separados por comas"
+  },
   "sectionLabels": {
     "experience": "Experiencia",
     "education": "Formación académica",
     "skills": "Habilidades",
     "summary": "Resumen profesional",
     "strengths": "Fortalezas"
+  },
+  "validation": {
+    "minChars": "Debe tener al menos {count, plural, one {# carácter} other {# caracteres}}",
+    "maxChars": "Debe tener menos de {count, plural, one {# carácter} other {# caracteres}}",
+    "bulletsMin": "Escribe al menos {count, plural, one {# logro} other {# logros}}",
+    "bulletsMax": "Escribe como máximo {count, plural, one {# logro} other {# logros}}",
+    "bulletTooShort": "Cada logro debe tener más de {count} caracteres",
+    "bulletTooLong": "Cada logro debe tener menos de {count} caracteres",
+    "postingRequired": "Primero pega la descripción del puesto",
+    "postingTooLong": "Esa descripción es demasiado larga",
+    "pdfTooLarge": "Ese PDF es demasiado grande"
+  },
+  "errors": {
+    "BAD_REQUEST": "No pudimos aceptar ese cambio.",
+    "UNAUTHORIZED": "Inicia sesión de nuevo para continuar.",
+    "FORBIDDEN": "Eso no es tuyo para cambiarlo.",
+    "NOT_FOUND": "No pudimos encontrarlo.",
+    "TIMEOUT": "Eso tardó demasiado. Inténtalo de nuevo.",
+    "TOO_MANY_REQUESTS": "Demasiadas solicitudes a la vez. Espera un momento e inténtalo de nuevo.",
+    "INTERNAL_SERVER_ERROR": "Algo salió mal de nuestro lado. Inténtalo de nuevo."
   }
 }

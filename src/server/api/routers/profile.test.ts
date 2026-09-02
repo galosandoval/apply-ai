@@ -348,4 +348,44 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
       expect(schools).toEqual([])
     })
   })
+
+  /**
+   * The writer for a column the app otherwise only reads. Nothing in the
+   * interface calls it yet — there is no language picker — so this is the
+   * only thing standing between `user.locale` and being unreachable.
+   */
+  describe("profile.setLocale", () => {
+    it("records the caller's interface language", async () => {
+      await callerFor(db, fixture.owner).profile.setLocale({ locale: "es" })
+
+      const rows = await db
+        .select({ locale: user.locale })
+        .from(user)
+        .where(eq(user.id, fixture.owner))
+
+      expect(rows[0]?.locale).toBe("es")
+    })
+
+    it("leaves every other account alone", async () => {
+      await callerFor(db, fixture.owner).profile.setLocale({ locale: "es" })
+
+      const rows = await db
+        .select({ locale: user.locale })
+        .from(user)
+        .where(eq(user.id, fixture.stranger))
+
+      expect(rows[0]?.locale).toBe("en")
+    })
+
+    it("refuses a locale the app does not ship", async () => {
+      await expect(
+        callerFor(db, fixture.owner).profile.setLocale({
+          // The switcher can only send a locale it renders; a hand-rolled
+          // request cannot leave the column reading something nothing falls
+          // back from.
+          locale: "fr" as "es"
+        })
+      ).rejects.toThrow()
+    })
+  })
 })

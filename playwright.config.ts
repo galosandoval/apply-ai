@@ -20,6 +20,15 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL,
+    /**
+     * Pins the suite to English. Every selector below is an English accessible
+     * name, and next-intl negotiates a locale from `Accept-Language` when
+     * nothing else has decided one — so a machine set to Spanish would send
+     * `/` to `/es` and fail these specs for a reason that has nothing to do
+     * with what they test. `locale.spec.ts` is the exception: it asks for
+     * `/es` by URL, which outranks any negotiation.
+     */
+    locale: "en-US",
     trace: "on-first-retry"
   },
   projects: [

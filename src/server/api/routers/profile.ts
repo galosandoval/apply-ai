@@ -4,6 +4,7 @@ import {
   addExperienceSchema,
   importFromPdfSchema,
   replaceSkillsSchema,
+  setLocaleSchema,
   updateDetailsSchema,
   upsertNameAndContactSchema
 } from "~/server/modules/profile/profile.schema"
@@ -30,6 +31,23 @@ export const profileRouter = createTRPCRouter({
     .input(updateDetailsSchema)
     .mutation(({ input, ctx }) =>
       profileService.updateDetails(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /**
+   * The interface language, on the account.
+   *
+   * The URL is what changes the page — `/es` renders Spanish for anyone who
+   * asks for it, signed in or not. This is the separate question of what a
+   * *new resume* is written in, which is read from `user.locale` at creation
+   * and so has to be recorded rather than inferred per request.
+   *
+   * Nothing in the interface calls this yet: there is no language picker, by
+   * decision. Until something does, every account stays on the `'en'` default.
+   */
+  setLocale: protectedProcedure
+    .input(setLocaleSchema)
+    .mutation(({ input, ctx }) =>
+      profileService.setLocale(ctx.db, ctx.session.user.id, input)
     ),
 
   addEducation: protectedProcedure

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { newAccount, signUp } from "./support"
+import { newAccount, pinEnglish, signUp } from "./support"
 
 /**
  * Seam 4 — deliberately thin. Three flows exist because the App Router move
@@ -18,6 +18,7 @@ test("signing in reaches the dashboard", async ({ page, context }) => {
 
   await signUp(page, account)
   await context.clearCookies()
+  await pinEnglish(page)
 
   await page.goto("/")
   await page.getByRole("button", { name: "Login" }).first().click()
@@ -29,6 +30,7 @@ test("signing in reaches the dashboard", async ({ page, context }) => {
 })
 
 test("a signed-out visitor cannot reach the dashboard", async ({ page }) => {
+  await pinEnglish(page)
   await page.goto("/dashboard")
 
   await expect(page).toHaveURL("/")
