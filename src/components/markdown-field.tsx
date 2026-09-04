@@ -3,8 +3,24 @@
 import { useTranslations } from "next-intl"
 import { useLayoutEffect, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
+import { FontBoldIcon, Link2Icon, ListBulletIcon } from "@radix-ui/react-icons"
 import { Textarea } from "~/components/ui/textarea"
 import { applyMarkdownAction, type MarkdownAction } from "~/lib/resume-markdown"
+
+/**
+ * An icon carries no accessible name, so `titleKey` is both the tooltip and the
+ * button's label — it is the only copy in this file, and it is translated.
+ */
+const toolbar: {
+  action: MarkdownAction
+  /** Every Radix icon has this type; `FontBoldIcon` is just the one naming it. */
+  Icon: typeof FontBoldIcon
+  titleKey: "boldTitle" | "linkTitle" | "bulletListTitle"
+}[] = [
+  { action: "bold", Icon: FontBoldIcon, titleKey: "boldTitle" },
+  { action: "link", Icon: Link2Icon, titleKey: "linkTitle" },
+  { action: "bulletList", Icon: ListBulletIcon, titleKey: "bulletListTitle" }
+]
 
 /**
  * A rich-text field: a plain textarea, and three buttons that wrap or prefix
@@ -16,20 +32,6 @@ import { applyMarkdownAction, type MarkdownAction } from "~/lib/resume-markdown"
  * is that typing markdown reads as dated to some users, which is exactly why
  * the buttons are not optional: a phone keyboard is a bad place for asterisks.
  */
-/**
- * `label` is the glyph on the button and stays as written — "B" reads as bold
- * in every locale this ships in. `titleKey` is the tooltip, which is copy.
- */
-const toolbar: {
-  action: MarkdownAction
-  label: string
-  titleKey: "boldTitle" | "linkTitle" | "bulletListTitle"
-}[] = [
-  { action: "bold", label: "B", titleKey: "boldTitle" },
-  { action: "link", label: "Link", titleKey: "linkTitle" },
-  { action: "bulletList", label: "List", titleKey: "bulletListTitle" }
-]
-
 export function MarkdownField({
   value,
   onChange,
@@ -79,19 +81,20 @@ export function MarkdownField({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex gap-1">
-        {toolbar.map((button) => (
+        {toolbar.map(({ action, Icon, titleKey }) => (
           <Button
-            key={button.action}
+            aria-label={t(titleKey)}
+            key={action}
             // The textarea keeps its selection: pressing a toolbar button must
             // not first blur the field it is about to format.
             onMouseDown={(event) => event.preventDefault()}
-            onClick={() => apply(button.action)}
-            size="sm"
-            title={t(button.titleKey)}
+            onClick={() => apply(action)}
+            size="icon"
+            title={t(titleKey)}
             type="button"
-            variant="outline"
+            variant="ghost"
           >
-            {button.label}
+            <Icon aria-hidden className="h-4 w-4" />
           </Button>
         ))}
       </div>
