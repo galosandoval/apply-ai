@@ -205,7 +205,6 @@
     },
     "searchSections": "Buscar secciones",
     "markdown": {
-      "bulletListLabel": "Lista",
       "bulletListTitle": "Lista con viñetas",
       "boldTitle": "Negrita",
       "linkTitle": "Enlace"

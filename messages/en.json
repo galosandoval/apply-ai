@@ -205,7 +205,6 @@
     },
     "searchSections": "Search sections",
     "markdown": {
-      "bulletListLabel": "List",
       "bulletListTitle": "Bullet list",
       "boldTitle": "Bold",
       "linkTitle": "Link"
