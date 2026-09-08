@@ -366,6 +366,92 @@ portability as well as for the page: an export to JSON Resume recovers
 `highlights[]` by walking the list items, which round-trips only while the
 subset stays bold, links and bullets.
 
+### Dates are typed, and "still here" is a flag (#71)
+
+`work.start_date`, `work.end_date` and their two counterparts on `school` were
+`text` validated as `min(3).max(50)`, so the columns legally held `Present`,
+`2020-2022`, `Jan 2020`, `current`, `now` and the empty string — and every one
+of those is in production data. Nothing can be sorted, counted as years of
+experience, or checked for a six-month employment gap against a column like
+that, which is three of the things `docs/ats-score.md` says scoring has to do.
+
+The columns now hold **one of `YYYY`, `YYYY-MM` or `YYYY-MM-DD`**, still as
+`text` — a partial date is not a `date`, and Postgres has no partial-date type.
+Precision is carried by the string's own length, so nothing records it
+separately. It is the shape HR Open (`FormattedDateTimeType` plus a `current`
+flag) and JSON Resume (a three-precision ISO 8601 pattern) independently landed
+on; we are not adopting either standard, only the field they agree about.
+
+**`Present` is not a date, it is a rendering of a missing end date.** Storing it
+in the end-date column crammed two facts — "is this current?" and "when did it
+end?" — into one field, which is what made both unanswerable. `current` is a
+real boolean column, and the pair is checked against each other on write: an end
+date is required unless the entry is current, and forbidden when it is. A row
+carrying both is a row two readers disagree about, so it is not representable.
+
+Display is a **formatter**, not the stored value. `2017-09` prints as `Sep 2017`
+in the language the resume is written in, and the trailing term comes from the
+flag — which is why `resume.language` became part of `ResumeDocumentData`, after
+being deliberately left out of it on the grounds that nothing on the page was
+drawn from it. Something is now.
+
+Three consequences worth naming. The onboarding date field is a **text input
+with an ISO placeholder**, not a picker: `<input type="month">` holds only month
+precision, so a history recorded as `2017` would render as an empty box that the
+next save would blank. The generation and the PDF import declare their dates
+loosely and **normalize afterwards** (`withNormalizedDates`), because a model
+asked for dates returns `Sept 2017` whatever the schema says, and a structured
+generation that throws on the format is a resume the user never gets. And the
+`0014` migration **leaves a date it cannot read exactly as it was** — the
+formatter prints an unrecognised value verbatim and the validator asks for a
+correction the next time that field is written, because a migration that quietly
+blanks a date on a resume someone has already sent is the worst outcome
+available.
+
+**The shape is enforced where the editor writes, not only where the form
+does.** The insert schemas guard onboarding, but nothing on the panel's path
+goes through them — and the panel is what actually writes these columns all day.
+So `updateField` refuses a date column write that is not the subset, which is
+what makes the stored shape a shape rather than a suggestion. Empty still
+passes: a row the editor has just added has no dates yet, and a current entry
+has no end date. Whether an entry is _finished_ is a question about a completed
+form, and stays with the insert schemas.
+
+That server rule needs a client half, because autosave sends on a pause: `2` on
+the way to `2017-09` would be refused, and a refusal per keystroke is a toast per
+keystroke. A half-typed date is **held in the panel as unsaved text** — the same
+mechanism a failed write already uses — with the field saying why, and it is
+sent the moment it becomes a date. The document is not patched meanwhile,
+because the document shows what is stored and nothing has been stored.
+
+**Ticking the box clears the end date; unticking puts it back.** The value is
+held by the control rather than re-read from the row, because by then the row's
+copy is the empty string the tick wrote. A box ticked by accident must not cost
+the user a date they then have to retype. Both boxes — the onboarding step's and
+the panel's — share `useClearedValue`, so the restore is one rule rather than
+two copies of it.
+
+**The pair itself is kept by `rowPatch`, not by the box.** A ticked box clearing
+the end date is a client doing the right thing, and `updateField` addresses one
+column at a time — so nothing stopped a caller that skipped the panel from
+setting `current` on a row whose end date still held a date, the exact state the
+flag was split out to make unrepresentable. So a write to either half carries
+the other: setting the flag empties `endDate`, and writing an `endDate` unsets
+the flag. Emptying the end date does not, because a row the editor has just
+added has no dates yet and clearing one must not silently untick the box. One
+rule, applied by the optimistic cache patch and the column write alike.
+
+What the typed column buys is in `~/lib/resume-date`:
+`compareByStartDate` orders entries, and `monthsBetween` measures the hole
+between one entry's end and the next one's start — the six-month gap
+`docs/ats-score.md` records 49% of employers knocking out on. Nothing consumes
+either yet. They are here because a column that cannot answer those two
+questions is the column this change existed to replace, and a comparator has to
+have an answer for the unreadable dates the migration deliberately kept: they
+sort last, never displacing an entry whose date is known — held back before the
+descending order is applied, since reading the comparison backwards would
+otherwise reverse that rule too and put the unplaceable entry at the top.
+
 ### Autosave: six details worth keeping
 
 Persistence is **debounced autosave plus commit on blur**. A panel holds several

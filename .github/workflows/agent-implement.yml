@@ -63,7 +63,7 @@ jobs:
           # delete. The verdict is read and echoed either way; nothing is
           # swallowed.
           set +e
-          verdict="$(npx --yes @galosandoval/shopfloor@1.0.0 shopfloor-admit)"
+          verdict="$(npx --yes --package @galosandoval/shopfloor@1.0.0 -- shopfloor-admit)"
           set -e
           echo "$verdict"
           echo "admitted=$(echo "$verdict" | jq -r '.admitted')" >> "$GITHUB_OUTPUT"
@@ -169,4 +169,4 @@ jobs:
           # Throwaway: better-auth only signs callbacks against this, and both
           # databases die with the job. Never a real secret's value.
           BETTER_AUTH_SECRET: ci-only-not-a-secret-0000000000000000000
-        run: npx --yes @galosandoval/shopfloor@1.0.0 shopfloor-run-phase
+        run: npx --yes --package @galosandoval/shopfloor@1.0.0 -- shopfloor-run-phase

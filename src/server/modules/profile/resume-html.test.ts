@@ -28,6 +28,7 @@ const data: ResumeDocumentData = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
+      current: false,
       body: "- Wrote the first algorithm\n- Described a general computer"
     }
   ],
@@ -38,6 +39,7 @@ const data: ResumeDocumentData = {
       degree: "Mathematics",
       startDate: "1830",
       endDate: "1835",
+      current: false,
       body: "Studied under De Morgan"
     }
   ]

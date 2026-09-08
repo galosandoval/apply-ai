@@ -1,4 +1,5 @@
 import { createInsertSchema } from "drizzle-zod"
+import { resumeDatePattern } from "~/lib/resume-date"
 import { invalid } from "~/lib/validation-message"
 import { school, user, work } from "./schema"
 import { z } from "zod"
@@ -77,27 +78,103 @@ const requiredBodySchema = bodySchema
   .trim()
   .min(6, invalid("minChars", { count: 6 }))
 
+/**
+ * A date on an entry: one of `YYYY`, `YYYY-MM` or `YYYY-MM-DD`.
+ *
+ * This replaced a `min(3).max(50)` on a `text` column, which is how `Present`,
+ * `2020-2022`, `current` and `now` all got into production data. Nothing can be
+ * sorted, counted or gap-checked against a column that legally holds any of
+ * those — see #71, and `~/lib/resume-date` for the shape itself.
+ */
+const entryDateSchema = z
+  .string()
+  .regex(resumeDatePattern, invalid("dateFormat"))
+
+/**
+ * The end date, which is a date or nothing at all.
+ *
+ * Present but empty rather than absent: `endDate` is a field on a form the user
+ * ticks a box next to, and a field that disappears from the payload is a field
+ * react-hook-form has nothing to register. `refineEndDate` is what decides
+ * whether empty is allowed here.
+ */
+const endDateSchema = z.union([z.literal(""), entryDateSchema])
+
+/**
+ * The two date fields and the flag, as every entry carries them.
+ *
+ * Extended onto the insert schemas rather than passed to `createInsertSchema`,
+ * because the columns have defaults — which drizzle-zod reads as "optional on
+ * insert", and an `endDate` that may be `undefined` is one more empty state for
+ * the form, the document and the write to each handle their own way.
+ */
+const entryDateFields = {
+  startDate: entryDateSchema,
+  endDate: endDateSchema,
+  current: z.boolean().default(false)
+}
+
+/**
+ * The end date and the flag, checked against each other.
+ *
+ * Required unless the entry is current, and *forbidden* when it is. The second
+ * half is the one that matters: a row carrying both a set `current` and an end
+ * date is a row two readers disagree about, and the whole point of splitting
+ * the flag out of the column was to make that state unrepresentable.
+ */
+function refineEndDate(
+  entry: { endDate: string; current?: boolean },
+  ctx: z.RefinementCtx
+) {
+  if (entry.current && entry.endDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endDate"],
+      message: invalid("endDateNotCurrent")
+    })
+
+    return
+  }
+
+  if (!entry.current && !entry.endDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["endDate"],
+      message: invalid("endDateRequired")
+    })
+  }
+}
+
+/**
+ * One school, before the end-date rule is applied to it.
+ *
+ * Named so the print payload can restate its dates without restating the whole
+ * entry — see `downloadPdfSchema`. A refined schema is a `ZodEffects` and has
+ * no `.extend`, so the split has to happen here rather than there.
+ */
+const schoolEntrySchema = createInsertSchema(school, {
+  id: (schema) => schema.id.optional(),
+  degree: (schema) =>
+    schema.degree
+      .min(3, invalid("minChars", { count: 3 }))
+      .max(255, invalid("maxChars", { count: 255 })),
+  name: (schema) =>
+    schema.name
+      .min(3, invalid("minChars", { count: 3 }))
+      .max(255, invalid("maxChars", { count: 255 })),
+  body: () => bodySchema,
+  location: (schema) =>
+    schema.location.max(255, invalid("maxChars", { count: 255 })).optional(),
+  gpa: (schema) => schema.gpa.optional()
+})
+  .extend(entryDateFields)
+  // The owner and the resume a row is snapshotted onto are the server's to
+  // decide — a client that could name them could write onto someone else's.
+  .omit({ userId: true, resumeId: true })
+
 export const insertEducationSchema = z.object({
-  education: createInsertSchema(school, {
-    id: (schema) => schema.id.optional(),
-    degree: (schema) =>
-      schema.degree
-        .min(3, invalid("minChars", { count: 3 }))
-        .max(255, invalid("maxChars", { count: 255 })),
-    name: (schema) =>
-      schema.name
-        .min(3, invalid("minChars", { count: 3 }))
-        .max(255, invalid("maxChars", { count: 255 })),
-    body: () => bodySchema,
-    location: (schema) =>
-      schema.location.max(255, invalid("maxChars", { count: 255 })).optional(),
-    startDate: (schema) => schema.startDate.min(4).max(50),
-    endDate: (schema) => schema.endDate.min(4).max(50),
-    gpa: (schema) => schema.gpa.optional()
-  })
-    // The owner and the resume a row is snapshotted onto are the server's to
-    // decide — a client that could name them could write onto someone else's.
-    .omit({ userId: true, resumeId: true })
+  education: schoolEntrySchema
+    .superRefine(refineEndDate)
     .array()
     // No minimum: a user with no degree has an empty education history, and
     // being unable to get past the step is not the same as having one.
@@ -106,33 +183,29 @@ export const insertEducationSchema = z.object({
 
 export type InsertEducationSchema = z.infer<typeof insertEducationSchema>
 
+/** One job, before the end-date rule — see `schoolEntrySchema`. */
+const workEntrySchema = createInsertSchema(work, {
+  id: (schema) => schema.id.optional(),
+  name: (schema) =>
+    schema.name
+      .min(3, invalid("minChars", { count: 3 }))
+      .max(255, invalid("maxChars", { count: 255 })),
+  title: (schema) =>
+    schema.title
+      .min(3, invalid("minChars", { count: 3 }))
+      .max(255, invalid("maxChars", { count: 255 }))
+})
+  .omit({ userId: true, resumeId: true })
+  /*
+    Required, where the column has a default and so is optional everywhere
+    else: a job with nothing under it is a job the resume says nothing about,
+    and this is the step that asks for it. The editor's own write allows an
+    empty body, for a row the user has just added.
+  */
+  .extend({ body: requiredBodySchema, ...entryDateFields })
+
 export const insertExperienceSchema = z.object({
-  experience: createInsertSchema(work, {
-    id: (schema) => schema.id.optional(),
-    name: (schema) =>
-      schema.name
-        .min(3, invalid("minChars", { count: 3 }))
-        .max(255, invalid("maxChars", { count: 255 })),
-    endDate: (schema) =>
-      schema.endDate.min(3, invalid("minChars", { count: 3 })).max(50),
-    startDate: (schema) =>
-      schema.startDate.min(3, invalid("minChars", { count: 3 })).max(50),
-    title: (schema) =>
-      schema.title
-        .min(3, invalid("minChars", { count: 3 }))
-        .max(255, invalid("maxChars", { count: 255 }))
-  })
-    .omit({ userId: true, resumeId: true })
-    /*
-      Required, where the column has a default and so is optional everywhere
-      else: a job with nothing under it is a job the resume says nothing about,
-      and this is the step that asks for it. The editor's own write allows an
-      empty body, for a row the user has just added.
-    */
-    .extend({ body: requiredBodySchema })
-    .array()
-    .min(1)
-    .max(5)
+  experience: workEntrySchema.superRefine(refineEndDate).array().min(1).max(5)
 })
 
 export type InsertExperienceSchema = z.infer<typeof insertExperienceSchema>
@@ -210,6 +283,21 @@ const downloadPdfSectionSchema = z.object({
 })
 
 /**
+ * The dates as a **print** takes them: whatever the document is drawing.
+ *
+ * Printing is not writing. The #71 migration deliberately left a date it could
+ * not read on the resume rather than blanking it, and the renderer prints an
+ * unrecognised value verbatim — so holding the download to the write schema's
+ * date rules would mean a resume that renders on screen and 400s on the way to
+ * a PDF, with the user punished for a value the app itself chose to keep.
+ */
+const printedEntryDates = {
+  startDate: z.string().max(50),
+  endDate: z.string().max(50),
+  current: z.boolean().default(false)
+}
+
+/**
  * The document as the PDF route receives it — the resume without the posting.
  *
  * Sections travel with it so the print is the document the user was looking at:
@@ -222,6 +310,8 @@ export const downloadPdfSchema = insertResumeSchema
     jobDescription: true
   })
   .extend({
+    experience: workEntrySchema.extend(printedEntryDates).array().min(1).max(5),
+    education: schoolEntrySchema.extend(printedEntryDates).array().max(4),
     sections: downloadPdfSectionSchema.array().optional(),
     /**
      * How the document looks, sent with it for the same reason the sections

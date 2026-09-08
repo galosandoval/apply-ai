@@ -28,11 +28,15 @@ export type { SectionContentTarget }
  *
  * `position`, `userId` and `resumeId` are absent: what a row belongs to and
  * where it sits are not string writes.
+ *
+ * `current` is one of them and is a boolean column rather than text — see
+ * `isFlagColumn` for how a flag travels down a grammar whose values are
+ * strings.
  */
 export const editableColumns = {
   resume: ["profession"],
-  experience: ["name", "title", "startDate", "endDate", "body"],
-  education: ["name", "degree", "startDate", "endDate", "body"],
+  experience: ["name", "title", "startDate", "endDate", "current", "body"],
+  education: ["name", "degree", "startDate", "endDate", "current", "body"],
   contact: ["fullName", "email", "location", "phone", "linkedIn", "portfolio"]
 } as const
 
@@ -187,4 +191,106 @@ export function formatResumeFieldPath(target: ResumeFieldTarget): string {
   }
 
   return `${target.section}.${target.row}.${target.column}`
+}
+
+/**
+ * The addressable columns that hold a flag rather than a line of text.
+ *
+ * `current` (#71) is the first and, so far, only one. The grammar's value is a
+ * string at every stage — the panel's input, the debounce, the optimistic
+ * patch, the mutation's payload, the rollback — and widening all of that to
+ * `string | boolean` to carry one checkbox would have been a change to five
+ * things to describe one. So the flag is *serialized* into the string instead,
+ * and the two ends that have to know — the cache lens and the column write —
+ * read it back through `parseFieldFlag`.
+ */
+const flagColumns: ReadonlySet<string> = new Set(["current"])
+
+/** True when `column` is written as a flag rather than as text. */
+export function isFlagColumn(column: string) {
+  return flagColumns.has(column)
+}
+
+/** The only string `parseFieldFlag` reads as set. */
+const flagSet = "true"
+
+/** A flag as the grammar carries it. */
+export function formatFieldFlag(on: boolean | null | undefined) {
+  return on ? flagSet : ""
+}
+
+/**
+ * A carried flag, read back.
+ *
+ * Exact rather than truthy: a path arrives as a client-supplied string, and
+ * anything that is not the one value the formatter writes is unset — so `"1"`
+ * or `"yes"` from somewhere that never asked this module cannot quietly mark a
+ * job current.
+ */
+export function parseFieldFlag(value: string) {
+  return value === flagSet
+}
+
+/**
+ * One column of a row as the grammar carries it — a flag serialized, text as it
+ * stands — or `undefined` for a column this row does not have.
+ *
+ * The inverse of `rowPatch`, and here for the same reason: the cache lens and
+ * the panel both read a row into the grammar's strings, and the two disagreeing
+ * about what a ticked box looks like would be a box drawn from one rule and
+ * written back by another.
+ */
+export function readRowColumn(
+  row: Record<string, unknown>,
+  column: string
+): string | undefined {
+  const value = row[column]
+
+  if (isFlagColumn(column)) return formatFieldFlag(Boolean(value))
+
+  return typeof value === "string" ? value : undefined
+}
+
+/**
+ * The change one addressed write makes to a row.
+ *
+ * Lives beside the flag it reads because both the client's cache patch and the
+ * server's column write need exactly this, and the two disagreeing about what a
+ * ticked box is would be an optimistic row that does not match the stored one.
+ * `current` is the only column where what a path carries and what a column
+ * holds are different types.
+ *
+ * A write to either half of the current/end-date pair carries the other half
+ * with it, which is what actually makes the contradictory row unrepresentable
+ * (#71). The panel clears the end date when the box is ticked, but the panel is
+ * a client: `updateField` addresses one column at a time, and nothing stopped a
+ * caller from setting `current` on a row whose end date still held a date.
+ * Pairing them here settles it once, for the optimistic patch and the column
+ * write alike — and leaves the panel's job the one thing a schema cannot do,
+ * which is *restoring* the date when the box is unticked.
+ */
+export function rowPatch(target: RowTarget, value: string) {
+  const { column } = target
+
+  if (isFlagColumn(column)) {
+    const on = parseFieldFlag(value)
+
+    // Ticking is saying the entry has no end date. Unticking is not saying what
+    // it is, so it leaves the column alone for the restore to write.
+    return on ? { current: true, endDate: "" } : { current: false }
+  }
+
+  // A date in the end column is the entry ending, which the flag cannot also
+  // claim. Emptying it is not — a row the editor has just added has no dates.
+  if (column === "endDate" && value) return { endDate: value, current: false }
+
+  return { [column]: value }
+}
+
+/** The addressable columns holding a date rather than free text. */
+const dateColumns: ReadonlySet<string> = new Set(["startDate", "endDate"])
+
+/** True when `column` holds a date, and so has a shape a write must respect. */
+export function isDateColumn(column: string) {
+  return dateColumns.has(column)
 }

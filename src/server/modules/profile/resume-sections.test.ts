@@ -45,6 +45,7 @@ const baseData: Omit<ResumeDocumentData, "sections"> = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
+      current: false,
       body: "- Wrote the first algorithm\n- Described a general computer"
     }
   ],
@@ -55,6 +56,7 @@ const baseData: Omit<ResumeDocumentData, "sections"> = {
       degree: "Mathematics",
       startDate: "1830",
       endDate: "1835",
+      current: false,
       body: "Studied under De Morgan"
     }
   ]
@@ -723,6 +725,7 @@ describe("the block list", () => {
           title: "Analyst",
           startDate: "1836",
           endDate: "1840",
+          current: false,
           body: "- Read the notes"
         }
       ]

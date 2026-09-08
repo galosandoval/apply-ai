@@ -154,6 +154,7 @@ export async function replaceExperience(
     body: e.body,
     endDate: e.endDate,
     startDate: e.startDate,
+    current: e.current,
     title: e.title,
     userId
   }))

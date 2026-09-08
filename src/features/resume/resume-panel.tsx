@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
+import { Checkbox } from "~/components/ui/checkbox"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import {
@@ -10,6 +11,9 @@ import {
   searchSectionCatalog
 } from "~/lib/section-catalog"
 import { MarkdownField } from "~/components/markdown-field"
+import { formatFieldFlag, parseFieldFlag } from "~/lib/resume-field-path"
+import { useClearedValue } from "~/components/use-cleared-value"
+import { useValidationText } from "~/components/use-validation-text"
 import {
   type AddedSectionPreset,
   type PanelAction,
@@ -124,6 +128,17 @@ function Field({
 }) {
   const id = `field-${field.path}`
 
+  if (field.input === "checkbox") {
+    return (
+      <FlagField
+        field={field}
+        id={id}
+        onChange={onChange}
+        onCommit={onCommit}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col gap-1">
       <Label htmlFor={id}>{field.label}</Label>
@@ -134,7 +149,61 @@ function Field({
         onChange={(value) => onChange(field.path, value)}
         onCommit={onCommit}
       />
+
+      {field.error && <FieldError message={field.error} />}
     </div>
+  )
+}
+
+/** Why a field is not saving, in the reader's language. */
+function FieldError({ message }: { message: string }) {
+  const text = useValidationText()
+
+  return <p className="text-[0.8rem] text-destructive">{text(message)}</p>
+}
+
+/**
+ * A flag, with its label beside the box rather than above it.
+ *
+ * Ticking is the commit — a box has no blur to wait a pause out for — and
+ * setting it also empties whatever the field says it clears, so "I currently
+ * work here" and an end date can never both be true of one row.
+ *
+ * Unticking puts that date back — see `useClearedValue`, which the onboarding
+ * step's copy of this box shares.
+ */
+function FlagField({
+  field,
+  id,
+  onChange,
+  onCommit
+}: {
+  field: PanelField
+  id: string
+  onChange: (path: string, value: string) => void
+  onCommit: () => void
+}) {
+  const clearField = useClearedValue()
+
+  return (
+    <Checkbox
+      checked={parseFieldFlag(field.value)}
+      id={id}
+      label={field.label}
+      onCheckedChange={(checked) => {
+        const { clears } = field
+
+        if (clears) {
+          clearField(checked, {
+            value: clears.value,
+            write: (value) => onChange(clears.path, value)
+          })
+        }
+
+        onChange(field.path, formatFieldFlag(checked))
+        onCommit()
+      }}
+    />
   )
 }
 
@@ -163,6 +232,7 @@ function FieldControl({
 
   return (
     <Input
+      disabled={field.disabled}
       id={id}
       onBlur={onCommit}
       onChange={(event) => onChange(event.target.value)}
