@@ -232,6 +232,26 @@ export function parseFieldFlag(value: string) {
 }
 
 /**
+ * One column of a row as the grammar carries it — a flag serialized, text as it
+ * stands — or `undefined` for a column this row does not have.
+ *
+ * The inverse of `rowPatch`, and here for the same reason: the cache lens and
+ * the panel both read a row into the grammar's strings, and the two disagreeing
+ * about what a ticked box looks like would be a box drawn from one rule and
+ * written back by another.
+ */
+export function readRowColumn(
+  row: Record<string, unknown>,
+  column: string
+): string | undefined {
+  const value = row[column]
+
+  if (isFlagColumn(column)) return formatFieldFlag(Boolean(value))
+
+  return typeof value === "string" ? value : undefined
+}
+
+/**
  * The change one addressed write makes to a row.
  *
  * Lives beside the flag it reads because both the client's cache patch and the
@@ -239,11 +259,32 @@ export function parseFieldFlag(value: string) {
  * ticked box is would be an optimistic row that does not match the stored one.
  * `current` is the only column where what a path carries and what a column
  * holds are different types.
+ *
+ * A write to either half of the current/end-date pair carries the other half
+ * with it, which is what actually makes the contradictory row unrepresentable
+ * (#71). The panel clears the end date when the box is ticked, but the panel is
+ * a client: `updateField` addresses one column at a time, and nothing stopped a
+ * caller from setting `current` on a row whose end date still held a date.
+ * Pairing them here settles it once, for the optimistic patch and the column
+ * write alike — and leaves the panel's job the one thing a schema cannot do,
+ * which is *restoring* the date when the box is unticked.
  */
 export function rowPatch(target: RowTarget, value: string) {
-  return {
-    [target.column]: isFlagColumn(target.column) ? parseFieldFlag(value) : value
+  const { column } = target
+
+  if (isFlagColumn(column)) {
+    const on = parseFieldFlag(value)
+
+    // Ticking is saying the entry has no end date. Unticking is not saying what
+    // it is, so it leaves the column alone for the restore to write.
+    return on ? { current: true, endDate: "" } : { current: false }
   }
+
+  // A date in the end column is the entry ending, which the flag cannot also
+  // claim. Emptying it is not — a row the editor has just added has no dates.
+  if (column === "endDate" && value) return { endDate: value, current: false }
+
+  return { [column]: value }
 }
 
 /** The addressable columns holding a date rather than free text. */

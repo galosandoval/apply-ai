@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
   compareByStartDate,
-  compareResumeDates,
   formatResumeDate,
   isWritableEntryDate,
   monthsBetween,
   normalizeEntryDates,
   formatResumeDateRange,
-  isCurrentTerm,
   isResumeDate,
-  normalizeResumeDate,
-  resumeDatePrecision
+  normalizeResumeDate
 } from "./resume-date"
 
 /**
@@ -50,18 +47,6 @@ describe("isResumeDate", () => {
   })
 })
 
-describe("resumeDatePrecision", () => {
-  it("reads precision off the value's own length", () => {
-    expect(resumeDatePrecision("2017")).toBe("year")
-    expect(resumeDatePrecision("2017-09")).toBe("month")
-    expect(resumeDatePrecision("2017-09-04")).toBe("day")
-  })
-
-  it("has no precision for anything outside the subset", () => {
-    expect(resumeDatePrecision("Sept 2017")).toBeNull()
-  })
-})
-
 describe("normalizeResumeDate", () => {
   it.each([
     ["2017", "2017"],
@@ -92,18 +77,26 @@ describe("normalizeResumeDate", () => {
   )
 })
 
-describe("isCurrentTerm", () => {
+/**
+ * The words a user or a model writes where an end date would go. Asserted
+ * through `normalizeEntryDates`, which is the only thing that reads them: each
+ * of these has to leave the end column and become the flag instead.
+ */
+describe("the words that mean an entry has not ended", () => {
+  const endingWith = (endDate: string) =>
+    normalizeEntryDates({ startDate: "2017-09", endDate })
+
   it.each(["Present", "present", " Current ", "now", "Actual", "Actualidad"])(
     "reads %s as still here",
     (raw) => {
-      expect(isCurrentTerm(raw)).toBe(true)
+      expect(endingWith(raw)).toMatchObject({ current: true, endDate: "" })
     }
   )
 
-  it.each(["2017-09", "Sept 2017", "", "presently employed"])(
+  it.each(["2021-05", "May 2021", "presently employed"])(
     "does not read %s as still here",
     (raw) => {
-      expect(isCurrentTerm(raw)).toBe(false)
+      expect(endingWith(raw).current).toBe(false)
     }
   )
 })
@@ -240,17 +233,33 @@ describe("normalizeEntryDates", () => {
  * either yet — scoring will — but a column shape that cannot answer them is the
  * shape this change was made to replace, so they are asserted here.
  */
-describe("compareResumeDates", () => {
-  it("orders dates earliest first", () => {
-    expect(compareResumeDates("2017-09", "2021-05")).toBeLessThan(0)
-    expect(compareResumeDates("2021-05", "2017-09")).toBeGreaterThan(0)
-    expect(compareResumeDates("2017-09", "2017-09")).toBe(0)
+describe("compareByStartDate", () => {
+  const sorted = (...dates: string[]) =>
+    dates
+      .map((startDate) => ({ startDate }))
+      .sort(compareByStartDate)
+      .map((entry) => entry.startDate)
+
+  it("puts the most recent entry first, the way a resume reads", () => {
+    expect(sorted("2015-01", "2021-05", "2017-09")).toEqual([
+      "2021-05",
+      "2017-09",
+      "2015-01"
+    ])
   })
 
-  it("compares across precisions", () => {
-    expect(compareResumeDates("2017", "2017-09")).toBeLessThan(0)
-    expect(compareResumeDates("2017-09-04", "2017-09-05")).toBeLessThan(0)
-    expect(compareResumeDates("2016", "2017-01")).toBeLessThan(0)
+  /*
+    Compared as strings, which is exactly right for this subset: the fields are
+    fixed-width and zero-padded, so a year-only date and a day-precision one
+    order against each other without either being parsed.
+  */
+  it("orders across precisions", () => {
+    expect(sorted("2017-09", "2017")).toEqual(["2017-09", "2017"])
+    expect(sorted("2017-09-04", "2017-09-05")).toEqual([
+      "2017-09-05",
+      "2017-09-04"
+    ])
+    expect(sorted("2016", "2017-01")).toEqual(["2017-01", "2016"])
   })
 
   /*
@@ -258,23 +267,11 @@ describe("compareResumeDates", () => {
     it goes would be worse than admitting it. It sorts last, so a legacy value
     never displaces an entry whose date is known.
   */
-  it("sorts a date it cannot read last, in either position", () => {
-    expect(compareResumeDates("nonsense", "2017")).toBeGreaterThan(0)
-    expect(compareResumeDates("2017", "nonsense")).toBeLessThan(0)
-    expect(compareResumeDates("nonsense", "also nonsense")).toBe(0)
-  })
-})
-
-describe("compareByStartDate", () => {
-  const entry = (startDate: string) => ({ startDate })
-
-  it("puts the most recent entry first, the way a resume reads", () => {
-    const entries = [entry("2015-01"), entry("2021-05"), entry("2017-09")]
-
-    expect(entries.sort(compareByStartDate).map((e) => e.startDate)).toEqual([
-      "2021-05",
-      "2017-09",
-      "2015-01"
+  it("sorts a date it cannot read last", () => {
+    expect(sorted("nonsense", "2017", "2021")).toEqual([
+      "2021",
+      "2017",
+      "nonsense"
     ])
   })
 })
@@ -319,10 +316,7 @@ describe("isWritableEntryDate", () => {
     expect(isWritableEntryDate(value)).toBe(true)
   })
 
-  it.each(["Sept 2017", "Present", "2017-13", "20"])(
-    "refuses %s",
-    (value) => {
-      expect(isWritableEntryDate(value)).toBe(false)
-    }
-  )
+  it.each(["Sept 2017", "Present", "2017-13", "20"])("refuses %s", (value) => {
+    expect(isWritableEntryDate(value)).toBe(false)
+  })
 })

@@ -1,9 +1,10 @@
 import toast from "react-hot-toast"
 import {
   editableColumns,
-  formatFieldFlag,
   formatResumeFieldPath,
   isFlagColumn,
+  parseFieldFlag,
+  readRowColumn,
   rowColumnTarget
 } from "~/lib/resume-field-path"
 import { moveItem } from "~/lib/move-item"
@@ -386,19 +387,17 @@ function inputFor(column: CoreColumn): PanelField["input"] {
 /**
  * One column of a core row, as the panel shows it.
  *
- * The row is only *some* of the lists' rows, so a column another list owns is
- * absent rather than wrong — and an absent or null column reads as empty, which
- * is what an input needs anyway.
+ * `readRowColumn` carries the grammar's rule — a flag serialized, text as it
+ * stands — and the only thing added here is the panel's own answer for a column
+ * the row does not have. The row is only *some* of the lists' rows, so a column
+ * another list owns is absent rather than wrong, and an input needs a string
+ * either way.
  */
 function stringAt(
   row: Partial<Record<CoreColumn, string | boolean | null>>,
   column: CoreColumn
 ) {
-  const value = row[column]
-
-  if (isFlagColumn(column)) return formatFieldFlag(Boolean(value))
-
-  return typeof value === "string" ? value : ""
+  return readRowColumn(row, column) ?? ""
 }
 
 /** What a core row is called in a list of them, or "" when it has no name. */
@@ -423,7 +422,7 @@ function rowPanel(
     column: "endDate"
   })
 
-  const isCurrent = Boolean(stringAt(row, "current"))
+  const isCurrent = parseFieldFlag(stringAt(row, "current"))
 
   const fields = rowColumns[list].flatMap((column) => {
     const target = rowColumnTarget(list, row.id, column)

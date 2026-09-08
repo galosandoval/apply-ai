@@ -1,9 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { useRef } from "react"
 import {
-  type Control,
   type FieldPath,
   type FieldValues,
   type PathValue,
@@ -12,6 +10,7 @@ import {
 } from "react-hook-form"
 import { Checkbox } from "~/components/ui/checkbox"
 import { MyInput } from "~/components/my-input"
+import { useClearedValue } from "~/components/use-cleared-value"
 import { FormField } from "~/components/ui/form"
 
 /**
@@ -28,15 +27,18 @@ import { FormField } from "~/components/ui/form"
  * precision, so a history recorded as `2017`, including one this app's own
  * migration left that way, would render as an empty box that the next save
  * would then blank.
+ *
+ * The form comes from context rather than from a prop: the box writes the end
+ * date as well as its own field, and a component holding one handle on the
+ * form reads better than one holding a passed `control` beside a borrowed
+ * `setValue`.
  */
 export function EntryDateFields<TFieldValues extends FieldValues>({
-  control,
   startDate,
   endDate,
   current,
   currentLabel
 }: {
-  control: Control<TFieldValues>
   startDate: FieldPath<TFieldValues>
   endDate: FieldPath<TFieldValues>
   current: FieldPath<TFieldValues>
@@ -44,47 +46,48 @@ export function EntryDateFields<TFieldValues extends FieldValues>({
   currentLabel: string
 }) {
   const t = useTranslations("onboarding.dates")
-  const { setValue } = useFormContext<TFieldValues>()
+  const { control, setValue } = useFormContext<TFieldValues>()
   const isCurrent = Boolean(useWatch({ control, name: current }))
   const endValue = useWatch({ control, name: endDate })
+  const clearEndDate = useClearedValue()
 
-  /** What ticking the box cleared, so unticking can put it back. */
-  const cleared = useRef("")
+  const writeEndDate = (value: string) =>
+    setValue(endDate, value as PathValue<TFieldValues, typeof endDate>, {
+      shouldValidate: true
+    })
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2 max-sm:flex-col">
-        <FormField
-          control={control}
-          name={startDate}
-          render={({ field }) => (
-            <MyInput
-              description={t("hint")}
-              field={field}
-              inputMode="numeric"
-              label={t("startDate")}
-              placeholder={t("placeholder")}
-              required
-            />
-          )}
-        />
+    <div className="flex gap-2 max-sm:flex-col">
+      <FormField
+        control={control}
+        name={startDate}
+        render={({ field }) => (
+          <MyInput
+            description={t("hint")}
+            field={field}
+            inputMode="numeric"
+            label={t("startDate")}
+            placeholder={t("placeholder")}
+            required
+          />
+        )}
+      />
 
-        <FormField
-          control={control}
-          name={endDate}
-          render={({ field }) => (
-            <MyInput
-              description={t("hint")}
-              disabled={isCurrent}
-              field={field}
-              inputMode="numeric"
-              label={t("endDate")}
-              placeholder={t("placeholder")}
-              required={!isCurrent}
-            />
-          )}
-        />
-      </div>
+      <FormField
+        control={control}
+        name={endDate}
+        render={({ field }) => (
+          <MyInput
+            description={t("hint")}
+            disabled={isCurrent}
+            field={field}
+            inputMode="numeric"
+            label={t("endDate")}
+            placeholder={t("placeholder")}
+            required={!isCurrent}
+          />
+        )}
+      />
 
       <FormField
         control={control}
@@ -92,6 +95,7 @@ export function EntryDateFields<TFieldValues extends FieldValues>({
         render={({ field }) => (
           <Checkbox
             checked={Boolean(field.value)}
+            className="shrink-0 self-center max-sm:self-start"
             id={field.name}
             label={currentLabel}
             onCheckedChange={(checked) => {
@@ -100,23 +104,12 @@ export function EntryDateFields<TFieldValues extends FieldValues>({
                   nowhere. Clearing the end date here is what keeps the pair in
                   a state the write schema accepts — it refuses a set flag
                   beside a date, because a row carrying both is a row two
-                  readers disagree about. Unticking puts the date back, so a box
-                  ticked by accident does not cost the user what they typed.
+                  readers disagree about.
                 */
-              const write = (value: string) =>
-                setValue(
-                  endDate,
-                  value as PathValue<TFieldValues, typeof endDate>,
-                  { shouldValidate: true }
-                )
-
-              if (checked) {
-                cleared.current = String(endValue ?? "")
-                write("")
-              } else if (cleared.current) {
-                write(cleared.current)
-                cleared.current = ""
-              }
+              clearEndDate(checked, {
+                value: String(endValue ?? ""),
+                write: writeEndDate
+              })
 
               field.onChange(checked)
             }}

@@ -9,8 +9,7 @@
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { type DownloadPdfSchema } from "~/server/db/crud-schema"
 import {
-  formatFieldFlag,
-  isFlagColumn,
+  readRowColumn,
   type ResumeFieldTarget,
   rowPatch,
   type RowTarget
@@ -50,20 +49,14 @@ type FieldLens<Section extends ResumeSection> = {
 /**
  * One column of a job or a school, as the grammar carries it.
  *
- * Every value on a path is a string, so `current` — the only boolean a path can
- * address (#71) — is serialized rather than returned as itself. `rowPatch`, in
- * the grammar module, is the inverse, and the pair is why the rest of this file
- * never has to ask what type a column is.
+ * A thin address-shaped wrapper on `readRowColumn`, which is where the rule
+ * lives: every value on a path is a string, so `current` — the only boolean a
+ * path can address (#71) — is serialized rather than returned as itself.
+ * `rowPatch` is the inverse, and the pair is why the rest of this file never
+ * has to ask what type a column is.
  */
-function rowValue(
-  row: Record<string, unknown>,
-  target: RowTarget
-): string | undefined {
-  const value = row[target.column]
-
-  if (isFlagColumn(target.column)) return formatFieldFlag(Boolean(value))
-
-  return typeof value === "string" ? value : undefined
+function rowValue(row: Record<string, unknown>, target: RowTarget) {
+  return readRowColumn(row, target.column)
 }
 
 const fieldLenses: { [Section in ResumeSection]: FieldLens<Section> } = {

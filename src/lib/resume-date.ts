@@ -25,7 +25,7 @@ export const resumeDatePattern =
   /^\d{4}(?:-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12]\d|3[01]))?)?$/
 
 /** How much of a date the stored value actually claims. */
-export type ResumeDatePrecision = "year" | "month" | "day"
+type ResumeDatePrecision = "year" | "month" | "day"
 
 /** True when `value` is a date a column may hold. Empty is not — absent is. */
 export function isResumeDate(value: string) {
@@ -33,7 +33,7 @@ export function isResumeDate(value: string) {
 }
 
 /** The precision `value` carries, or `null` when it is not a resume date. */
-export function resumeDatePrecision(value: string): ResumeDatePrecision | null {
+function resumeDatePrecision(value: string): ResumeDatePrecision | null {
   if (!isResumeDate(value)) return null
 
   if (value.length === 4) return "year"
@@ -141,7 +141,7 @@ export function normalizeResumeDate(raw: string): string | null {
 const currentTerms = ["present", "current", "now", "actual", "actualidad"]
 
 /** True when free text is the user's way of saying the entry has not ended. */
-export function isCurrentTerm(raw: string) {
+function isCurrentTerm(raw: string) {
   return currentTerms.includes(raw.trim().toLowerCase())
 }
 
@@ -268,7 +268,7 @@ function monthIndex(value: string) {
  * #71 migration leaves such values in place, so this has to have an answer for
  * them.
  */
-export function compareResumeDates(a: string, b: string) {
+function compareResumeDates(a: string, b: string) {
   const left = isResumeDate(a)
   const right = isResumeDate(b)
 
@@ -287,11 +287,22 @@ export function compareResumeDates(a: string, b: string) {
  * The order the user maintains by hand today, as `position`. Nothing consumes
  * this yet — it is what the typed column made possible, and what scoring will
  * sort by.
+ *
+ * An unreadable date is held back **before** the direction is applied. Reading
+ * the comparison backwards to get "most recent first" would otherwise reverse
+ * the last-place rule along with everything else, and put the one entry nobody
+ * can place at the top of the resume — the displacement that rule exists to
+ * prevent.
  */
 export function compareByStartDate(
   a: { startDate: string },
   b: { startDate: string }
 ) {
+  const left = isResumeDate(a.startDate)
+  const right = isResumeDate(b.startDate)
+
+  if (left !== right) return left ? -1 : 1
+
   return compareResumeDates(b.startDate, a.startDate)
 }
 

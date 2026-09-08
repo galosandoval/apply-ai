@@ -229,7 +229,6 @@ function ExperienceForm({
       />
 
       <EntryDateFields
-        control={control}
         current={`experience.${index}.current`}
         currentLabel={t("currentlyWorkHere")}
         endDate={`experience.${index}.endDate`}

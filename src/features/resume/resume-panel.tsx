@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Checkbox } from "~/components/ui/checkbox"
 import { Input } from "~/components/ui/input"
@@ -12,6 +12,7 @@ import {
 } from "~/lib/section-catalog"
 import { MarkdownField } from "~/components/markdown-field"
 import { formatFieldFlag, parseFieldFlag } from "~/lib/resume-field-path"
+import { useClearedValue } from "~/components/use-cleared-value"
 import { useValidationText } from "~/components/use-validation-text"
 import {
   type AddedSectionPreset,
@@ -168,10 +169,8 @@ function FieldError({ message }: { message: string }) {
  * setting it also empties whatever the field says it clears, so "I currently
  * work here" and an end date can never both be true of one row.
  *
- * Unticking puts that date back. The value ticking cleared is held here rather
- * than re-read from the row, because by then the row's copy is the empty string
- * the tick wrote — and a box ticked by accident must not cost the user a date
- * they then have to retype.
+ * Unticking puts that date back — see `useClearedValue`, which the onboarding
+ * step's copy of this box shares.
  */
 function FlagField({
   field,
@@ -184,25 +183,21 @@ function FlagField({
   onChange: (path: string, value: string) => void
   onCommit: () => void
 }) {
-  const isSet = parseFieldFlag(field.value)
-  const cleared = useRef("")
+  const clearField = useClearedValue()
 
   return (
     <Checkbox
-      checked={isSet}
+      checked={parseFieldFlag(field.value)}
       id={id}
       label={field.label}
       onCheckedChange={(checked) => {
         const { clears } = field
 
         if (clears) {
-          if (checked) {
-            cleared.current = clears.value
-            onChange(clears.path, "")
-          } else if (cleared.current) {
-            onChange(clears.path, cleared.current)
-            cleared.current = ""
-          }
+          clearField(checked, {
+            value: clears.value,
+            write: (value) => onChange(clears.path, value)
+          })
         }
 
         onChange(field.path, formatFieldFlag(checked))

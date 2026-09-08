@@ -427,16 +427,30 @@ because the document shows what is stored and nothing has been stored.
 **Ticking the box clears the end date; unticking puts it back.** The value is
 held by the control rather than re-read from the row, because by then the row's
 copy is the empty string the tick wrote. A box ticked by accident must not cost
-the user a date they then have to retype.
+the user a date they then have to retype. Both boxes — the onboarding step's and
+the panel's — share `useClearedValue`, so the restore is one rule rather than
+two copies of it.
 
-What the typed column buys is in `~/lib/resume-date`: `compareResumeDates` and
-`compareByStartDate` order entries, and `monthsBetween` measures the hole
+**The pair itself is kept by `rowPatch`, not by the box.** A ticked box clearing
+the end date is a client doing the right thing, and `updateField` addresses one
+column at a time — so nothing stopped a caller that skipped the panel from
+setting `current` on a row whose end date still held a date, the exact state the
+flag was split out to make unrepresentable. So a write to either half carries
+the other: setting the flag empties `endDate`, and writing an `endDate` unsets
+the flag. Emptying the end date does not, because a row the editor has just
+added has no dates yet and clearing one must not silently untick the box. One
+rule, applied by the optimistic cache patch and the column write alike.
+
+What the typed column buys is in `~/lib/resume-date`:
+`compareByStartDate` orders entries, and `monthsBetween` measures the hole
 between one entry's end and the next one's start — the six-month gap
 `docs/ats-score.md` records 49% of employers knocking out on. Nothing consumes
 either yet. They are here because a column that cannot answer those two
 questions is the column this change existed to replace, and a comparator has to
 have an answer for the unreadable dates the migration deliberately kept: they
-sort last, never displacing an entry whose date is known.
+sort last, never displacing an entry whose date is known — held back before the
+descending order is applied, since reading the comparison backwards would
+otherwise reverse that rule too and put the unplaceable entry at the top.
 
 ### Autosave: six details worth keeping
 

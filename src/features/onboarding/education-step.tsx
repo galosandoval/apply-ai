@@ -240,7 +240,6 @@ function EducationForm({
       />
 
       <EntryDateFields
-        control={control}
         current={`education.${index}.current`}
         currentLabel={t("currentlyAttend")}
         endDate={`education.${index}.endDate`}

@@ -5,6 +5,9 @@ import {
   isFlagColumn,
   parseFieldFlag,
   parseResumeFieldPath,
+  readRowColumn,
+  rowPatch,
+  type RowTarget,
   withRow
 } from "./resume-field-path"
 
@@ -308,4 +311,92 @@ describe("flag columns", () => {
       expect(parseFieldFlag(value)).toBe(false)
     }
   )
+})
+
+/**
+ * Reading a row into the grammar's strings, and writing one back.
+ *
+ * The two are inverses and the pair is what keeps the panel, the optimistic
+ * cache patch and the column write agreeing about what a ticked box looks like.
+ */
+describe("readRowColumn", () => {
+  it("serializes a flag column rather than returning the boolean", () => {
+    expect(readRowColumn({ current: true }, "current")).toBe(
+      formatFieldFlag(true)
+    )
+    expect(readRowColumn({ current: false }, "current")).toBe(
+      formatFieldFlag(false)
+    )
+  })
+
+  it("reads a flag the row has never been written as unset", () => {
+    expect(readRowColumn({}, "current")).toBe(formatFieldFlag(false))
+  })
+
+  it("returns text as it stands", () => {
+    expect(readRowColumn({ startDate: "2017-09" }, "startDate")).toBe("2017-09")
+  })
+
+  it("has no value for a column the row does not have", () => {
+    expect(readRowColumn({}, "startDate")).toBeUndefined()
+    expect(readRowColumn({ gpa: null }, "gpa")).toBeUndefined()
+  })
+})
+
+/**
+ * The pair `current` and `endDate` make, enforced where both the cache patch
+ * and the column write pass through.
+ *
+ * The panel clears the end date when the box is ticked, but the panel is a
+ * client and `updateField` addresses one column at a time — so the row two
+ * readers disagree about was reachable by anything that skipped the panel.
+ * Carrying the other half of the pair with either write is what actually makes
+ * it unrepresentable (#71).
+ */
+describe("rowPatch", () => {
+  const target = (column: string) =>
+    ({
+      section: "experience",
+      kind: "column",
+      row: "job1",
+      column
+    }) as RowTarget
+
+  it("clears the end date when the flag is set", () => {
+    expect(rowPatch(target("current"), formatFieldFlag(true))).toEqual({
+      current: true,
+      endDate: ""
+    })
+  })
+
+  /*
+    Unticking is not a claim about when the entry ended, so it leaves the column
+    alone — the panel writes the date it stashed back into it.
+  */
+  it("leaves the end date alone when the flag is unset", () => {
+    expect(rowPatch(target("current"), formatFieldFlag(false))).toEqual({
+      current: false
+    })
+  })
+
+  it("unsets the flag when an end date is written", () => {
+    expect(rowPatch(target("endDate"), "2021-05")).toEqual({
+      endDate: "2021-05",
+      current: false
+    })
+  })
+
+  /*
+    Emptying it is not the entry ending: a row the editor has just added has no
+    dates yet, and clearing one must not silently untick the box.
+  */
+  it("leaves the flag alone when the end date is emptied", () => {
+    expect(rowPatch(target("endDate"), "")).toEqual({ endDate: "" })
+  })
+
+  it("writes any other column on its own", () => {
+    expect(rowPatch(target("startDate"), "2017-09")).toEqual({
+      startDate: "2017-09"
+    })
+  })
 })
