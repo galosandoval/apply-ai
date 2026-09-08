@@ -294,16 +294,12 @@ export async function nextRowPosition(
 /**
  * Deletes a resume, and every row snapshotted onto it.
  *
- * `section` cascades from the resume; `work`, `school`, `skill` and `contact`
- * do not — a nullable `resumeId` is also how a master copy is spelled, so the
- * foreign key cannot carry the delete. They are cleaned up here instead, in one
- * transaction, or the rows would outlive the only thing that referenced them.
+ * The snapshot tables — `section`, `work`, `school` and `contact` — all cascade
+ * from `resumeId`, so this one statement is the whole delete. A master copy is
+ * spelled with `resumeId` null, which no cascade from a resume can reach, so it
+ * survives untouched.
  */
 export async function deleteResume(db: DbOrTx, resumeId: string) {
-  await db.delete(work).where(eq(work.resumeId, resumeId))
-  await db.delete(school).where(eq(school.resumeId, resumeId))
-  await db.delete(contact).where(eq(contact.resumeId, resumeId))
-
   return db
     .delete(resume)
     .where(eq(resume.id, resumeId))
