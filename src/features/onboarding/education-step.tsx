@@ -29,6 +29,7 @@ import {
   FormMessage
 } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
+import { EntryDateFields } from "~/features/onboarding/entry-date-fields"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 import { useErrorText } from "~/components/use-error-text"
 
@@ -38,6 +39,7 @@ const initialSchool: InsertEducationSchema["education"] = [
     body: "",
     name: "",
     endDate: "",
+    current: false,
     gpa: "",
     location: "",
     startDate: ""
@@ -72,6 +74,7 @@ export function EducationStep() {
             id: school.id,
             degree: school.degree,
             endDate: school.endDate,
+            current: school.current,
             name: school.name,
             startDate: school.startDate,
             body: school.body,
@@ -87,6 +90,7 @@ export function EducationStep() {
             id: school.id,
             degree: school.degree,
             endDate: school.endDate,
+            current: school.current,
             name: school.name,
             startDate: school.startDate,
             body: school.body,
@@ -235,32 +239,13 @@ function EducationForm({
         )}
       />
 
-      <div className="flex gap-2 max-sm:flex-col">
-        <FormField
-          control={control}
-          name={`education.${index}.startDate`}
-          render={({ field }) => (
-            <MyInput
-              field={field}
-              label={t("start")}
-              placeholder={t("startPlaceholder")}
-              required
-            />
-          )}
-        />
-        <FormField
-          control={control}
-          name={`education.${index}.endDate`}
-          render={({ field }) => (
-            <MyInput
-              field={field}
-              label={t("end")}
-              placeholder={t("endPlaceholder")}
-              required
-            />
-          )}
-        />
-      </div>
+      <EntryDateFields
+        control={control}
+        current={`education.${index}.current`}
+        currentLabel={t("currentlyAttend")}
+        endDate={`education.${index}.endDate`}
+        startDate={`education.${index}.startDate`}
+      />
 
       <FormField
         control={control}

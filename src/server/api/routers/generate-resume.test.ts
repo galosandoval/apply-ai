@@ -77,6 +77,7 @@ function drafted(overrides: Partial<GeneratedResume> = {}): GeneratedResume {
         title: "Engineer",
         startDate: "2020",
         endDate: "2022",
+        current: false,
         body: "- Shipped the thing\n- Then shipped the other thing"
       }
     ],
@@ -87,6 +88,7 @@ function drafted(overrides: Partial<GeneratedResume> = {}): GeneratedResume {
         body: "",
         startDate: "2016",
         endDate: "2020",
+        current: false,
         gpa: ""
       }
     ],
@@ -159,6 +161,7 @@ async function seed() {
     title: "Engineer",
     startDate: "2020",
     endDate: "2022",
+    current: false,
     body: "- Shipped the thing",
     position: 0
   })
@@ -449,6 +452,7 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
             title: "Engineer",
             startDate: "2020",
             endDate: "2022",
+            current: false,
             body: ["a bullet"] as unknown as string
           }
         ]

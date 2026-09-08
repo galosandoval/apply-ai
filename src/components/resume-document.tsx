@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react"
+import { formatResumeDateRange } from "~/lib/resume-date"
 import { renderResumeMarkdown } from "~/lib/resume-markdown"
 import {
   customSectionShape,
@@ -84,6 +85,16 @@ export type ResumeDocumentData = {
    * be the document the user was looking at.
    */
   sections?: ResumeDocumentSection[]
+  /**
+   * The language the document is written in, from `resume.language`.
+   *
+   * It was deliberately not part of this type until #71, on the grounds that
+   * nothing on the page was drawn from it. A date is: `Sep 2017` and `sept
+   * 2017` are the same stored `2017-09`, and so is the word that stands in for
+   * an end date the entry has not reached. Optional and loose because that is
+   * what the column is — anything unrecognised falls back to English.
+   */
+  language?: string
 } & DocumentStamp
 
 /**
@@ -718,8 +729,7 @@ function coreRows(doc: Doc, kind: CoreSectionKind): TwoColumnRow[] {
 
   return entries.map((entry) => ({
     ...entryRow(doc, {
-      start: entry.startDate,
-      end: entry.endDate,
+      ...formatResumeDateRange(entry, doc.data.language ?? ""),
       name: entry.name,
       detail: entry.detail,
       // A school's body column has a default, so a payload may arrive without
@@ -734,6 +744,11 @@ function coreRows(doc: Doc, kind: CoreSectionKind): TwoColumnRow[] {
 /**
  * One chronology entry: dates on the left, and on the right a bold name, the
  * role or degree beside it, then the entry's body.
+ *
+ * `start` and `end` arrive formatted — what the column holds is `2017-09`, and
+ * what a resume says is `Sep 2017`. The `end` of a current entry is the word
+ * the flag stands for, so the trailing term is rendered from the flag and never
+ * from a string a user typed into a date box. See `~/lib/resume-date`.
  *
  * Experience and Education differ only in what the second heading field is
  * called and what the body is, so they share the shape rather than each holding

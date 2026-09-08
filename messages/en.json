@@ -105,6 +105,12 @@
     "deleteFailed": "Could not delete that resume."
   },
   "onboarding": {
+    "dates": {
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "placeholder": "2017-09",
+      "hint": "Year, year and month, or a full date"
+    },
     "steps": {
       "import": "Import",
       "contact": "Contact",
@@ -144,10 +150,6 @@
       "next": "Next: Work Experience",
       "institution": "Institution Name",
       "institutionPlaceholder": "Ex: University of California, Berkeley",
-      "start": "Start",
-      "startPlaceholder": "Ex: Sept 2017",
-      "end": "End",
-      "endPlaceholder": "Ex: May 2021",
       "degree": "Degree/Certificate",
       "degreePlaceholder": "Ex: Computer Science",
       "location": "Location",
@@ -155,7 +157,8 @@
       "gpa": "GPA",
       "gpaPlaceholder": "Only if your GPA was 3.5+",
       "extra": "Anything extra you want a hiring manager to know",
-      "extraPlaceholder": "Ex: I was the president of the computer science club."
+      "extraPlaceholder": "Ex: I was the president of the computer science club.",
+      "currentlyAttend": "I currently attend"
     },
     "experience": {
       "title": "Experience",
@@ -164,15 +167,12 @@
       "companyPlaceholder": "Ex: Google",
       "jobTitle": "Title",
       "jobTitlePlaceholder": "Ex: Software Engineer",
-      "startDate": "Start Date",
-      "startDatePlaceholder": "Ex: Sept 2017",
-      "endDate": "End Date",
-      "endDatePlaceholder": "Ex: May 2021",
       "accomplishments": "Accomplishments",
       "accomplishmentsPlaceholder": "- Collaborated closely with cross-functional teams to ship new features\n- Cut page load time by 40% by splitting the bundle",
       "accomplishmentsHint": "Use the List button for accomplishments, or write a paragraph. Bold and links are supported.",
       "accomplishmentsAdvice": "Write 3 to 5 accomplishments. Be concise, and use numbers and percentages where you have them.",
-      "bodyLabel": "Accomplishments"
+      "bodyLabel": "Accomplishments",
+      "currentlyWorkHere": "I currently work here"
     },
     "skills": {
       "title": "Skills",
@@ -237,6 +237,7 @@
       "title": "Title",
       "startDate": "Start",
       "endDate": "End",
+      "current": "I currently work here",
       "body": "Details"
     },
     "education": {
@@ -244,6 +245,7 @@
       "degree": "Degree",
       "startDate": "Start",
       "endDate": "End",
+      "current": "I currently attend",
       "body": "Details"
     },
     "up": "Up",
@@ -451,7 +453,10 @@
     "maxChars": "Must be less than {count, plural, one {# character} other {# characters}}",
     "postingRequired": "Paste the job posting first",
     "postingTooLong": "That posting is too long",
-    "pdfTooLarge": "That PDF is too large"
+    "pdfTooLarge": "That PDF is too large",
+    "dateFormat": "Use YYYY, YYYY-MM or YYYY-MM-DD",
+    "endDateRequired": "Add an end date, or tick the box if it is current",
+    "endDateNotCurrent": "Clear the end date, or untick the box"
   },
   "errors": {
     "BAD_REQUEST": "We couldn’t accept that change.",

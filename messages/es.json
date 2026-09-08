@@ -105,6 +105,12 @@
     "deleteFailed": "No se pudo eliminar ese currículum."
   },
   "onboarding": {
+    "dates": {
+      "startDate": "Fecha de inicio",
+      "endDate": "Fecha de fin",
+      "placeholder": "2017-09",
+      "hint": "Año, año y mes, o fecha completa"
+    },
     "steps": {
       "import": "Importar",
       "contact": "Contacto",
@@ -144,10 +150,6 @@
       "next": "Siguiente: Experiencia laboral",
       "institution": "Nombre de la institución",
       "institutionPlaceholder": "Ej: Universidad de California, Berkeley",
-      "start": "Inicio",
-      "startPlaceholder": "Ej: Sept 2017",
-      "end": "Fin",
-      "endPlaceholder": "Ej: Mayo 2021",
       "degree": "Título o certificado",
       "degreePlaceholder": "Ej: Ciencias de la computación",
       "location": "Ubicación",
@@ -155,7 +157,8 @@
       "gpa": "Promedio",
       "gpaPlaceholder": "Solo si tu promedio fue de 3.5 o más",
       "extra": "Algo más que quieras que sepa quien contrata",
-      "extraPlaceholder": "Ej: Fui presidente del club de computación."
+      "extraPlaceholder": "Ej: Fui presidente del club de computación.",
+      "currentlyAttend": "Sigo estudiando aquí"
     },
     "experience": {
       "title": "Experiencia",
@@ -164,15 +167,12 @@
       "companyPlaceholder": "Ej: Google",
       "jobTitle": "Puesto",
       "jobTitlePlaceholder": "Ej: Ingeniera de software",
-      "startDate": "Fecha de inicio",
-      "startDatePlaceholder": "Ej: Sept 2017",
-      "endDate": "Fecha de fin",
-      "endDatePlaceholder": "Ej: Mayo 2021",
       "accomplishments": "Logros",
       "accomplishmentsPlaceholder": "- Colaboré con equipos multidisciplinarios para lanzar nuevas funciones\n- Reduje el tiempo de carga de la página un 40 % dividiendo el paquete",
       "accomplishmentsHint": "Usa el botón Lista para tus logros, o escribe un párrafo. Puedes usar negrita y enlaces.",
       "accomplishmentsAdvice": "Escribe de 3 a 5 logros. Sé concreto, y usa cifras y porcentajes cuando los tengas.",
-      "bodyLabel": "Logros"
+      "bodyLabel": "Logros",
+      "currentlyWorkHere": "Sigo trabajando aquí"
     },
     "skills": {
       "title": "Habilidades",
@@ -237,6 +237,7 @@
       "title": "Puesto",
       "startDate": "Inicio",
       "endDate": "Fin",
+      "current": "Sigo trabajando aquí",
       "body": "Detalles"
     },
     "education": {
@@ -244,6 +245,7 @@
       "degree": "Título",
       "startDate": "Inicio",
       "endDate": "Fin",
+      "current": "Sigo estudiando aquí",
       "body": "Detalles"
     },
     "up": "Subir",
@@ -451,7 +453,10 @@
     "maxChars": "Debe tener menos de {count, plural, one {# carácter} other {# caracteres}}",
     "postingRequired": "Primero pega la descripción del puesto",
     "postingTooLong": "Esa descripción es demasiado larga",
-    "pdfTooLarge": "Ese PDF es demasiado grande"
+    "pdfTooLarge": "Ese PDF es demasiado grande",
+    "dateFormat": "Usa AAAA, AAAA-MM o AAAA-MM-DD",
+    "endDateRequired": "Añade una fecha de fin, o marca la casilla si sigue vigente",
+    "endDateNotCurrent": "Borra la fecha de fin, o desmarca la casilla"
   },
   "errors": {
     "BAD_REQUEST": "No pudimos aceptar ese cambio.",

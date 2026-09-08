@@ -1,7 +1,9 @@
 import toast from "react-hot-toast"
 import {
   editableColumns,
+  formatFieldFlag,
   formatResumeFieldPath,
+  isFlagColumn,
   rowColumnTarget
 } from "~/lib/resume-field-path"
 import { moveItem } from "~/lib/move-item"
@@ -28,9 +30,44 @@ export type PanelField = {
   /** The id-addressed field path — the same grammar the server writes by. */
   path: string
   label: string
+  /**
+   * What the field holds, as the grammar carries it — which is a string even
+   * for a `checkbox`, whose ticked state is `formatFieldFlag`'s one value.
+   */
   value: string
-  /** A plain line, or the constrained markdown subset with its toolbar. */
-  input: "text" | "markdown"
+  /** A plain line, the markdown subset with its toolbar, or a flag. */
+  input: "text" | "markdown" | "checkbox"
+  /**
+   * Editable, or shown but not typed into.
+   *
+   * The end date of a current entry is the one field that uses it: the flag
+   * means the end date is absent, so an input still holding a value would be a
+   * field contradicting the box next to it — and the write schema refuses that
+   * pair outright.
+   */
+  disabled?: boolean
+  /**
+   * A field this one empties when it is set, and its value at the moment of
+   * ticking.
+   *
+   * Two facts were crammed into one text column before #71, and splitting them
+   * left one rule joining them back up: ticking "still here" is also saying
+   * when the entry ended, which is nowhere. The panel sends both writes so a
+   * ticked box cannot leave a row the schema would refuse.
+   *
+   * The value travels with the path so unticking can **put it back**. A box
+   * ticked by accident that costs the user a date they have to retype is a
+   * worse trade than remembering one string.
+   */
+  clears?: { path: string; value: string }
+  /**
+   * Why this field is not saving, as a `~/lib/validation-message` key.
+   *
+   * Set by the editor rather than here: the panel model describes the resume as
+   * stored, and this is about text that is only on screen — a date the write
+   * path is holding until it is one. See `withUnsavedText`.
+   */
+  error?: string
 }
 
 /**
@@ -332,6 +369,21 @@ type CoreColumn = (typeof rowColumns)[RowListName][number]
 const markdownColumns: ReadonlySet<CoreColumn> = new Set(["body"])
 
 /**
+ * The control a column asks for.
+ *
+ * A flag is a checkbox, and which columns are flags is the grammar's answer
+ * rather than a second list here — `current` (#71) named in two places is
+ * `current` that can be added to one of them and forgotten in the other. It is
+ * a boolean column reached through a grammar whose values are strings, so the
+ * box carries its state as the one string `formatFieldFlag` writes.
+ */
+function inputFor(column: CoreColumn): PanelField["input"] {
+  if (markdownColumns.has(column)) return "markdown"
+
+  return isFlagColumn(column) ? "checkbox" : "text"
+}
+
+/**
  * One column of a core row, as the panel shows it.
  *
  * The row is only *some* of the lists' rows, so a column another list owns is
@@ -339,10 +391,12 @@ const markdownColumns: ReadonlySet<CoreColumn> = new Set(["body"])
  * is what an input needs anyway.
  */
 function stringAt(
-  row: Partial<Record<CoreColumn, string | null>>,
+  row: Partial<Record<CoreColumn, string | boolean | null>>,
   column: CoreColumn
 ) {
   const value = row[column]
+
+  if (isFlagColumn(column)) return formatFieldFlag(Boolean(value))
 
   return typeof value === "string" ? value : ""
 }
@@ -362,6 +416,15 @@ function rowPanel(
   const { list, row, index } = selected
   const ids = resume[list].map((current) => current.id)
 
+  const endDatePath = formatResumeFieldPath({
+    section: list,
+    kind: "column",
+    row: row.id,
+    column: "endDate"
+  })
+
+  const isCurrent = Boolean(stringAt(row, "current"))
+
   const fields = rowColumns[list].flatMap((column) => {
     const target = rowColumnTarget(list, row.id, column)
 
@@ -372,7 +435,12 @@ function rowPanel(
         path: formatResumeFieldPath(target),
         label: t(`${list}.${column}`),
         value: stringAt(row, column),
-        input: markdownColumns.has(column) ? "markdown" : "text"
+        input: inputFor(column),
+        disabled: column === "endDate" && isCurrent,
+        clears:
+          column === "current"
+            ? { path: endDatePath, value: stringAt(row, "endDate") }
+            : undefined
       } satisfies PanelField
     ]
   })

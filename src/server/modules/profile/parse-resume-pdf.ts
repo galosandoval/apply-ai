@@ -1,12 +1,25 @@
 import { PDFParse } from "pdf-parse"
 import { z } from "zod"
+import { withNormalizedDates } from "~/lib/resume-date"
 import { maxSkills } from "~/server/db/crud-schema"
+
+/** The dates and the flag as a resume may have written them. */
+const parsedDates = {
+  startDate: z.string().default(""),
+  endDate: z.string().default(""),
+  current: z.boolean().default(false)
+}
 
 /**
  * Shape the model is asked to return. Every field is lenient on purpose — a
  * resume PDF is messy, and a missing GPA should not throw away the whole parse.
  * The onboarding forms re-validate against the strict insert schemas when the
  * user reviews and submits each step.
+ *
+ * The dates are the one exception, and are lenient for the same reason rather
+ * than a different one: they are read into the stored subset by
+ * `normalizeEntryDates` after the parse, not refused during it. A resume that
+ * writes `Sept 2017` is a resume, not a bad payload.
  */
 export const parsedResumeSchema = z.object({
   firstName: z.string().default(""),
@@ -20,23 +33,23 @@ export const parsedResumeSchema = z.object({
     .object({
       name: z.string().default(""),
       title: z.string().default(""),
-      startDate: z.string().default(""),
-      endDate: z.string().default(""),
       location: z.string().default(""),
-      body: z.string().default("")
+      body: z.string().default(""),
+      ...parsedDates
     })
+    .transform(withNormalizedDates)
     .array()
     .default([]),
   education: z
     .object({
       name: z.string().default(""),
       degree: z.string().default(""),
-      startDate: z.string().default(""),
-      endDate: z.string().default(""),
       location: z.string().default(""),
       gpa: z.string().default(""),
-      body: z.string().default("")
+      body: z.string().default(""),
+      ...parsedDates
     })
+    .transform(withNormalizedDates)
     .array()
     .default([]),
   skills: z
@@ -141,16 +154,21 @@ export async function extractResumeFields(text: string) {
  *
  * Deliberately language-neutral: every value it returns is the resume's own
  * text, so it is copied across in whatever language and whatever conventions
- * the document already uses. Worked examples of English dates and English skill
- * headings would have made the extraction quietly translate a Spanish resume on
- * its way into the onboarding forms.
+ * the document already uses. Worked examples of English skill headings would
+ * have made the extraction quietly translate a Spanish resume on its way into
+ * the onboarding forms.
+ *
+ * The dates are the exception, and are not an exception to that rule: the
+ * example payload shows them in the stored ISO subset, which belongs to no
+ * language. What the resume wrote them as is read back by
+ * `normalizeEntryDates` rather than copied across.
  */
 const extractionPrompt = `You extract structured data from a resume. The user message is the raw text of a resume PDF, so the layout may be jumbled.
 
 Rules:
 - Only use information present in the resume. Never invent employers, schools, dates, or numbers. Use an empty string for anything missing.
 - Copy every value in the resume's own language and wording. Never translate, expand, or reformat what it says.
-- Dates are free text: keep whatever form the resume writes them in, and keep its own word for a role that is still current.
+- Write every date as "YYYY", "YYYY-MM" or "YYYY-MM-DD", at whatever precision the resume gives — never add a month it does not state. Where the resume says a role or a course of study is still going, set "current" to true and leave "endDate" empty rather than copying its word for it.
 - "profession" is the person's current job title or the headline at the top of the resume.
 - For each job, "body" is what the resume writes under it, as markdown: one "- " line per accomplishment, at most ${maxBodyBullets}, and a plain line for anything written as prose. Keep the person's own wording and metrics.
 - For each school, "body" is whatever the resume writes under it, in the same markdown form. Empty when it writes nothing.
@@ -161,7 +179,7 @@ Respond with RFC8259 compliant JSON only, no explanations, in exactly this forma
 {
   "firstName": "", "lastName": "", "profession": "", "location": "", "phone": "",
   "linkedIn": "", "portfolio": "",
-  "experience": [{ "name": "", "title": "", "startDate": "", "endDate": "", "location": "", "body": "" }],
-  "education": [{ "name": "", "degree": "", "startDate": "", "endDate": "", "location": "", "gpa": "", "body": "" }],
+  "experience": [{ "name": "", "title": "", "startDate": "2017-09", "endDate": "2021-05", "current": false, "location": "", "body": "" }],
+  "education": [{ "name": "", "degree": "", "startDate": "2013-09", "endDate": "", "current": true, "location": "", "gpa": "", "body": "" }],
   "skills": [{ "category": "", "all": [""] }]
 }`

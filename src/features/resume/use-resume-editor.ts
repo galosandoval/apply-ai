@@ -3,7 +3,13 @@
 import { useTranslations } from "next-intl"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import toast from "react-hot-toast"
-import { parseResumeFieldPath } from "~/lib/resume-field-path"
+import {
+  isDateColumn,
+  isRowTarget,
+  parseResumeFieldPath
+} from "~/lib/resume-field-path"
+import { isWritableEntryDate } from "~/lib/resume-date"
+import { invalid } from "~/lib/validation-message"
 import { type ResumeSelection, type RowListName } from "~/lib/resume-selection"
 import {
   type ResumeStyle,
@@ -180,7 +186,26 @@ function withUnsavedText(
   const restore = (field: PanelField): PanelField => {
     const typed = unsaved.get(field.path)
 
-    return typed === undefined ? field : { ...field, value: typed }
+    if (typed === undefined) return field
+
+    /*
+      Text held back because it is not yet a date says so on the field. Without
+      it the input would simply stop saving with nothing to explain why — the
+      one thing the debounce makes impossible to notice.
+    */
+    const target = parseResumeFieldPath(field.path)
+
+    const isHeldDate =
+      target &&
+      isRowTarget(target) &&
+      isDateColumn(target.column) &&
+      !isWritableEntryDate(typed)
+
+    return {
+      ...field,
+      value: typed,
+      error: isHeldDate ? invalid("dateFormat") : undefined
+    }
   }
 
   return {
@@ -393,6 +418,25 @@ function useFieldAutosave({ resumeId, patch, resync, save }: ResumeCache) {
 
       if (existing) clearTimeout(existing.timer)
 
+      /*
+        A half-typed date is not a value to send. The column takes only the ISO
+        subset (#71), so `2` on the way to `2017-09` would be refused — and a
+        refusal per keystroke is a toast per keystroke. The text is held in the
+        panel as unsaved instead, exactly as a failed write's is, and goes the
+        moment it becomes a date. The document is not patched: it shows what is
+        stored, and nothing has been stored.
+      */
+      if (
+        isRowTarget(target) &&
+        isDateColumn(target.column) &&
+        !isWritableEntryDate(value)
+      ) {
+        pending.current.delete(path)
+        remember(path, value)
+
+        return
+      }
+
       const previous =
         existing?.previous ??
         readFieldValue(utils.resume.readById.getData({ resumeId }), target)
@@ -411,7 +455,7 @@ function useFieldAutosave({ resumeId, patch, resync, save }: ResumeCache) {
         timer: setTimeout(() => send(path), autosaveDelay)
       })
     },
-    [forget, patch, resumeId, send, utils]
+    [forget, patch, remember, resumeId, send, utils]
   )
 
   const flush = useCallback(() => {

@@ -19,6 +19,7 @@ const resume = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
+      current: false,
       body: "- Wrote the first published algorithm for a machine\n- Described a general-purpose computer decades early"
     }
   ],
@@ -27,7 +28,8 @@ const resume = {
       name: "Home Tuition",
       degree: "Mathematics",
       startDate: "1830",
-      endDate: "1835"
+      endDate: "1835",
+      current: false
     }
   ]
 }
@@ -71,6 +73,7 @@ const longResume = {
     title: "Senior Engineer, Distributed Computation",
     startDate: `${1840 + index}`,
     endDate: `${1841 + index}`,
+    current: false,
     body: Array.from(
       { length: 8 },
       (_, bullet) =>

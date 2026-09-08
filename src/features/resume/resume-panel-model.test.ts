@@ -21,6 +21,7 @@ const job = {
   title: "Engineer",
   startDate: "1840",
   endDate: "1843",
+  current: false,
   location: null,
   body: "- Wrote the first algorithm",
   position: 0,
@@ -34,6 +35,7 @@ const school = {
   degree: "Mathematics",
   startDate: "1830",
   endDate: "1835",
+  current: false,
   location: null,
   gpa: null,
   body: "Studied under De Morgan",
@@ -108,5 +110,96 @@ describe("the panel for one entry", () => {
   */
   it("gives an entry no list of its own", () => {
     expect(panelFor("w1", "experience").lists).toEqual([])
+  })
+})
+
+/**
+ * #71 put a boolean on the row, in a grammar whose every value is a string.
+ * The panel is where that has to look like a checkbox rather than a text field
+ * holding the word `true`.
+ */
+describe("the entry's current flag", () => {
+  it("offers it as a checkbox rather than a line of text", () => {
+    const field = panelFor("w1", "experience").fields.find(
+      (candidate) => candidate.path === "experience.w1.current"
+    )
+
+    expect(field?.input).toBe("checkbox")
+  })
+
+  it("shows an unset flag as an unticked box", () => {
+    const field = panelFor("w1", "experience").fields.find(
+      (candidate) => candidate.path === "experience.w1.current"
+    )
+
+    expect(field?.value).toBe("")
+  })
+
+  it("shows a set flag as a ticked one", () => {
+    const current = {
+      ...resume,
+      experience: [{ ...job, endDate: "", current: true }]
+    }
+
+    const field = buildPanel({
+      resume: current,
+      selected: { kind: "row", list: "experience", rowId: "w1" },
+      select: () => undefined,
+      structure,
+      t,
+      contentT: t
+    })?.fields.find((candidate) => candidate.path === "experience.w1.current")
+
+    expect(field?.value).toBe("true")
+  })
+
+  /*
+    Ticking the box has to leave the row in a state the write schema accepts,
+    and an entry carrying both a set flag and an end date is exactly what that
+    schema refuses.
+  */
+  it("empties the end date when the box is ticked", () => {
+    const field = panelFor("w1", "experience").fields.find(
+      (candidate) => candidate.path === "experience.w1.current"
+    )
+
+    expect(field?.clears).toEqual({
+      path: "experience.w1.endDate",
+      value: "1843"
+    })
+  })
+
+  it("leaves the end date alone while the box is unticked", () => {
+    const field = panelFor("w1", "experience").fields.find(
+      (candidate) => candidate.path === "experience.w1.endDate"
+    )
+
+    expect(field?.disabled).toBeFalsy()
+  })
+
+  it("disables the end date under a set flag", () => {
+    const current = {
+      ...resume,
+      experience: [{ ...job, endDate: "", current: true }]
+    }
+
+    const field = buildPanel({
+      resume: current,
+      selected: { kind: "row", list: "experience", rowId: "w1" },
+      select: () => undefined,
+      structure,
+      t,
+      contentT: t
+    })?.fields.find((candidate) => candidate.path === "experience.w1.endDate")
+
+    expect(field?.disabled).toBe(true)
+  })
+
+  it("offers it on a school too", () => {
+    const field = panelFor("e1", "education").fields.find(
+      (candidate) => candidate.path === "education.e1.current"
+    )
+
+    expect(field?.input).toBe("checkbox")
   })
 })

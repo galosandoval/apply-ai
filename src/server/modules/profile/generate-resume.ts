@@ -2,7 +2,24 @@ import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { type Locale } from "~/i18n/routing"
+import { withNormalizedDates } from "~/lib/resume-date"
 import { generatedSectionKinds } from "~/server/modules/resume/section.service"
+
+/**
+ * The dates and the flag on one generated entry.
+ *
+ * Declared loosely and *normalized* rather than constrained with the column's
+ * own pattern: a model handed a history and asked for dates will return `Sept
+ * 2017` and the word `Present` whatever the schema says, and a structured
+ * generation that throws on the format is a resume the user does not get. So
+ * the shape is enforced after the fact, by the one function that also does it
+ * for the PDF import — see `withNormalizedDates`.
+ */
+const generatedDates = {
+  startDate: z.string(),
+  endDate: z.string(),
+  current: z.boolean().default(false)
+}
 
 /**
  * The shape the model must return.
@@ -14,29 +31,31 @@ import { generatedSectionKinds } from "~/server/modules/resume/section.service"
 export const generatedResumeSchema = z.object({
   profession: z.string(),
   education: z.array(
-    z.object({
-      name: z.string(),
-      degree: z.string(),
-      body: z.string(),
-      startDate: z.string(),
-      endDate: z.string(),
-      gpa: z.string()
-    })
+    z
+      .object({
+        name: z.string(),
+        degree: z.string(),
+        body: z.string(),
+        gpa: z.string(),
+        ...generatedDates
+      })
+      .transform(withNormalizedDates)
   ),
   experience: z.array(
-    z.object({
-      name: z.string(),
-      title: z.string(),
-      startDate: z.string(),
-      endDate: z.string(),
-      /**
-       * Everything under the job, as the markdown subset the document renders:
-       * a `- ` line per accomplishment, a plain line for prose. One field
-       * rather than an array of bullets, because that is what the column holds
-       * and a resume is allowed to mix the two.
-       */
-      body: z.string()
-    })
+    z
+      .object({
+        name: z.string(),
+        title: z.string(),
+        /**
+         * Everything under the job, as the markdown subset the document
+         * renders: a `- ` line per accomplishment, a plain line for prose. One
+         * field rather than an array of bullets, because that is what the
+         * column holds and a resume is allowed to mix the two.
+         */
+        body: z.string(),
+        ...generatedDates
+      })
+      .transform(withNormalizedDates)
   ),
   /**
    * The extra sections, as *requested* rather than as accepted: the model names
@@ -108,6 +127,7 @@ Rules:
 - Every employer, school, job title, date, number and skill in your answer must appear in the user's history. Never invent one, and never move an accomplishment from one employer to another.
 - Where the posting describes something the user has genuinely done, describe it in the posting's own vocabulary. Never claim a technology, responsibility or result the history does not support, and do not repeat phrases from the posting for their own sake.
 - Rewriting and reordering the history to lead with what this posting asks for is the job. Adding to it is not.
+- Write every date as "YYYY", "YYYY-MM" or "YYYY-MM-DD", copying the precision the history gives you and never inventing a month it does not state. For a job or a school the user has not left, set "current" to true and leave "endDate" empty — never write "Present" or any other word in a date field.
 - Each job's "body" is markdown: one "- " line per accomplishment, 3 to 6 of them, one sentence each. Write a plain line instead of a bullet only where the history is genuinely prose.
 - A school's "body" is the same markdown, and empty when there is nothing to say.
 - Keep the resume to one page.
@@ -127,6 +147,7 @@ Reglas:
 - Toda empresa, institución, puesto, fecha, cifra y habilidad que aparezca en tu respuesta debe estar en el historial de la persona. Nunca inventes ninguna, y nunca traslades un logro de una empresa a otra.
 - Cuando la vacante describa algo que la persona sí ha hecho, descríbelo con el vocabulario de la propia vacante. Nunca atribuyas una tecnología, una responsabilidad o un resultado que el historial no respalde, ni repitas frases de la vacante por repetirlas.
 - Reescribir y reordenar el historial para empezar por lo que esta vacante pide es el trabajo. Agregarle cosas no lo es.
+- Escribe cada fecha como "YYYY", "YYYY-MM" o "YYYY-MM-DD", con la precisión que dé el historial y sin inventar un mes que no indique. Si la persona sigue en ese puesto o estudio, pon "current" en true y deja "endDate" vacío: nunca escribas "Actualidad" ni ninguna otra palabra en un campo de fecha.
 - El "body" de cada puesto es markdown: una línea que empieza por "- " por cada logro, de 3 a 6, de una oración cada uno. Escribe una línea sin viñeta solo cuando el historial sea de verdad un párrafo.
 - El "body" de cada formación es el mismo markdown, y va vacío cuando no hay nada que decir.
 - El currículum no pasa de una página.

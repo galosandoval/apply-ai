@@ -32,6 +32,7 @@ import {
   FormMessage
 } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
+import { EntryDateFields } from "~/features/onboarding/entry-date-fields"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 import { useErrorText } from "~/components/use-error-text"
 
@@ -41,6 +42,7 @@ const initialExperience: InsertExperienceSchema["experience"] = [
     body: "",
     startDate: "",
     endDate: "",
+    current: false,
     title: ""
   }
 ]
@@ -80,6 +82,7 @@ export function ExperienceStep() {
             body: experience.body,
             startDate: experience.startDate,
             endDate: experience.endDate,
+            current: experience.current,
             title: experience.title
           }))
         : initialExperience
@@ -225,32 +228,13 @@ function ExperienceForm({
         )}
       />
 
-      <div className="flex gap-2 max-sm:flex-col">
-        <FormField
-          control={control}
-          name={`experience.${index}.startDate`}
-          render={({ field }) => (
-            <MyInput
-              field={field}
-              label={t("startDate")}
-              placeholder={t("startDatePlaceholder")}
-              required
-            />
-          )}
-        />
-        <FormField
-          control={control}
-          name={`experience.${index}.endDate`}
-          render={({ field }) => (
-            <MyInput
-              field={field}
-              label={t("endDate")}
-              placeholder={t("endDatePlaceholder")}
-              required
-            />
-          )}
-        />
-      </div>
+      <EntryDateFields
+        control={control}
+        current={`experience.${index}.current`}
+        currentLabel={t("currentlyWorkHere")}
+        endDate={`experience.${index}.endDate`}
+        startDate={`experience.${index}.startDate`}
+      />
 
       <div>
         {index === 0 && (

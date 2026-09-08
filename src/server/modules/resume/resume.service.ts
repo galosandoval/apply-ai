@@ -2,9 +2,13 @@ import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import {
   type ContactColumn,
+  isDateColumn,
   parseResumeFieldPath,
-  type ResumeFieldTarget
+  type ResumeFieldTarget,
+  rowPatch,
+  type RowTarget
 } from "~/lib/resume-field-path"
+import { isWritableEntryDate } from "~/lib/resume-date"
 import { type Locale, toLocale } from "~/i18n/routing"
 import { assertOwnsResume } from "~/server/api/ownership"
 import {
@@ -241,6 +245,7 @@ async function readHistoryFor(db: Database, userId: string) {
         title: job.title,
         startDate: job.startDate,
         endDate: job.endDate,
+        current: job.current,
         body: job.body
       }))
     ),
@@ -251,6 +256,7 @@ async function readHistoryFor(db: Database, userId: string) {
         body: entry.body,
         startDate: entry.startDate,
         endDate: entry.endDate,
+        current: entry.current,
         gpa: entry.gpa
       }))
     )
@@ -613,15 +619,37 @@ async function writeTarget(
       return
 
     case "education":
-      await writeRow(db, school, resumeId, target.row, {
-        [target.column]: value
-      })
+      assertWritable(target, value)
+      await writeRow(db, school, resumeId, target.row, rowPatch(target, value))
 
       return
 
     case "experience":
-      await writeRow(db, work, resumeId, target.row, { [target.column]: value })
+      assertWritable(target, value)
+      await writeRow(db, work, resumeId, target.row, rowPatch(target, value))
   }
+}
+
+/**
+ * The one write that can put a value of the wrong *shape* in a column.
+ *
+ * The insert schemas guard onboarding, but nothing on this path goes through
+ * them — and the editor is what actually writes these columns all day. A
+ * grammar that let it store `Sept 2017` would make the typed date a suggestion
+ * rather than a shape (#71), and every reader that sorts, counts years or
+ * measures a gap would be back to guessing.
+ *
+ * Empty passes: a row the editor has just added has no dates yet, and a current
+ * entry has no end date. Whether an entry is *finished* is a question about a
+ * completed form, which is the insert schemas' to ask.
+ */
+function assertWritable(target: RowTarget, value: string) {
+  if (!isDateColumn(target.column) || isWritableEntryDate(value)) return
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: `Not a date: ${value}. Use YYYY, YYYY-MM or YYYY-MM-DD.`
+  })
 }
 
 /**

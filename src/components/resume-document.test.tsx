@@ -32,6 +32,7 @@ const data: ResumeDocumentData = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
+      current: false,
       body: "- Wrote the first algorithm\n- Described a general computer"
     },
     {
@@ -40,6 +41,7 @@ const data: ResumeDocumentData = {
       title: "Analyst",
       startDate: "1836",
       endDate: "1840",
+      current: false,
       body: "- Read the notes"
     }
   ],
@@ -50,6 +52,7 @@ const data: ResumeDocumentData = {
       degree: "Mathematics",
       startDate: "1830",
       endDate: "1835",
+      current: false,
       body: "Studied under De Morgan"
     }
   ],
@@ -147,5 +150,79 @@ describe("selection", () => {
 
     expect(job).toMatch(/^<div class="[^"]*mb-resume-entry/)
     expect(job).not.toMatch(/^<div class="[^"]*pb-resume-entry/)
+  })
+})
+
+/**
+ * The dates the document prints are a *formatting* of what is stored, not the
+ * stored value (#71). The column holds `2017-09`; a resume says `Sep 2017`, and
+ * says the word for "still here" from the flag rather than from a string
+ * someone typed into the end-date box.
+ */
+describe("dates", () => {
+  const withDates = (
+    dates: { startDate: string; endDate: string; current: boolean },
+    language?: string
+  ) =>
+    renderToStaticMarkup(
+      <ResumeDocument
+        data={{
+          ...data,
+          language,
+          experience: [{ ...data.experience[0]!, ...dates }],
+          education: []
+        }}
+      />
+    )
+
+  it("prints a stored month at the precision it was stored with", () => {
+    const html = withDates({
+      startDate: "2017-09",
+      endDate: "2021-05",
+      current: false
+    })
+
+    expect(html).toContain("Sep 2017")
+    expect(html).toContain("May 2021")
+    expect(html).not.toContain("2017-09")
+  })
+
+  it("prints a year-only date as the year", () => {
+    expect(
+      withDates({ startDate: "2017", endDate: "2021", current: false })
+    ).toContain("2017")
+  })
+
+  it("renders the trailing term from the flag", () => {
+    const html = withDates({
+      startDate: "2017-09",
+      endDate: "",
+      current: true
+    })
+
+    expect(html).toContain("Present")
+  })
+
+  it("writes it in the resume's own language", () => {
+    const html = withDates(
+      { startDate: "2017-09", endDate: "", current: true },
+      "es"
+    )
+
+    expect(html).toContain("Actualidad")
+  })
+
+  /*
+    The #71 migration left a date it could not read exactly as the user typed
+    it, so a document that has one still has to draw it.
+  */
+  it("prints a date it does not recognise verbatim", () => {
+    expect(
+      withDates({
+        startDate: "2018 - 2020 (contract)",
+        endDate: "2021",
+        current: false
+      })
+    ).toContain("2018 - 2020 (contract)")
   })
 })

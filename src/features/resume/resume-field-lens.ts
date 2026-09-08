@@ -8,7 +8,13 @@
 
 import { type ResumeDocumentData } from "~/components/resume-document"
 import { type DownloadPdfSchema } from "~/server/db/crud-schema"
-import { type ResumeFieldTarget } from "~/lib/resume-field-path"
+import {
+  formatFieldFlag,
+  isFlagColumn,
+  type ResumeFieldTarget,
+  rowPatch,
+  type RowTarget
+} from "~/lib/resume-field-path"
 import {
   readSectionContentString,
   replaceSectionContentString
@@ -41,6 +47,25 @@ type FieldLens<Section extends ResumeSection> = {
   ) => SavedResume
 }
 
+/**
+ * One column of a job or a school, as the grammar carries it.
+ *
+ * Every value on a path is a string, so `current` — the only boolean a path can
+ * address (#71) — is serialized rather than returned as itself. `rowPatch`, in
+ * the grammar module, is the inverse, and the pair is why the rest of this file
+ * never has to ask what type a column is.
+ */
+function rowValue(
+  row: Record<string, unknown>,
+  target: RowTarget
+): string | undefined {
+  const value = row[target.column]
+
+  if (isFlagColumn(target.column)) return formatFieldFlag(Boolean(value))
+
+  return typeof value === "string" ? value : undefined
+}
+
 const fieldLenses: { [Section in ResumeSection]: FieldLens<Section> } = {
   resume: {
     read: (resume) => resume.profession,
@@ -56,27 +81,31 @@ const fieldLenses: { [Section in ResumeSection]: FieldLens<Section> } = {
   },
 
   education: {
-    read: (resume, target) =>
-      resume.education.find((row) => row.id === target.row)?.[target.column] ??
-      undefined,
+    read: (resume, target) => {
+      const row = resume.education.find((current) => current.id === target.row)
+
+      return row ? rowValue(row, target) : undefined
+    },
     write: (resume, target, value) => ({
       ...resume,
       education: resume.education.map((school) =>
         school.id === target.row
-          ? { ...school, [target.column]: value }
+          ? { ...school, ...rowPatch(target, value) }
           : school
       )
     })
   },
 
   experience: {
-    read: (resume, target) =>
-      resume.experience.find((row) => row.id === target.row)?.[target.column] ??
-      undefined,
+    read: (resume, target) => {
+      const row = resume.experience.find((current) => current.id === target.row)
+
+      return row ? rowValue(row, target) : undefined
+    },
     write: (resume, target, value) => ({
       ...resume,
       experience: resume.experience.map((job) =>
-        job.id === target.row ? { ...job, [target.column]: value } : job
+        job.id === target.row ? { ...job, ...rowPatch(target, value) } : job
       )
     })
   },
@@ -156,19 +185,21 @@ export function toDocumentData(resume: SavedResume): ResumeDocumentData {
     sections: resume.sections,
     // The document owns how it looks, so the preview and the print agree.
     style: resume.style,
-    accent: resume.accent
+    accent: resume.accent,
+    // And what language it says its dates in — see `ResumeDocumentData`.
+    language: resume.language
   }
 }
 
 /**
- * What the print route is posted: the document, plus the language it is
- * written in.
+ * What the print route is posted: the document, and nothing it does not already
+ * carry.
  *
- * The language is not part of `ResumeDocumentData` because nothing on the page
- * is drawn from it — it names the file the reader ends up with, which only the
- * route decides. Keeping it out of the document data is what stops the on-screen
- * renderer from being handed a field it has no use for.
+ * The language used to be added here, because the document had no use for it
+ * and the route did — it names the file the reader ends up with. Since #71 the
+ * document draws its dates in that language, so it is part of the document data
+ * and the route reads it off the same field.
  */
 export function toDownloadPayload(resume: SavedResume): DownloadPdfSchema {
-  return { ...toDocumentData(resume), language: resume.language }
+  return toDocumentData(resume)
 }

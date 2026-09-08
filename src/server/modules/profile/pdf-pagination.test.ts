@@ -41,6 +41,7 @@ const short: ResumeDocumentData = {
       title: "Engineer",
       startDate: "1840",
       endDate: "1843",
+      current: false,
       body: "- Wrote the first algorithm published for a machine"
     }
   ],
@@ -56,6 +57,7 @@ const long: ResumeDocumentData = {
     title: "Senior Engineer, Distributed Computation",
     startDate: `${1840 + index}`,
     endDate: `${1841 + index}`,
+    current: false,
     body: Array.from(
       { length: 6 },
       (_, bullet) =>

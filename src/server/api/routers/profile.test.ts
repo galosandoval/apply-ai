@@ -75,6 +75,7 @@ function extracted(overrides: Partial<ParsedResume> = {}): ParsedResume {
         title: "Engineer",
         startDate: "2020",
         endDate: "Present",
+        current: false,
         location: "Remote",
         body: "- Shipped the thing"
       }
@@ -85,6 +86,7 @@ function extracted(overrides: Partial<ParsedResume> = {}): ParsedResume {
         degree: "BSc",
         startDate: "2016",
         endDate: "2020",
+        current: false,
         location: "",
         gpa: "3.9",
         body: ""
@@ -112,6 +114,7 @@ async function seed() {
     title: "Engineer",
     startDate: "2019",
     endDate: "2021",
+    current: false,
     body: "- Untouched",
     position: 0
   })
@@ -193,7 +196,8 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
             name: "Most recent",
             title: "Engineer",
             startDate: "2022",
-            endDate: "Present",
+            endDate: "",
+            current: true,
             location: "",
             body: "- Latest"
           },
@@ -202,6 +206,7 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
             title: "Engineer",
             startDate: "2019",
             endDate: "2022",
+            current: false,
             location: "",
             body: "- Earlier"
           }
@@ -311,6 +316,75 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
   })
 
   /**
+   * #71 put a boolean beside the dates, and the onboarding steps are what write
+   * it. A flag the step collects and the write drops is a checkbox the user
+   * ticks and finds unticked when they come back — including on the *second*
+   * save, where the row already exists and the write is an upsert.
+   */
+  describe("the current flag survives the round trip", () => {
+    const currentJob = (current: boolean) => ({
+      experience: [
+        {
+          name: "Acme",
+          title: "Engineer",
+          startDate: "2020-01",
+          endDate: current ? "" : "2022-03",
+          current,
+          body: "- Shipped the thing"
+        }
+      ]
+    })
+
+    const savedJob = async () => {
+      const [job] = await db
+        .select()
+        .from(work)
+        .where(eq(work.userId, fixture.owner))
+
+      return job
+    }
+
+    it("saves a job the user is still in", async () => {
+      await callerFor(db, fixture.owner).profile.addWork(currentJob(true))
+
+      expect(await savedJob()).toMatchObject({ current: true, endDate: "" })
+    })
+
+    it("unsets it when the user says the job ended", async () => {
+      const caller = callerFor(db, fixture.owner)
+
+      await caller.profile.addWork(currentJob(true))
+      await caller.profile.addWork(currentJob(false))
+
+      expect(await savedJob()).toMatchObject({
+        current: false,
+        endDate: "2022-03"
+      })
+    })
+
+    it("saves it on a school as well", async () => {
+      await callerFor(db, fixture.owner).profile.addEducation({
+        education: [
+          {
+            name: "State University",
+            degree: "BSc",
+            startDate: "2016-09",
+            endDate: "",
+            current: true
+          }
+        ]
+      })
+
+      const [saved] = await db
+        .select()
+        .from(school)
+        .where(eq(school.userId, fixture.owner))
+
+      expect(saved).toMatchObject({ current: true, endDate: "" })
+    })
+  })
+
+  /**
    * A user with no degree has to be able to leave the education step. The
    * schema's minimum is gone; this is the write it used to refuse.
    */
@@ -333,7 +407,8 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
             name: "State University",
             degree: "BSc",
             startDate: "2016",
-            endDate: "2020"
+            endDate: "2020",
+            current: false
           }
         ]
       })

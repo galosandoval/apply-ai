@@ -144,8 +144,30 @@ export const contact = pgTable("contact", {
 export const work = pgTable("work", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  /**
+   * When the job started, as one of `YYYY`, `YYYY-MM` or `YYYY-MM-DD`.
+   *
+   * `text` rather than `date` because a resume date is a *partial* date and
+   * Postgres has no partial-date type; the subset is enforced at the schema
+   * layer, where a value's own length also carries its precision. Rows written
+   * before #71 may still hold whatever the user typed — the migration left a
+   * date it could not read in place rather than blanking it.
+   */
   startDate: text("start_date").notNull(),
-  endDate: text("end_date").notNull(),
+  /** When it ended, in the same subset. Empty when `current` is set. */
+  endDate: text("end_date").default("").notNull(),
+  /**
+   * Whether the entry is still going, which is what makes the end date absent.
+   *
+   * A real column rather than the word `Present` in `endDate`, because "is this
+   * current?" and "when did it end?" are two facts, and cramming them into one
+   * text field is what made every downstream question — sort order, years of
+   * experience, employment gaps — unanswerable. Set means `endDate` is empty
+   * and the document renders whatever word the style wants for it; see
+   * `~/lib/resume-date`.
+   */
+  current: boolean("current").default(false).notNull(),
+
   title: text("title").notNull(),
   location: text("location"),
   /**
@@ -178,8 +200,12 @@ export const workRelations = relations(work, ({ one }) => ({
 export const school = pgTable("school", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  /** When it started, in the same subset a job's dates use — see `work`. */
   startDate: text("start_date").notNull(),
-  endDate: text("end_date").notNull(),
+  /** When it ended. Empty while `current` is set. */
+  endDate: text("end_date").default("").notNull(),
+  /** Whether the user is still attending — see `work.current`. */
+  current: boolean("current").default(false).notNull(),
   degree: text("degree").notNull(),
   location: text("location"),
   gpa: text("gpa"),

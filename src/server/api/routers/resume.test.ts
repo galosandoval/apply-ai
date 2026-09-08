@@ -80,6 +80,7 @@ async function seed() {
       title: "Engineer",
       startDate: "2020",
       endDate: "2022",
+      current: false,
       body: "- first bullet\n- second bullet\n- third bullet"
     },
     {
@@ -89,6 +90,7 @@ async function seed() {
       title: "Engineer",
       startDate: "2020",
       endDate: "2022",
+      current: false,
       body: "- untouched"
     }
   ])
@@ -99,7 +101,8 @@ async function seed() {
     name: "State University",
     degree: "BSc",
     startDate: "2016",
-    endDate: "2020"
+    endDate: "2020",
+    current: false
   })
 
   // The account's master copy, and now the only copy: what a new resume is
@@ -168,6 +171,7 @@ function draft(overrides: Partial<CreateResumeInput> = {}): CreateResumeInput {
         title: "Engineer",
         startDate: "2020",
         endDate: "2022",
+        current: false,
         body: "- Wrote the first algorithm\n- Described a general computer"
       },
       {
@@ -175,6 +179,7 @@ function draft(overrides: Partial<CreateResumeInput> = {}): CreateResumeInput {
         title: "Engineer",
         startDate: "2018",
         endDate: "2020",
+        current: false,
         body: "- Built the thing\n- Then built the other thing"
       }
     ],
@@ -183,13 +188,15 @@ function draft(overrides: Partial<CreateResumeInput> = {}): CreateResumeInput {
         name: "Home Tuition",
         degree: "Mathematics",
         startDate: "1830",
-        endDate: "1835"
+        endDate: "1835",
+        current: false
       },
       {
         name: "Somerville College",
         degree: "Analysis",
         startDate: "1835",
-        endDate: "1838"
+        endDate: "1838",
+        current: false
       }
     ],
     ...overrides
@@ -282,6 +289,137 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         .where(eq(work.id, fixture.jobId))
 
       expect(row?.body).toBe("Led the team.\n\n- rewritten\n- and another")
+    })
+
+    /**
+     * `current` (#71) is a boolean column reached through a grammar whose
+     * values are strings, so this is the one write where what arrives and what
+     * is stored are different types. The word `true` landing in the column as
+     * text is the failure this exists to catch — the column would not take it,
+     * and if it did, every reader of the flag would be wrong.
+     */
+    it("writes the current flag as a boolean, not as its own name", async () => {
+      const caller = callerFor(db, fixture.owner.userId)
+
+      await caller.resume.updateField({
+        resumeId: fixture.resumeId,
+        path: `experience.${fixture.jobId}.current`,
+        value: "true"
+      })
+
+      const [set] = await db
+        .select()
+        .from(work)
+        .where(eq(work.id, fixture.jobId))
+
+      expect(set?.current).toBe(true)
+
+      await caller.resume.updateField({
+        resumeId: fixture.resumeId,
+        path: `experience.${fixture.jobId}.current`,
+        value: ""
+      })
+
+      const [unset] = await db
+        .select()
+        .from(work)
+        .where(eq(work.id, fixture.jobId))
+
+      expect(unset?.current).toBe(false)
+    })
+
+    it("writes it on a school too", async () => {
+      await callerFor(db, fixture.owner.userId).resume.updateField({
+        resumeId: fixture.resumeId,
+        path: `education.${fixture.schoolId}.current`,
+        value: "true"
+      })
+
+      const [row] = await db
+        .select()
+        .from(school)
+        .where(eq(school.id, fixture.schoolId))
+
+      expect(row?.current).toBe(true)
+    })
+  })
+
+  /**
+   * The editor is the main writer of these columns, so a grammar that lets it
+   * put `Sept 2017` in one is a column whose shape is a suggestion (#71). The
+   * onboarding schemas cannot help here — nothing on this path goes through
+   * them.
+   */
+  describe("updateField — the date columns keep their shape", () => {
+    const write = (path: string, value: string) =>
+      callerFor(db, fixture.owner.userId).resume.updateField({
+        resumeId: fixture.resumeId,
+        path,
+        value
+      })
+
+    it.each(["2017", "2017-09", "2017-09-04"])(
+      "accepts %s as a start date",
+      async (value) => {
+        await write(`experience.${fixture.jobId}.startDate`, value)
+
+        const [row] = await db
+          .select()
+          .from(work)
+          .where(eq(work.id, fixture.jobId))
+
+        expect(row?.startDate).toBe(value)
+      }
+    )
+
+    it.each(["Sept 2017", "Present", "2017-13", "2017/09"])(
+      "refuses %s",
+      async (value) => {
+        await expect(
+          write(`experience.${fixture.jobId}.startDate`, value)
+        ).rejects.toMatchObject({ code: "BAD_REQUEST" })
+      }
+    )
+
+    it("leaves the stored date alone when it refuses a write", async () => {
+      const storedDate = async () => {
+        const [row] = await db
+          .select()
+          .from(work)
+          .where(eq(work.id, fixture.jobId))
+
+        return row?.startDate
+      }
+
+      const before = await storedDate()
+
+      await expect(
+        write(`experience.${fixture.jobId}.startDate`, "Sept 2017")
+      ).rejects.toBeInstanceOf(TRPCError)
+
+      expect(await storedDate()).toBe(before)
+    })
+
+    /*
+      Empty is a value the column takes: a row the editor has just added has
+      no dates yet, and a current entry has no end date. Whether an entry is
+      *finished* is a question about a completed form, not about a column.
+    */
+    it("accepts an empty date", async () => {
+      await write(`experience.${fixture.jobId}.endDate`, "")
+
+      const [row] = await db
+        .select()
+        .from(work)
+        .where(eq(work.id, fixture.jobId))
+
+      expect(row?.endDate).toBe("")
+    })
+
+    it("holds a school's dates to the same shape", async () => {
+      await expect(
+        write(`education.${fixture.schoolId}.endDate`, "May 2021")
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" })
     })
   })
 

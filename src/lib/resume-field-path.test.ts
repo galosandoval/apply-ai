@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
+  formatFieldFlag,
   formatResumeFieldPath,
+  isFlagColumn,
+  parseFieldFlag,
   parseResumeFieldPath,
   withRow
 } from "./resume-field-path"
@@ -29,29 +32,37 @@ describe("parseResumeFieldPath — accepted paths", () => {
     })
   })
 
-  it.each(["name", "title", "startDate", "endDate", "body"] as const)(
-    "addresses experience.%s",
-    (column) => {
-      expect(parseResumeFieldPath(`experience.0.${column}`)).toEqual({
-        section: "experience",
-        kind: "column",
-        row: "0",
-        column
-      })
-    }
-  )
+  it.each([
+    "name",
+    "title",
+    "startDate",
+    "endDate",
+    "current",
+    "body"
+  ] as const)("addresses experience.%s", (column) => {
+    expect(parseResumeFieldPath(`experience.0.${column}`)).toEqual({
+      section: "experience",
+      kind: "column",
+      row: "0",
+      column
+    })
+  })
 
-  it.each(["name", "degree", "startDate", "endDate", "body"] as const)(
-    "addresses education.%s",
-    (column) => {
-      expect(parseResumeFieldPath(`education.0.${column}`)).toEqual({
-        section: "education",
-        kind: "column",
-        row: "0",
-        column
-      })
-    }
-  )
+  it.each([
+    "name",
+    "degree",
+    "startDate",
+    "endDate",
+    "current",
+    "body"
+  ] as const)("addresses education.%s", (column) => {
+    expect(parseResumeFieldPath(`education.0.${column}`)).toEqual({
+      section: "education",
+      kind: "column",
+      row: "0",
+      column
+    })
+  })
 
   it("accepts a row id in place of an index", () => {
     expect(parseResumeFieldPath("experience.abc123.title")).toEqual({
@@ -261,4 +272,40 @@ describe("index → id → reparse round trip", () => {
 
     expect(formatResumeFieldPath(target)).toBe(path)
   })
+})
+
+/**
+ * #71 put a boolean on `work` and `school`, and the grammar's values are
+ * strings — one path, one string, all the way from the panel's input to the
+ * column write. Rather than widen every stage of that to `string | boolean`,
+ * the flag is *serialized* into it, and both ends read it back through the same
+ * two functions. These are the assertions that say the round trip is exact.
+ */
+describe("flag columns", () => {
+  it("names the columns that are flags rather than lines of text", () => {
+    expect(isFlagColumn("current")).toBe(true)
+    expect(isFlagColumn("startDate")).toBe(false)
+    expect(isFlagColumn("body")).toBe(false)
+  })
+
+  it("round-trips a flag through the grammar's string value", () => {
+    expect(parseFieldFlag(formatFieldFlag(true))).toBe(true)
+    expect(parseFieldFlag(formatFieldFlag(false))).toBe(false)
+  })
+
+  it("reads a column that has never been written as unset", () => {
+    expect(formatFieldFlag(null)).toBe(formatFieldFlag(false))
+    expect(parseFieldFlag("")).toBe(false)
+  })
+
+  /*
+    Anything that isn't the one string the formatter produces is `false`, so a
+    hand-written path carrying "yes" or "1" cannot set a flag by accident.
+  */
+  it.each(["yes", "1", "TRUE", "on", " true"])(
+    "does not read %s as set",
+    (value) => {
+      expect(parseFieldFlag(value)).toBe(false)
+    }
+  )
 })
