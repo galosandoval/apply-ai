@@ -57,7 +57,8 @@ export const userRelations = relations(user, ({ many, one }) => ({
     references: [contact.userId]
   }),
   resumes: many(resume),
-  skills: many(skill)
+  skills: many(skill),
+  sections: many(section)
 }))
 
 /** better-auth owns these three. Password hashes live on `account`. */
@@ -301,12 +302,22 @@ export const resumeRelations = relations(resume, ({ one, many }) => ({
  * - **Everything else** holds its own `content`, shaped by `componentType`.
  *   `skills` is one of these and is named only so a refresh from the account
  *   can still find it; `custom` is a section the user added.
+ *
+ * A section belongs to a resume (`resumeId`) or to the account (`userId`) — the
+ * master-copy/snapshot split `contact`, `work` and `school` already express,
+ * with the owner named on both sides rather than only the resume: a master row
+ * is what seeds a new resume, and a resume's own row is the snapshot that
+ * cannot change under a document already sent. Both columns are nullable for
+ * now — nothing writes `userId` yet, and the constraint that makes exactly one
+ * of them present is the contract half of this migration.
  */
 export const section = pgTable("section", {
   id: text("id").primaryKey(),
-  resumeId: text("resume_id")
-    .notNull()
-    .references(() => resume.id, { onDelete: "cascade" }),
+  resumeId: text("resume_id").references(() => resume.id, {
+    onDelete: "cascade"
+  }),
+  /** Cascades like `resumeId` above: a section outlives neither of its owners. */
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
   /** `experience` | `education` | `skills` | `custom`. */
   kind: text("kind").notNull(),
   /** The heading as the user wants it read — "Work History", not "experience". */
@@ -322,5 +333,9 @@ export const sectionRelations = relations(section, ({ one }) => ({
   resume: one(resume, {
     fields: [section.resumeId],
     references: [resume.id]
+  }),
+  user: one(user, {
+    fields: [section.userId],
+    references: [user.id]
   })
 }))

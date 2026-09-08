@@ -676,6 +676,24 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         { label: "Languages", items: ["TypeScript", "Go"] }
       ])
     })
+
+    /**
+     * `section.resumeId` is nullable now (#92), so nothing but this asserts
+     * that a resume's own sections still name the resume that owns them. The
+     * account owner stays null until something writes it.
+     */
+    it("owns its sections by resume, not by account", async () => {
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const rows = await db
+        .select({ resumeId: section.resumeId, userId: section.userId })
+        .from(section)
+        .where(eq(section.resumeId, resumeId))
+
+      expect(rows).toHaveLength(3)
+      expect(rows.every((row) => row.userId === null)).toBe(true)
+    })
   })
 
   describe("updateField — the resume's own contact and skills", () => {
