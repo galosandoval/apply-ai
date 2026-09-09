@@ -91,7 +91,14 @@ export const sectionCatalog: SectionPresetGroup[] = [
     presets: [
       { id: "tools", componentType: "tagList" },
       { id: "languages", componentType: "meter" },
-      { id: "graphs", componentType: "meter" }
+      { id: "graphs", componentType: "meter" },
+      /**
+       * The one section a generation could add that the picker could not.
+       * `generatedSectionAllowlist` has drawn strengths as a tag list since
+       * generation landed; a user typing the heading themselves gets the same
+       * shape rather than a second, weaker Experience.
+       */
+      { id: "strengths", componentType: "tagList" }
     ]
   },
   {

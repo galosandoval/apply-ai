@@ -324,7 +324,7 @@
       },
       "summary": {
         "label": "Summary",
-        "hint": "A short opening paragraph"
+        "hint": "A short opening paragraph — your profile"
       },
       "objective": {
         "label": "Objective",
@@ -405,6 +405,10 @@
       "graphs": {
         "label": "Graphs",
         "hint": "Anything you rate out of a hundred"
+      },
+      "strengths": {
+        "label": "Strengths",
+        "hint": "What you are good at"
       },
       "hobbies": {
         "label": "Hobbies",

@@ -25,6 +25,7 @@ Nothing is typed into the document itself.
 | `src/lib/resume-blocks.ts`                     | What a block is: its kinds, its key, the space it owns.                  |
 | `src/lib/resume-selection.ts`                  | What can be selected, and what makes an element selectable.              |
 | `src/lib/section-content.ts`                   | What a section is and may hold — shared by client and server.            |
+| `src/lib/section-heading.ts`                   | What an imported heading draws as — preset, shape and content.           |
 | `src/lib/resume-field-path.ts`                 | The grammar for addressing one editable string.                          |
 | `src/lib/resume-markdown.tsx`                  | The markdown subset: render, strip, and the three toolbar operations.    |
 | `src/lib/paginate.ts`                          | Where the page breaks go, as a pure function.                            |
@@ -83,6 +84,50 @@ rows, and Skills is in the catalog like everything else. It keeps `kind:
 "skills"` for one reason: a refresh from the account has to know which section
 the skills go back into, and a label the user is free to rename cannot answer
 that. See `migrations/0010_skills_section_content.sql`.
+
+### An imported heading is resolved against the catalog (#93)
+
+A resume PDF arrives as headings with text under them, and something has to
+decide what each one draws as. `src/lib/section-heading.ts` is that decision,
+and it is a pure function: a heading and its content in, a preset id, a
+component type and a content value out — no database, no React, no model.
+
+**The model never picks the shape.** It returns the heading the document wrote
+and the text under it, and nothing else. That is the same rule the generation
+allowlist enforces (`generatedSectionAllowlist`) for the same reason: a model
+choosing a component is a model making a layout decision with no knowledge of
+what the components can render.
+
+**Matching is on the translated labels and hints** — the same label-and-hint
+pairs `searchSectionCatalog` reads, so a Spanish "Pasatiempos" lands on the
+preset an English "Hobbies" does without a second table of synonyms to keep in
+step with the catalog. Four rules are tried in order: the exact name, a name the
+heading qualifies ("Technical Skills"), a shared six-letter stem
+(Certifications → Certificates), and finally the hint, which is where a heading
+the catalog calls something else — a Profile that is a Summary — is caught. A
+hint therefore carries weight beyond the picker, which is why `summary`'s
+mentions a profile.
+
+More than one language may be passed, most likely first, because a document is
+not written in its reader's language — a Spanish CV uploaded from an English
+session is an ordinary import, not an edge case.
+
+**Nothing is dropped, and nothing is renamed.** A heading that matches no preset
+still becomes a section, shaped by what its content looks like: prose is rich
+text, short strings are tags, sentences are a list, dated lines are two columns.
+And the label written is always the document's own heading, verbatim and
+untranslated — a matched preset contributes its shape and its id, never its
+wording. An imported heading is the user's text in their document's language,
+not app copy.
+
+The resolver answers about one heading, so two headings that both name skills
+come back with the skills kind and it is the writer that keeps one of them —
+that is a decision made where the sibling sections are visible, not here.
+
+Two things moved for this. `strengths` joined the catalog — generation has drawn
+it as a tag list since it landed, and a user who types the heading themselves
+should get the same shape. And `skills` is matched as a _kind_ rather than a
+preset, which is what keeps the provenance above true for an imported resume.
 
 ### The page is a real sheet (#65, #66)
 

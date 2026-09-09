@@ -324,7 +324,7 @@
       },
       "summary": {
         "label": "Resumen",
-        "hint": "Un párrafo breve de apertura"
+        "hint": "Un párrafo breve de apertura: tu perfil"
       },
       "objective": {
         "label": "Objetivo",
@@ -405,6 +405,10 @@
       "graphs": {
         "label": "Gráficas",
         "hint": "Cualquier cosa que califiques sobre cien"
+      },
+      "strengths": {
+        "label": "Fortalezas",
+        "hint": "Aquello en lo que destacas"
       },
       "hobbies": {
         "label": "Pasatiempos",

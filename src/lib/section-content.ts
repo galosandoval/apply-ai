@@ -500,7 +500,7 @@ const sectionComponents: {
       noun: "level",
       get: (content) => content.meters,
       set: (_content, meters) => ({ meters }),
-      empty: () => ({ label: "", level: 50 }),
+      empty: () => ({ label: "", level: neutralMeterLevel }),
       fields: (entry, index) => [
         {
           labelKey: "name",
@@ -808,11 +808,25 @@ function toIndex(token: string | undefined) {
  */
 const toItemLine = (items: string[]) => items.join(", ")
 
-const fromItemLine = (line: string) =>
+/**
+ * Exported for the same reason it is written here: the import reads a document's
+ * "TypeScript, Go" into the same arrays the panel edits, and a second split
+ * would be the second copy this doc block exists to prevent.
+ */
+export const fromItemLine = (line: string) =>
   line
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
+
+/**
+ * The level a meter starts at, and the one the import gives it.
+ *
+ * The midpoint rather than zero or full: a document says "Fluent", not a
+ * number, so the honest reading of a level nobody stated is the neutral one the
+ * user then moves — and an empty meter drawn at zero reads as a claim of none.
+ */
+export const neutralMeterLevel = 50
 
 /** A level as a whole percentage, clamping anything unreadable to zero. */
 function toLevel(value: string) {
