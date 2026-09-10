@@ -310,6 +310,9 @@
     }
   },
   "sectionCatalog": {
+    "aliases": {
+      "summary": "Perfil, Perfil profesional"
+    },
     "groups": {
       "writing": "Redacción",
       "work": "Trabajo",
@@ -405,6 +408,10 @@
       "graphs": {
         "label": "Gráficas",
         "hint": "Cualquier cosa que califiques sobre cien"
+      },
+      "strengths": {
+        "label": "Fortalezas",
+        "hint": "Aquello en lo que destacas"
       },
       "hobbies": {
         "label": "Pasatiempos",

@@ -34,12 +34,21 @@ export type SectionPresetGroup = {
   presets: SectionPreset[]
 }
 
-/** A preset with its copy resolved — what the picker actually draws. */
+/** A preset with its copy resolved — what the picker draws and matching reads. */
 export type DisplaySectionPreset = SectionPreset & {
   /** The heading the section starts with. Editable afterwards, like any label. */
   label: string
   /** What the entry is for, in the picker. One line, no period. */
   hint: string
+  /**
+   * Other headings this preset answers to. Matched, never drawn.
+   *
+   * A document's word for a section is not always the catalog's — a "Profile"
+   * is a Summary — and the heading it is not has to be written down somewhere.
+   * Here rather than in the hint: a hint stretched to carry "your profile" is
+   * copy written for the matcher instead of for the person reading it.
+   */
+  aliases: string[]
 }
 
 export type DisplaySectionPresetGroup = {
@@ -91,7 +100,14 @@ export const sectionCatalog: SectionPresetGroup[] = [
     presets: [
       { id: "tools", componentType: "tagList" },
       { id: "languages", componentType: "meter" },
-      { id: "graphs", componentType: "meter" }
+      { id: "graphs", componentType: "meter" },
+      /**
+       * The one section a generation could add that the picker could not.
+       * `generatedSectionAllowlist` has drawn strengths as a tag list since
+       * generation landed; a user typing the heading themselves gets the same
+       * shape rather than a second, weaker Experience.
+       */
+      { id: "strengths", componentType: "tagList" }
     ]
   },
   {
@@ -112,12 +128,81 @@ export const sectionPresets: SectionPreset[] = sectionCatalog.flatMap(
 )
 
 /**
+ * One catalog string reduced to the letters and digits in it: lowercase,
+ * unaccented, with punctuation and runs of space flattened to single spaces.
+ *
+ * Shared by everything that matches on the catalog's copy, which is the point:
+ * two readers of the same labels with two normalizers of their own would drift
+ * into disagreeing about what that copy says.
+ *
+ * Accents are flattened rather than compared because the text on both sides is
+ * typed by a person — "Formacion" is the same word as "Formación", and a
+ * comparison that turned on the tilde would hide the entry from one of them.
+ */
+export function normalizeCatalogText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+}
+
+/**
+ * Every preset with its copy resolved, flat — the text matching reads.
+ *
+ * The picker's search and the import's heading resolution both match on these
+ * pairs, so they are built once, here, beside the catalog they belong to.
+ */
+export function catalogPresets(
+  t: SectionCatalogTranslate
+): DisplaySectionPreset[] {
+  return sectionPresets.map((preset) => displayPreset(preset, t))
+}
+
+function displayPreset(
+  preset: SectionPreset,
+  t: SectionCatalogTranslate
+): DisplaySectionPreset {
+  return {
+    ...preset,
+    label: t(`presets.${preset.id}.label`),
+    hint: t(`presets.${preset.id}.hint`),
+    aliases: aliasesFor(preset.id, t)
+  }
+}
+
+/**
+ * The headings a preset also answers to, or none.
+ *
+ * The one catalog string that is legitimately missing — most presets are
+ * already called what a document calls them — so a message that comes back as
+ * its own key is read as "no aliases" rather than as an alias named
+ * `aliases.hobbies`.
+ */
+function aliasesFor(presetId: string, t: SectionCatalogTranslate) {
+  const key = `aliases.${presetId}`
+  const value = t(key)
+
+  return value.endsWith(key)
+    ? []
+    : value
+        .split(",")
+        .map((alias) => alias.trim())
+        .filter(Boolean)
+}
+
+/** Everything about a preset a heading or a query may match. */
+export const matchableText = (preset: DisplaySectionPreset) =>
+  [preset.label, preset.hint, ...preset.aliases].join(" ")
+
+/**
  * The catalog filtered by what has been typed, groups and all.
  *
- * Matching is on the *translated* label and hint together, so "bar" finds
- * Graphs and "link" finds Portfolio — a picker that only matched titles would
- * hide the entry whose title the user does not yet know, and one that matched
- * the English ids would not match what is on screen at all.
+ * Matching is on the *translated* label, hint and aliases together, so "bar"
+ * finds Graphs and "link" finds Portfolio — a picker that only matched titles
+ * would hide the entry whose title the user does not yet know, and one that
+ * matched the English ids would not match what is on screen at all.
  *
  * Empty groups are dropped rather than drawn empty: a heading with nothing
  * under it reads as a section that failed to load.
@@ -126,22 +211,18 @@ export function searchSectionCatalog(
   query: string,
   t: SectionCatalogTranslate
 ): DisplaySectionPresetGroup[] {
-  const needle = query.trim().toLowerCase()
+  const needle = normalizeCatalogText(query)
 
   return sectionCatalog
     .map((group) => ({
       id: group.id,
       title: t(`groups.${group.id}`),
       presets: group.presets
-        .map((preset) => ({
-          ...preset,
-          label: t(`presets.${preset.id}.label`),
-          hint: t(`presets.${preset.id}.hint`)
-        }))
+        .map((preset) => displayPreset(preset, t))
         .filter(
           (preset) =>
             !needle ||
-            `${preset.label} ${preset.hint}`.toLowerCase().includes(needle)
+            normalizeCatalogText(matchableText(preset)).includes(needle)
         )
     }))
     .filter((group) => group.presets.length > 0)

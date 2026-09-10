@@ -310,6 +310,9 @@
     }
   },
   "sectionCatalog": {
+    "aliases": {
+      "summary": "Profile, Personal Statement"
+    },
     "groups": {
       "writing": "Writing",
       "work": "Work",
@@ -405,6 +408,10 @@
       "graphs": {
         "label": "Graphs",
         "hint": "Anything you rate out of a hundred"
+      },
+      "strengths": {
+        "label": "Strengths",
+        "hint": "What you are good at"
       },
       "hobbies": {
         "label": "Hobbies",

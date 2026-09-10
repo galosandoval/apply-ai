@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm"
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTableCreator,
@@ -57,7 +58,8 @@ export const userRelations = relations(user, ({ many, one }) => ({
     references: [contact.userId]
   }),
   resumes: many(resume),
-  skills: many(skill)
+  skills: many(skill),
+  sections: many(section)
 }))
 
 /** better-auth owns these three. Password hashes live on `account`. */
@@ -118,7 +120,7 @@ export const skill = pgTable("skill", {
   category: text("category").notNull(),
   all: text("all").array().notNull(),
   position: integer("position").notNull(),
-  userId: text("user_id").references(() => user.id)
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" })
 })
 
 /**
@@ -138,7 +140,9 @@ export const contact = pgTable("contact", {
   portfolio: text("portfolio"),
   location: text("location").notNull(),
   userId: text("user_id").notNull(),
-  resumeId: text("resume_id").references(() => resume.id)
+  resumeId: text("resume_id").references(() => resume.id, {
+    onDelete: "cascade"
+  })
 })
 
 export const work = pgTable("work", {
@@ -182,8 +186,10 @@ export const work = pgTable("work", {
   body: text("body").default("").notNull(),
   /** Order within the Experience section. Row order was `ORDER BY id` before. */
   position: integer("position").default(0).notNull(),
-  userId: text("user_id").references(() => user.id),
-  resumeId: text("resume_id").references(() => resume.id)
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+  resumeId: text("resume_id").references(() => resume.id, {
+    onDelete: "cascade"
+  })
 })
 
 export const workRelations = relations(work, ({ one }) => ({
@@ -213,8 +219,10 @@ export const school = pgTable("school", {
   body: text("body").default("").notNull(),
   /** Order within the Education section. */
   position: integer("position").default(0).notNull(),
-  userId: text("user_id").references(() => user.id),
-  resumeId: text("resume_id").references(() => resume.id)
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+  resumeId: text("resume_id").references(() => resume.id, {
+    onDelete: "cascade"
+  })
 })
 
 export const schoolRelations = relations(school, ({ one }) => ({
@@ -273,7 +281,7 @@ export const resume = pgTable("resume", {
    * language the section headings are written in.
    */
   language: text("language").default("en").notNull(),
-  userId: text("user_id").references(() => user.id),
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull()
 })
 
@@ -301,26 +309,55 @@ export const resumeRelations = relations(resume, ({ one, many }) => ({
  * - **Everything else** holds its own `content`, shaped by `componentType`.
  *   `skills` is one of these and is named only so a refresh from the account
  *   can still find it; `custom` is a section the user added.
+ *
+ * A section belongs to a resume (`resumeId`) or to the account (`userId`) — the
+ * master-copy/snapshot split `contact`, `work` and `school` already express,
+ * with the owner named on both sides rather than only the resume: a master row
+ * is what seeds a new resume, and a resume's own row is the snapshot that
+ * cannot change under a document already sent. Both columns stay nullable
+ * until the contract step adds the constraint that makes exactly one of them
+ * present — `0015_section_account_owner.sql` says why that wait is deliberate.
  */
-export const section = pgTable("section", {
-  id: text("id").primaryKey(),
-  resumeId: text("resume_id")
-    .notNull()
-    .references(() => resume.id, { onDelete: "cascade" }),
-  /** `experience` | `education` | `skills` | `custom`. */
-  kind: text("kind").notNull(),
-  /** The heading as the user wants it read — "Work History", not "experience". */
-  label: text("label").notNull(),
-  /** How the section draws. The set is fixed; see `~/lib/section-content`. */
-  componentType: text("component_type").notNull(),
-  position: integer("position").notNull(),
-  /** Custom sections only, validated against `componentType` on write. */
-  content: jsonb("content")
-})
+export const section = pgTable(
+  "section",
+  {
+    id: text("id").primaryKey(),
+    /**
+     * Both owners cascade, as they do on `work`, `school` and `contact`: a
+     * snapshot cannot outlive its resume, and a master copy cannot outlive the
+     * account it is the master copy of.
+     */
+    resumeId: text("resume_id").references(() => resume.id, {
+      onDelete: "cascade"
+    }),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    /** `experience` | `education` | `skills` | `custom`. */
+    kind: text("kind").notNull(),
+    /** The heading as the user wants it read — "Work History", not "experience". */
+    label: text("label").notNull(),
+    /** How the section draws. The set is fixed; see `~/lib/section-content`. */
+    componentType: text("component_type").notNull(),
+    position: integer("position").notNull(),
+    /** Custom sections only, validated against `componentType` on write. */
+    content: jsonb("content")
+  },
+  (table) => [
+    /**
+     * Postgres indexes a primary key, not the columns that point at one, and
+     * every read of a section starts from its owner.
+     */
+    index("section_resume_id_idx").on(table.resumeId),
+    index("section_user_id_idx").on(table.userId)
+  ]
+)
 
 export const sectionRelations = relations(section, ({ one }) => ({
   resume: one(resume, {
     fields: [section.resumeId],
     references: [resume.id]
+  }),
+  user: one(user, {
+    fields: [section.userId],
+    references: [user.id]
   })
 }))
