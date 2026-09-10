@@ -18,7 +18,13 @@ import { generatedSectionKinds } from "~/server/modules/resume/section.service"
 const generatedDates = {
   startDate: z.string(),
   endDate: z.string(),
-  current: z.boolean().default(false)
+  /**
+   * Required rather than defaulted: structured generation compiles this schema
+   * to a strict JSON schema, where every property must appear in `required`,
+   * and a Zod default makes the property optional — which the API rejects
+   * outright. The prompt is what tells the model when to set it.
+   */
+  current: z.boolean()
 }
 
 /**
