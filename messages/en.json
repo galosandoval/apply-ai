@@ -310,6 +310,9 @@
     }
   },
   "sectionCatalog": {
+    "aliases": {
+      "summary": "Profile, Personal Statement"
+    },
     "groups": {
       "writing": "Writing",
       "work": "Work",
@@ -324,7 +327,7 @@
       },
       "summary": {
         "label": "Summary",
-        "hint": "A short opening paragraph — your profile"
+        "hint": "A short opening paragraph"
       },
       "objective": {
         "label": "Objective",

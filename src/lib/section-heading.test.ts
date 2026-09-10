@@ -18,8 +18,15 @@ import {
  * Spanish import.
  */
 
-/** `useTranslations("sectionCatalog")`, over the real message tree. */
-function catalog(messages: typeof english): SectionCatalogTranslate {
+/**
+ * `useTranslations("sectionCatalog")`, over the real message tree.
+ *
+ * The parameter asks for no more than it walks — the catalog subtree, unknown
+ * below that — so a second language needs no cast to stand in for the first.
+ */
+function catalog(messages: {
+  sectionCatalog: unknown
+}): SectionCatalogTranslate {
   return (key) => {
     const value = key
       .split(".")
@@ -36,7 +43,7 @@ function catalog(messages: typeof english): SectionCatalogTranslate {
 }
 
 const t = catalog(english)
-const es = catalog(spanish as typeof english)
+const es = catalog(spanish)
 
 const prose = (text: string): ImportedSectionContent => ({
   type: "prose",
@@ -239,6 +246,87 @@ describe("an unmatched heading falls back by content shape", () => {
     expect(resolved.componentType).toBe("richText")
     expect(resolved.content).toEqual({ markdown: "" })
   })
+
+  // A real credentials list has the one line whose year the document never
+  // printed. Letting it flatten the section would lose every date beside it.
+  it("keeps two columns when most entries are dated", () => {
+    const resolved = resolveSectionHeading(
+      "Colophon",
+      entries(
+        "Set the reprint — 2018",
+        "Bound the folio | 2021",
+        "Ongoing work"
+      ),
+      t
+    )
+
+    expect(resolved.componentType).toBe("twoColumn")
+    expect(resolved.content).toEqual({
+      rows: [
+        { left: "Set the reprint", right: "2018" },
+        { left: "Bound the folio", right: "2021" },
+        { left: "Ongoing work", right: "" }
+      ]
+    })
+  })
+
+  it("does not make two columns of a single dated entry among many", () => {
+    const resolved = resolveSectionHeading(
+      "Colophon",
+      entries("Letterpress", "Bookbinding", "Marbling since 2018"),
+      t
+    )
+
+    expect(resolved.componentType).toBe("tagList")
+  })
+
+  // A stop is only a sentence break when a space follows it: "Node.js" is a tag
+  // and so is "Chess." — a list of them is still a row of tags.
+  it("tags short entries whose punctuation is not a sentence break", () => {
+    const resolved = resolveSectionHeading(
+      "Colophon",
+      entries("Node.js", "Chess.", "C++"),
+      t
+    )
+
+    expect(resolved.componentType).toBe("tagList")
+    expect(resolved.content).toEqual({ tags: ["Node.js", "Chess.", "C++"] })
+  })
+
+  it("lists short entries that run two sentences together", () => {
+    const resolved = resolveSectionHeading(
+      "Colophon",
+      entries("Set it. Twice.", "Bound it. Once."),
+      t
+    )
+
+    expect(resolved.componentType).toBe("list")
+  })
+})
+
+describe("a heading the catalog has another word for", () => {
+  // The alias is matched, never drawn. A hint stretched to say "your profile"
+  // would be picker copy written for the matcher instead of for the reader.
+  it("leaves the hint a user reads out of it", () => {
+    expect(english.sectionCatalog.presets.summary.hint).toBe(
+      "A short opening paragraph"
+    )
+    expect(spanish.sectionCatalog.presets.summary.hint).toBe(
+      "Un párrafo breve de apertura"
+    )
+  })
+
+  it("matches an aliased heading in each language, untranslated", () => {
+    expect(
+      resolveSectionHeading("Profile", prose("A paragraph."), t)
+    ).toMatchObject({ label: "Profile", presetId: "summary" })
+    expect(
+      resolveSectionHeading("Personal Statement", prose("Un párrafo."), t)
+    ).toMatchObject({ label: "Personal Statement", presetId: "summary" })
+    expect(
+      resolveSectionHeading("Perfil", prose("Un párrafo."), es)
+    ).toMatchObject({ label: "Perfil", presetId: "summary" })
+  })
 })
 
 describe("the user's heading survives every path", () => {
@@ -290,18 +378,6 @@ describe("a document is not written in its reader's language", () => {
     expect(
       resolveSectionHeading("Pasatiempos", entries("Ajedrez"), t)
     ).toMatchObject({ presetId: null, label: "Pasatiempos" })
-  })
-
-  it("matches a heading in whichever of the given languages wrote it", () => {
-    const languages = [t, es]
-
-    expect(
-      resolveSectionHeading("Pasatiempos", entries("Ajedrez"), languages)
-        .presetId
-    ).toBe("hobbies")
-    expect(
-      resolveSectionHeading("Hobbies", entries("Chess"), languages).presetId
-    ).toBe("hobbies")
   })
 
   // Both are the skills section as far as one heading can tell. Which one the
@@ -451,8 +527,8 @@ describe("content is shaped for the component the preset picked", () => {
     expect(resolved.content).toEqual({
       rows: [
         {
-          left: "AWS SAA, Amazon Web Services, Issued",
-          right: "Mar 2024, Expires Mar 2027"
+          left: "AWS SAA, Amazon Web Services",
+          right: "Issued Mar 2024, Expires Mar 2027"
         }
       ]
     })

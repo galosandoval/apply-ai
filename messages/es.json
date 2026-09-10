@@ -310,6 +310,9 @@
     }
   },
   "sectionCatalog": {
+    "aliases": {
+      "summary": "Perfil, Perfil profesional"
+    },
     "groups": {
       "writing": "Redacción",
       "work": "Trabajo",
@@ -324,7 +327,7 @@
       },
       "summary": {
         "label": "Resumen",
-        "hint": "Un párrafo breve de apertura: tu perfil"
+        "hint": "Un párrafo breve de apertura"
       },
       "objective": {
         "label": "Objetivo",
