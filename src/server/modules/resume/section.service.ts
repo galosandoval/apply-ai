@@ -25,6 +25,8 @@ import {
 } from "./section-labels"
 import {
   type AddSectionInput,
+  claimsOneOwner,
+  oneOwnerMessage,
   type RemoveSectionInput,
   type RenameSectionInput,
   type ReorderSectionsInput,
@@ -237,9 +239,13 @@ export function sectionsFromGeneration(
  * An account with no rows of its own reads as the current default set rather
  * than as nothing, which is what lets the backfill and the code that reads it
  * ship in either order: an account the backfill has not reached behaves exactly
- * as it did before. The stand-in rows carry their `kind` as an id, like the
- * renderer's own fallback — they are not rows, so a write naming one finds
- * nothing, which is the truthful answer.
+ * as it did before.
+ *
+ * Every entry says which it is. A stand-in carries its `kind` as an id, like
+ * the renderer's own fallback, and a write naming one finds nothing — the
+ * truthful answer, but a silent one. `isDefault` is the loud version: a caller
+ * can tell an editable row from a placeholder without knowing that the ids of
+ * one happen not to be cuid2s.
  *
  * Skills carries no content here, unlike on a resume: the account's skills are
  * the `skill` rows keyed by `userId`, and it is the snapshot onto a resume that
@@ -248,7 +254,7 @@ export function sectionsFromGeneration(
 export async function readAccountSections(db: Database, userId: string) {
   const rows = await repo.findSections(db, { userId })
 
-  if (rows.length) return rows
+  if (rows.length) return rows.map((row) => ({ ...row, isDefault: false }))
 
   const label = await sectionLabelerFor(
     await repo.findAccountLanguage(db, userId)
@@ -262,7 +268,8 @@ export async function readAccountSections(db: Database, userId: string) {
     label: label(sectionLabelPath(section.kind), section.label),
     componentType: section.componentType,
     position,
-    content: null
+    content: null,
+    isDefault: true
   }))
 }
 
@@ -283,11 +290,8 @@ async function ownerFor(
   userId: string,
   input: SectionOwnerInput
 ) {
-  if (!input.resumeId === !input.onAccount) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "A section belongs to a resume or to the account, not both"
-    })
+  if (!claimsOneOwner(input)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: oneOwnerMessage })
   }
 
   if (!input.resumeId) return { userId }
@@ -441,15 +445,21 @@ export async function writeLabel(
   if (!updated.length) throw sectionNotFound()
 }
 
-/** Renames a section. The heading is the user's; the `kind` under it is not. */
+/**
+ * Renames one of the account's own sections. The heading is the user's; the
+ * `kind` under it is not.
+ *
+ * The account only: a resume's heading is an editable string on the document
+ * and is written through `resume.updateField`, which has already asserted the
+ * resume by the time it reaches `writeLabel`. Nothing to assert here — the
+ * account is the session's.
+ */
 export async function rename(
   db: Database,
   userId: string,
   input: RenameSectionInput
 ) {
-  const owner = await ownerFor(db, userId, input)
-
-  await writeLabel(db, owner, input.sectionId, input.label)
+  await writeLabel(db, { userId }, input.sectionId, input.label)
 
   return { sectionId: input.sectionId }
 }

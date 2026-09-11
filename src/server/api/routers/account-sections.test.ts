@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { asc, eq } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { coreSectionDefaults } from "~/lib/section-content"
 import { callerFor } from "~/server/api/test-caller"
 import { resume, section, user } from "~/server/db/schema"
 import {
@@ -45,34 +46,22 @@ async function seed() {
   return { owner, stranger }
 }
 
-/** What the backfill leaves behind for an account with a full profile. */
+/**
+ * What the backfill leaves behind for an account with a full profile.
+ *
+ * Built from `coreSectionDefaults` rather than typed out, so this fixture is
+ * the set the migration writes and the renderer falls back to, not a third
+ * copy of it that can drift from either.
+ */
 async function backfill(userId: string) {
-  await db.insert(section).values([
-    {
+  await db.insert(section).values(
+    coreSectionDefaults.map((core, position) => ({
+      ...core,
       id: createId(),
       userId,
-      kind: "skills",
-      label: "Skills",
-      componentType: "groupedList",
-      position: 0
-    },
-    {
-      id: createId(),
-      userId,
-      kind: "experience",
-      label: "Experience",
-      componentType: "twoColumn",
-      position: 1
-    },
-    {
-      id: createId(),
-      userId,
-      kind: "education",
-      label: "Education",
-      componentType: "twoColumn",
-      position: 2
-    }
-  ])
+      position
+    }))
+  )
 }
 
 describe.skipIf(!hasTestDatabase)("account sections", () => {
@@ -100,17 +89,21 @@ describe.skipIf(!hasTestDatabase)("account sections", () => {
     it("reads as the set a resume is created with", async () => {
       const sections = await read(fixture.owner)
 
-      expect(sections.map((row) => row.kind)).toEqual([
-        "skills",
-        "experience",
-        "education"
-      ])
-      expect(sections.map((row) => row.label)).toEqual([
-        "Skills",
-        "Experience",
-        "Education"
-      ])
+      expect(sections.map((row) => row.kind)).toEqual(
+        coreSectionDefaults.map((core) => core.kind)
+      )
+      expect(sections.map((row) => row.label)).toEqual(
+        coreSectionDefaults.map((core) => core.label)
+      )
       expect(sections.map((row) => row.position)).toEqual([0, 1, 2])
+    })
+
+    it("says they are stand-ins rather than rows", async () => {
+      expect((await read(fixture.owner)).map((row) => row.isDefault)).toEqual([
+        true,
+        true,
+        true
+      ])
     })
 
     it("stands them in rather than writing them", async () => {
@@ -140,6 +133,7 @@ describe.skipIf(!hasTestDatabase)("account sections", () => {
       const added = sections.at(-1)
 
       expect(added?.id).toBe(sectionId)
+      expect(added?.isDefault).toBe(false)
       expect(added?.kind).toBe("custom")
       expect(added?.position).toBe(3)
       expect(added?.content).toEqual({ items: [] })
@@ -233,11 +227,9 @@ describe.skipIf(!hasTestDatabase)("account sections", () => {
         })
       ).rejects.toThrow(/every section/i)
 
-      expect((await read(fixture.owner)).map((row) => row.kind)).toEqual([
-        "skills",
-        "experience",
-        "education"
-      ])
+      expect((await read(fixture.owner)).map((row) => row.kind)).toEqual(
+        coreSectionDefaults.map((core) => core.kind)
+      )
     })
 
     it("sets a custom section's content", async () => {
@@ -302,11 +294,9 @@ describe.skipIf(!hasTestDatabase)("account sections", () => {
         })
       ).rejects.toThrow(/section not found/i)
 
-      expect((await read(fixture.stranger)).map((row) => row.label)).toEqual([
-        "Skills",
-        "Experience",
-        "Education"
-      ])
+      expect((await read(fixture.stranger)).map((row) => row.label)).toEqual(
+        coreSectionDefaults.map((core) => core.label)
+      )
     })
 
     it("refuses an input that claims both owners, or neither", async () => {

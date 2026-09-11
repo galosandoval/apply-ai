@@ -1,6 +1,9 @@
+import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import spanishMessages from "../../../messages/es.json"
+import { coreSectionDefaults } from "~/lib/section-content"
 import { testDatabaseUrl } from "./test-database"
 
 /**
@@ -12,11 +15,25 @@ import { testDatabaseUrl } from "./test-database"
  * in a throwaway schema. Nothing is retyped into the test.
  *
  * The whole file is the backfill here; there is no schema change to skip past.
+ *
+ * What a core section is called and how it draws comes from `coreSectionDefaults`
+ * and the message files rather than from strings typed here: the SQL carries a
+ * frozen copy of both, and reading the live ones is what catches the copy
+ * drifting from them.
  */
 
 const hasTestDatabase = !!testDatabaseUrl
 
 const migrationFile = "migrations/0017_account_sections_backfill.sql"
+
+/** The Spanish headings the SQL carries a frozen copy of. */
+const spanishLabels: Record<string, string> = spanishMessages.sectionLabels
+
+/** The id the backfill writes, so a fixture can pose as a row it already wrote. */
+const backfilledId = (userId: string, kind: string) =>
+  createHash("md5")
+    .update(userId + kind)
+    .digest("hex")
 
 async function backfillStatements() {
   const sql = await readFile(migrationFile, "utf8")
@@ -56,8 +73,10 @@ const fixtureSchema = `
 
 /**
  * One account per combination that decides what the backfill writes: a full
- * profile, a profile holding one thing, an empty one, a Spanish one, and one
- * whose only rows belong to a resume rather than to the account.
+ * profile, a profile holding one thing, an empty one, a Spanish one, one whose
+ * only rows belong to a resume rather than to the account, one this backfill
+ * has already run for, and one that added a section of its own in the window
+ * before it ran.
  */
 const fixtureRows = `
   INSERT INTO "apply-ai_user" ("id", "email", "locale") VALUES
@@ -66,30 +85,36 @@ const fixtureRows = `
     ('u-empty',   'empty@example.com',   'en'),
     ('u-spanish', 'spanish@example.com', 'es'),
     ('u-resume',  'resume@example.com',  'en'),
-    ('u-edited',  'edited@example.com',  'en');
+    ('u-edited',  'edited@example.com',  'en'),
+    ('u-custom',  'custom@example.com',  'en');
 
   INSERT INTO "apply-ai_resume" VALUES ('r-1', 'u-resume');
 
   INSERT INTO "apply-ai_skill" VALUES
     ('k-full',    'Languages', ARRAY['TypeScript'], 0, 'u-full'),
     ('k-spanish', 'Lenguajes', ARRAY['TypeScript'], 0, 'u-spanish'),
-    ('k-edited',  'Languages', ARRAY['TypeScript'], 0, 'u-edited');
+    ('k-edited',  'Languages', ARRAY['TypeScript'], 0, 'u-edited'),
+    ('k-custom',  'Languages', ARRAY['TypeScript'], 0, 'u-custom');
 
   INSERT INTO "apply-ai_work" VALUES
     ('w-full', 0, 'u-full', NULL),
     ('w-jobs', 0, 'u-jobs', NULL),
     ('w-spanish', 0, 'u-spanish', NULL),
+    ('w-custom', 0, 'u-custom', NULL),
     ('w-snapshot', 0, 'u-resume', 'r-1');
 
   INSERT INTO "apply-ai_school" VALUES
     ('e-full', 0, 'u-full', NULL),
     ('e-spanish', 0, 'u-spanish', NULL);
 
-  -- A resume's own sections, and an account that has already been backfilled
-  -- and has since removed one.
+  -- A resume's own sections; an account this backfill has already run for,
+  -- recognisable by the id it wrote, which has since been renamed and had the
+  -- other two removed; and an account that added a custom section of its own
+  -- in the window before the backfill ran.
   INSERT INTO "apply-ai_section" VALUES
     ('s-resume', 'r-1', NULL, 'experience', 'Experience', 'twoColumn', 0, NULL),
-    ('s-edited', NULL, 'u-edited', 'skills', 'Superpowers', 'groupedList', 0, NULL);
+    ('${backfilledId("u-edited", "skills")}', NULL, 'u-edited', 'skills', 'Superpowers', 'groupedList', 0, NULL),
+    ('s-custom', NULL, 'u-custom', 'custom', 'Certificates', 'list', 0, NULL);
 `
 
 let client: Client
@@ -139,21 +164,15 @@ describe.skipIf(!hasTestDatabase)("0017 account sections backfill", () => {
   it("writes a section per thing the profile holds, in render order", async () => {
     const rows = await sectionsOf("u-full")
 
-    expect(rows.map((row) => row.kind)).toEqual([
-      "skills",
-      "experience",
-      "education"
-    ])
-    expect(rows.map((row) => row.label)).toEqual([
-      "Skills",
-      "Experience",
-      "Education"
-    ])
-    expect(rows.map((row) => row.component_type)).toEqual([
-      "groupedList",
-      "twoColumn",
-      "twoColumn"
-    ])
+    expect(rows.map((row) => row.kind)).toEqual(
+      coreSectionDefaults.map((section) => section.kind)
+    )
+    expect(rows.map((row) => row.label)).toEqual(
+      coreSectionDefaults.map((section) => section.label)
+    )
+    expect(rows.map((row) => row.component_type)).toEqual(
+      coreSectionDefaults.map((section) => section.componentType)
+    )
     expect(rows.map((row) => row.position)).toEqual([0, 1, 2])
   })
 
@@ -183,11 +202,9 @@ describe.skipIf(!hasTestDatabase)("0017 account sections backfill", () => {
   it("writes the headings in the account's own language", async () => {
     const rows = await sectionsOf("u-spanish")
 
-    expect(rows.map((row) => row.label)).toEqual([
-      "Habilidades",
-      "Experiencia",
-      "Formación académica"
-    ])
+    expect(rows.map((row) => row.label)).toEqual(
+      coreSectionDefaults.map((section) => spanishLabels[section.kind])
+    )
   })
 
   it("reads the account's master rows, not a resume's snapshot of them", async () => {
@@ -202,11 +219,24 @@ describe.skipIf(!hasTestDatabase)("0017 account sections backfill", () => {
     expect(rows).toEqual([{ id: "s-resume", label: "Experience" }])
   })
 
-  it("skips an account that already has sections of its own", async () => {
+  it("skips an account it has already run for", async () => {
     const rows = await sectionsOf("u-edited")
 
     // Renamed, and the two it holds rows for never came back.
     expect(rows.map((row) => row.label)).toEqual(["Superpowers"])
+  })
+
+  it("still writes the core kinds around a section added before it ran", async () => {
+    const rows = await sectionsOf("u-custom")
+
+    // The window between the two halves of #95 shipping: this account edited
+    // its sections first, and must not be left holding only what it added.
+    expect(rows.map((row) => row.kind)).toEqual([
+      "custom",
+      "skills",
+      "experience"
+    ])
+    expect(rows.map((row) => row.position)).toEqual([0, 1, 2])
   })
 
   it("changes nothing when it runs a second time", async () => {
