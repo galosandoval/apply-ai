@@ -17,7 +17,7 @@ import { api } from "~/utils/api"
 export function ResumeListView() {
   const t = useTranslations("resumeList")
   const format = useFormatter()
-  const utils = api.useContext()
+  const utils = api.useUtils()
   const { data: resumes, status } = api.resume.list.useQuery()
 
   const remove = api.resume.remove.useMutation({

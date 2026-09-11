@@ -18,7 +18,7 @@ const UNREADABLE_FILE = "unreadable-file"
 export function ImportStep() {
   const t = useTranslations("onboarding.import")
   const { goToStep } = useOnboardingStep()
-  const utils = api.useContext()
+  const utils = api.useUtils()
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState("")
   /** A file this page turned away, before the server ever saw it. */

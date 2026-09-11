@@ -128,6 +128,7 @@ function Field({
   onCommit: () => void
 }) {
   const id = `field-${field.path}`
+  const write = (value: string) => onChange(field.path, value)
 
   if (field.input === "checkbox") {
     return (
@@ -144,12 +145,16 @@ function Field({
     <div className="flex flex-col gap-1">
       <Label htmlFor={id}>{field.label}</Label>
 
-      <FieldControl
-        field={field}
-        id={id}
-        onChange={(value) => onChange(field.path, value)}
-        onCommit={onCommit}
-      />
+      {field.input === "markdown" ? (
+        <MarkdownField
+          id={id}
+          onChange={write}
+          onCommit={onCommit}
+          value={field.value}
+        />
+      ) : (
+        <LineField field={field} id={id} onChange={write} onCommit={onCommit} />
+      )}
 
       {field.error && <FieldError message={field.error} />}
     </div>
@@ -208,41 +213,7 @@ function FlagField({
   )
 }
 
-/** The input the field's shape asks for: a line, or markdown with its toolbar. */
-function FieldControl({
-  field,
-  id,
-  onChange,
-  onCommit
-}: {
-  field: PanelField
-  id: string
-  onChange: (value: string) => void
-  onCommit: () => void
-}) {
-  if (field.input === "markdown") {
-    return (
-      <MarkdownField
-        id={id}
-        onChange={onChange}
-        onCommit={onCommit}
-        value={field.value}
-      />
-    )
-  }
-
-  return (
-    <LineField field={field} id={id} onChange={onChange} onCommit={onCommit} />
-  )
-}
-
-/**
- * One line of text.
- *
- * The typed text is echoed locally by `useTypedValue` — the cached resume
- * behind `field.value` answers a tick late, and a controlled input that is told
- * its own value a tick late is one whose caret jumps to the end.
- */
+/** One line of text, its caret held still by `useTypedValue`. */
 function LineField({
   field,
   id,
@@ -261,8 +232,7 @@ function LineField({
       disabled={field.disabled}
       id={id}
       onBlur={onCommit}
-      onChange={(event) => typed.onChange(event.target.value)}
-      value={typed.value}
+      {...typed.props}
     />
   )
 }

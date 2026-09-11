@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ChangeEvent } from "react"
 
 /**
  * A text input whose caret survives a value that comes back a tick later.
@@ -17,26 +17,35 @@ import { useState } from "react"
  * So the keystroke is echoed here, synchronously, and the prop only overrides
  * it when it changes for some *other* reason — a refused write rolling back, a
  * ticked box clearing a date, a different row taking this field's place.
+ *
+ * `props` is spread straight onto the input; `set` is for the callers that
+ * rewrite the text themselves rather than being told by an event.
  */
 export function useTypedValue(
   value: string,
   onChange: (value: string) => void
 ) {
-  const [typed, setTyped] = useState(value)
-  const [rendered, setRendered] = useState(value)
+  const [current, setCurrent] = useState(value)
+  const [lastValue, setLastValue] = useState(value)
 
   // Derived during render rather than in an effect: an effect would repaint the
   // stale text first, which is the flicker this exists to remove.
-  if (value !== rendered) {
-    setRendered(value)
-    setTyped(value)
+  if (value !== lastValue) {
+    setLastValue(value)
+    setCurrent(value)
+  }
+
+  const set = (next: string) => {
+    setCurrent(next)
+    onChange(next)
   }
 
   return {
-    value: typed,
-    onChange: (next: string) => {
-      setTyped(next)
-      onChange(next)
-    }
+    props: {
+      value: current,
+      onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        set(event.target.value)
+    },
+    set
   }
 }

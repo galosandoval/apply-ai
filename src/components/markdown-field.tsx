@@ -50,8 +50,8 @@ export function MarkdownField({
   const t = useTranslations("resumeEditor.markdown")
   const textarea = useRef<HTMLTextAreaElement>(null)
 
-  // Same reason as the panel's line inputs: the value comes back a tick after
-  // the keystroke, and a caret in the middle of the text would not survive it.
+  // See `useTypedValue`: a controlled input told its own value a tick late is
+  // one whose caret jumps to the end.
   const typed = useTypedValue(value, onChange)
 
   // Where the caret goes once the new text has rendered. A button that leaves
@@ -79,7 +79,7 @@ export function MarkdownField({
       end: element.selectionEnd
     })
 
-    typed.onChange(next.text)
+    typed.set(next.text)
     setCaret({ start: next.start, end: next.end })
   }
 
@@ -107,11 +107,10 @@ export function MarkdownField({
       <Textarea
         id={id}
         onBlur={onCommit}
-        onChange={(event) => typed.onChange(event.target.value)}
         placeholder={placeholder}
         ref={textarea}
         rows={6}
-        value={typed.value}
+        {...typed.props}
       />
     </div>
   )
