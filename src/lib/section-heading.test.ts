@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import english from "../../messages/en.json"
 import spanish from "../../messages/es.json"
-import { type SectionCatalogTranslate } from "./section-catalog"
+import { sectionCatalogTranslator } from "./section-catalog-test-helper"
 import {
   type ImportedSectionContent,
   resolveSectionHeading
@@ -16,42 +16,14 @@ import {
  * heading fell through to rich text. Both languages are exercised for the same
  * reason — a resolver that only worked on English would silently flatten every
  * Spanish import.
- */
-
-/**
- * `useTranslations("sectionCatalog")`, over the real message tree.
  *
- * The parameter asks for no more than it walks — the catalog subtree, unknown
- * below that — so a second language needs no cast to stand in for the first.
+ * A missing key comes back empty, the way an absent alias contributes nothing
+ * to the text a heading is matched against.
  */
-function catalog(messages: {
-  sectionCatalog: unknown
-}): SectionCatalogTranslate {
-  function lookup(key: string) {
-    return key
-      .split(".")
-      .reduce<unknown>(
-        (node, part) =>
-          typeof node === "object" && node !== null
-            ? (node as Record<string, unknown>)[part]
-            : undefined,
-        messages.sectionCatalog
-      )
-  }
+const nothing = () => ""
 
-  function translate(key: string) {
-    const value = lookup(key)
-
-    return typeof value === "string" ? value : ""
-  }
-
-  translate.has = (key: string) => typeof lookup(key) === "string"
-
-  return translate
-}
-
-const t = catalog(english)
-const es = catalog(spanish)
+const t = sectionCatalogTranslator(english, nothing)
+const es = sectionCatalogTranslator(spanish, nothing)
 
 const prose = (text: string): ImportedSectionContent => ({
   type: "prose",

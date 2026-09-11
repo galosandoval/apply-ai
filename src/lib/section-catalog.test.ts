@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest"
 import english from "../../messages/en.json"
 import spanish from "../../messages/es.json"
-import {
-  searchSectionCatalog,
-  sectionPresets,
-  type SectionCatalogTranslate
-} from "./section-catalog"
+import { sectionCatalogTranslator } from "./section-catalog-test-helper"
+import { searchSectionCatalog, sectionPresets } from "./section-catalog"
 
 /**
  * The catalog as the picker reads it — values in, values out, no React.
@@ -13,37 +10,14 @@ import {
  * The message files are read rather than stubbed for the same reason the picker
  * matches on copy: a test with its own invented labels would pass while the
  * entry a user can see failed to come back.
+ *
+ * A missing key comes back as itself, so the cases below can assert a label
+ * exists by checking the key did *not* come back.
  */
+const keyItself = (key: string) => key
 
-/** `useTranslations("sectionCatalog")`, over the real message tree. */
-function catalog(messages: {
-  sectionCatalog: unknown
-}): SectionCatalogTranslate {
-  function lookup(key: string) {
-    return key
-      .split(".")
-      .reduce<unknown>(
-        (node, part) =>
-          typeof node === "object" && node !== null
-            ? (node as Record<string, unknown>)[part]
-            : undefined,
-        messages.sectionCatalog
-      )
-  }
-
-  function translate(key: string) {
-    const value = lookup(key)
-
-    return typeof value === "string" ? value : key
-  }
-
-  translate.has = (key: string) => typeof lookup(key) === "string"
-
-  return translate
-}
-
-const t = catalog(english)
-const es = catalog(spanish)
+const t = sectionCatalogTranslator(english, keyItself)
+const es = sectionCatalogTranslator(spanish, keyItself)
 
 const found = (query: string, translate = t) =>
   searchSectionCatalog(query, translate).flatMap((group) =>

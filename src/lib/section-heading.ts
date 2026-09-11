@@ -82,9 +82,11 @@ type Candidate = {
  * content value.
  *
  * Pure: everything it knows arrives in its arguments, and `t` is the catalog
- * translator the picker already uses (`useTranslations("sectionCatalog")`, or
- * the resume-language labeler on the server) — so the language a heading is
- * matched against is the language that translator speaks.
+ * translator the picker already uses (`useTranslations("sectionCatalog")`) — so
+ * the language a heading is matched against is the language that translator
+ * speaks. The server's `SectionLabeler` is deliberately *not* that shape: it
+ * takes a fallback and has no `has`, so a server caller needs a translator of
+ * its own rather than this one.
  *
  * The section resolved from one heading is the whole answer. Two headings that
  * both name skills — "Technical Skills" and "Soft Skills" — therefore both come
