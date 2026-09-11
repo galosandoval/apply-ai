@@ -27,8 +27,8 @@ import {
 function catalog(messages: {
   sectionCatalog: unknown
 }): SectionCatalogTranslate {
-  return (key) => {
-    const value = key
+  function lookup(key: string) {
+    return key
       .split(".")
       .reduce<unknown>(
         (node, part) =>
@@ -37,9 +37,17 @@ function catalog(messages: {
             : undefined,
         messages.sectionCatalog
       )
+  }
+
+  function translate(key: string) {
+    const value = lookup(key)
 
     return typeof value === "string" ? value : ""
   }
+
+  translate.has = (key: string) => typeof lookup(key) === "string"
+
+  return translate
 }
 
 const t = catalog(english)
