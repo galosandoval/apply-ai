@@ -2,19 +2,19 @@ import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc"
 import {
   addSectionSchema,
   removeSectionSchema,
+  renameSectionSchema,
   reorderSectionsSchema,
   setSectionContentSchema
 } from "~/server/modules/resume/section.schema"
 import * as sectionService from "~/server/modules/resume/section.service"
 
 /**
- * The sections of one resume.
+ * The sections of one resume — or, when the input names no resume, of the
+ * account whose master copy new resumes are drawn from.
  *
  * There is no procedure for changing a section's `kind` or `componentType`, and
  * that is the enforcement, not a UI convention: what a core section *is* stays
- * out of reach, so its typed rows stay machine-readable. Renaming goes through
- * `resume.updateField` with a `section.<id>.label` path, like every other
- * editable string.
+ * out of reach, so its typed rows stay machine-readable.
  */
 export const sectionRouter = createTRPCRouter({
   add: protectedProcedure
@@ -43,5 +43,18 @@ export const sectionRouter = createTRPCRouter({
     .input(reorderSectionsSchema)
     .mutation(({ ctx, input }) =>
       sectionService.reorder(ctx.db, ctx.session.user.id, input)
+    ),
+
+  /**
+   * Renames a section.
+   *
+   * A resume's own heading is an editable string on the document, so the editor
+   * writes it through `resume.updateField` with a `section.<id>.label` path;
+   * the account has no document to address, and this is how it renames.
+   */
+  rename: protectedProcedure
+    .input(renameSectionSchema)
+    .mutation(({ ctx, input }) =>
+      sectionService.rename(ctx.db, ctx.session.user.id, input)
     )
 })

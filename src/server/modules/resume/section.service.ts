@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
+import { type Locale } from "~/i18n/routing"
 import {
   type AnySectionContent,
   coreSectionDefaults,
@@ -15,6 +16,7 @@ import { assertOwnsResume } from "~/server/api/ownership"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
 import * as repo from "./resume.repository"
+import { type SectionOwner } from "./resume.repository"
 import {
   presetLabelPath,
   type SectionLabeler,
@@ -24,15 +26,23 @@ import {
 import {
   type AddSectionInput,
   type RemoveSectionInput,
+  type RenameSectionInput,
   type ReorderSectionsInput,
+  type SectionOwnerInput,
   type SetSectionContentInput
 } from "./section.schema"
 
-// The sections a resume is drawn from.
+// The sections a resume is drawn from — and the ones the account is the master
+// copy of, which are the same rows with the other owner set.
 //
 // Like `resume.service`, every entry point takes the session's `userId` and
-// asserts ownership itself. Each query is scoped to `resumeId` as well, so a
-// section id from another resume finds nothing rather than being edited.
+// asserts ownership itself. Each query is scoped to the owner as well, so a
+// section id belonging to another resume, or to another account, finds nothing
+// rather than being edited.
+//
+// One service rather than a second copy for the account: rename, remove and
+// reorder mean the same thing on either owner, and two implementations of that
+// is two places for them to disagree.
 
 const sectionNotFound = () =>
   new TRPCError({ code: "NOT_FOUND", message: "Section not found" })
@@ -221,10 +231,95 @@ export function sectionsFromGeneration(
 }
 
 /**
- * Appends a custom section, empty, at the end of the resume.
+ * The account's own sections, in its order — the master copy a new resume is
+ * drawn from.
+ *
+ * An account with no rows of its own reads as the current default set rather
+ * than as nothing, which is what lets the backfill and the code that reads it
+ * ship in either order: an account the backfill has not reached behaves exactly
+ * as it did before. The stand-in rows carry their `kind` as an id, like the
+ * renderer's own fallback — they are not rows, so a write naming one finds
+ * nothing, which is the truthful answer.
+ *
+ * Skills carries no content here, unlike on a resume: the account's skills are
+ * the `skill` rows keyed by `userId`, and it is the snapshot onto a resume that
+ * turns them into content.
+ */
+export async function readAccountSections(db: Database, userId: string) {
+  const rows = await repo.findSections(db, { userId })
+
+  if (rows.length) return rows
+
+  const label = await sectionLabelerFor(
+    await repo.findAccountLanguage(db, userId)
+  )
+
+  return coreSectionDefaults.map((section, position) => ({
+    id: section.kind,
+    userId,
+    resumeId: null,
+    kind: section.kind,
+    label: label(sectionLabelPath(section.kind), section.label),
+    componentType: section.componentType,
+    position,
+    content: null
+  }))
+}
+
+/**
+ * The owner the input named, once the session is allowed to write to it.
+ *
+ * A resume is asserted against the session; the account needs no assertion
+ * because it *is* the session's — `userId` comes from the cookie, never from
+ * the input, so there is no account a caller could name but not own.
+ *
+ * Exactly one has to be claimed. An input claiming both is a caller that has
+ * not decided; one claiming neither is a caller that has lost its `resumeId`,
+ * and answering that with the account would edit the master copy every resume
+ * is drawn from.
+ */
+async function ownerFor(
+  db: Database,
+  userId: string,
+  input: SectionOwnerInput
+) {
+  if (!input.resumeId === !input.onAccount) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A section belongs to a resume or to the account, not both"
+    })
+  }
+
+  if (!input.resumeId) return { userId }
+
+  await assertOwnsResume(db, userId, input.resumeId)
+
+  return { resumeId: input.resumeId }
+}
+
+/**
+ * The language a new heading is written in: the resume's, or — for a section of
+ * the account's own — the language the account reads in.
+ */
+async function languageOf(db: Database, owner: SectionOwner): Promise<Locale> {
+  return "resumeId" in owner
+    ? repo.findResumeLanguage(db, owner.resumeId)
+    : repo.findAccountLanguage(db, owner.userId)
+}
+
+/** The columns that say who owns a row, as an insert takes them. */
+function ownerColumns(owner: SectionOwner) {
+  return "resumeId" in owner
+    ? { resumeId: owner.resumeId, userId: null }
+    : { userId: owner.userId, resumeId: null }
+}
+
+/**
+ * Appends a custom section, empty, at the end of the resume — or at the end of
+ * the account's own list.
  *
  * The heading is rewritten from the catalog preset the user picked, in the
- * resume's language rather than the interface's: the two are normally the same,
+ * owner's language rather than the interface's: the two are normally the same,
  * and where they are not it is the document that decides — a Spanish resume
  * being edited from an English session gets a Spanish heading. An id the
  * message files don't know keeps whatever the picker displayed.
@@ -234,19 +329,17 @@ export async function add(
   userId: string,
   input: AddSectionInput
 ) {
-  const resumeId = input.resumeId
-
-  await assertOwnsResume(db, userId, resumeId)
+  const owner = await ownerFor(db, userId, input)
 
   const [position, label] = await Promise.all([
-    repo.nextSectionPosition(db, resumeId),
-    presetLabel(db, resumeId, input)
+    repo.nextSectionPosition(db, owner),
+    presetLabel(db, owner, input)
   ])
 
   const [created] = await repo.insertSections(db, [
     {
       id: createId(),
-      resumeId,
+      ...ownerColumns(owner),
       kind: "custom",
       label,
       componentType: input.componentType,
@@ -265,16 +358,15 @@ export async function add(
   return { sectionId: created.id }
 }
 
-/** The preset's heading in the resume's language, or the client's own label. */
+/** The preset's heading in the owner's language, or the client's own label. */
 async function presetLabel(
   db: Database,
-  resumeId: string,
+  owner: SectionOwner,
   input: AddSectionInput
 ) {
   if (!input.presetId) return input.label
 
-  const language = await repo.findResumeLanguage(db, resumeId)
-  const label = await sectionLabelerFor(language)
+  const label = await sectionLabelerFor(await languageOf(db, owner))
 
   return label(presetLabelPath(input.presetId), input.label)
 }
@@ -291,9 +383,9 @@ export async function remove(
   userId: string,
   input: RemoveSectionInput
 ) {
-  await assertOwnsResume(db, userId, input.resumeId)
+  const owner = await ownerFor(db, userId, input)
 
-  const deleted = await repo.deleteSection(db, input.resumeId, input.sectionId)
+  const deleted = await repo.deleteSection(db, owner, input.sectionId)
 
   if (!deleted.length) throw sectionNotFound()
 
@@ -303,7 +395,7 @@ export async function remove(
 /**
  * Rewrites every position from the order given.
  *
- * The list must be exactly the resume's sections — a partial list would leave
+ * The list must be exactly the owner's sections — a partial list would leave
  * the omitted ones holding positions that now mean something else.
  */
 export async function reorder(
@@ -311,33 +403,55 @@ export async function reorder(
   userId: string,
   input: ReorderSectionsInput
 ) {
-  await assertOwnsResume(db, userId, input.resumeId)
+  const owner = await ownerFor(db, userId, input)
+  const existing = await repo.findSections(db, owner)
 
-  const existing = await repo.findSections(db, input.resumeId)
-
-  assertCoversExactly(existing, input.sectionIds, "section of the resume")
+  assertCoversExactly(
+    existing,
+    input.sectionIds,
+    "resumeId" in owner ? "section of the resume" : "section of the profile"
+  )
 
   await db.transaction(async (tx) => {
     for (const [position, sectionId] of input.sectionIds.entries()) {
-      await repo.updateSection(tx, input.resumeId, sectionId, { position })
+      await repo.updateSection(tx, owner, sectionId, { position })
     }
   })
 
   return { sectionIds: input.sectionIds }
 }
 
-/** Renames a section. The heading is the user's; the `kind` under it is not. */
+/**
+ * Renames a section, named by whoever owns it.
+ *
+ * A resume reaches this through `resume.updateField`'s path grammar, which has
+ * already asserted the resume; the account reaches it through `rename`, which
+ * asserts nothing because there is nothing to assert.
+ */
 export async function writeLabel(
   db: DbOrTx,
-  resumeId: string,
+  owner: SectionOwner,
   sectionId: string,
   value: string
 ) {
-  const updated = await repo.updateSection(db, resumeId, sectionId, {
+  const updated = await repo.updateSection(db, owner, sectionId, {
     label: value
   })
 
   if (!updated.length) throw sectionNotFound()
+}
+
+/** Renames a section. The heading is the user's; the `kind` under it is not. */
+export async function rename(
+  db: Database,
+  userId: string,
+  input: RenameSectionInput
+) {
+  const owner = await ownerFor(db, userId, input)
+
+  await writeLabel(db, owner, input.sectionId, input.label)
+
+  return { sectionId: input.sectionId }
 }
 
 /**
@@ -350,13 +464,13 @@ export async function writeLabel(
  */
 export async function writeContent(
   db: Database,
-  resumeId: string,
+  owner: SectionOwner,
   sectionId: string,
   target: SectionContentTarget,
   value: string
 ) {
   await db.transaction(async (tx) => {
-    const found = await loadCustomSection(tx, resumeId, sectionId)
+    const found = await loadCustomSection(tx, owner, sectionId)
 
     if (found.componentType !== target.componentType) {
       throw new TRPCError({
@@ -370,7 +484,7 @@ export async function writeContent(
     if (!next)
       throw new TRPCError({ code: "NOT_FOUND", message: "Field not found" })
 
-    await repo.updateSection(tx, resumeId, sectionId, { content: next })
+    await repo.updateSection(tx, owner, sectionId, { content: next })
   })
 }
 
@@ -387,10 +501,10 @@ export async function setContent(
   userId: string,
   input: SetSectionContentInput
 ) {
-  await assertOwnsResume(db, userId, input.resumeId)
+  const owner = await ownerFor(db, userId, input)
 
   await db.transaction(async (tx) => {
-    const found = await loadCustomSection(tx, input.resumeId, input.sectionId)
+    const found = await loadCustomSection(tx, owner, input.sectionId)
     const content = parseSectionContent(found.componentType, input.content)
 
     if (!content) {
@@ -400,7 +514,7 @@ export async function setContent(
       })
     }
 
-    await repo.updateSection(tx, input.resumeId, input.sectionId, { content })
+    await repo.updateSection(tx, owner, input.sectionId, { content })
   })
 
   return { sectionId: input.sectionId }
@@ -415,10 +529,10 @@ export async function setContent(
  */
 async function loadCustomSection(
   tx: DbOrTx,
-  resumeId: string,
+  owner: SectionOwner,
   sectionId: string
 ) {
-  const found = await repo.findSection(tx, resumeId, sectionId)
+  const found = await repo.findSection(tx, owner, sectionId)
 
   if (!found) throw sectionNotFound()
 

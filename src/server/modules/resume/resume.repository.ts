@@ -142,23 +142,49 @@ export async function findContact(db: DbOrTx, resumeId: string) {
   return rows[0] ?? null
 }
 
-export async function findSections(db: DbOrTx, resumeId: string) {
+/**
+ * Which owner's sections a read or a write is about.
+ *
+ * A section belongs to a resume or to the account, never to both — the two
+ * spellings of that are the two members here, so no caller can build a query
+ * that asks for a row with an ambiguous owner. The check constraint that makes
+ * the same thing true of the table is #96.
+ */
+export type SectionOwner = { resumeId: string } | { userId: string }
+
+/**
+ * The `WHERE` that scopes every section query to one owner.
+ *
+ * The account's own sections are spelled `resume_id IS NULL` as well, like the
+ * master rows in `work`, `school` and `contact`: without it an account would
+ * read every snapshot its resumes hold.
+ *
+ * Scoping to the owner rather than to the section id alone is what makes a
+ * section id from somewhere else *find nothing* instead of being edited.
+ */
+function ownedBy(owner: SectionOwner) {
+  return "resumeId" in owner
+    ? eq(section.resumeId, owner.resumeId)
+    : and(eq(section.userId, owner.userId), isNull(section.resumeId))
+}
+
+export async function findSections(db: DbOrTx, owner: SectionOwner) {
   return db
     .select()
     .from(section)
-    .where(eq(section.resumeId, resumeId))
+    .where(ownedBy(owner))
     .orderBy(asc(section.position), asc(section.id))
 }
 
 export async function findSection(
   db: DbOrTx,
-  resumeId: string,
+  owner: SectionOwner,
   sectionId: string
 ) {
   const rows = await db
     .select()
     .from(section)
-    .where(and(eq(section.id, sectionId), eq(section.resumeId, resumeId)))
+    .where(and(eq(section.id, sectionId), ownedBy(owner)))
 
   return rows[0] ?? null
 }
@@ -174,25 +200,25 @@ export async function insertSections(
 
 export async function deleteSection(
   db: DbOrTx,
-  resumeId: string,
+  owner: SectionOwner,
   sectionId: string
 ) {
   return db
     .delete(section)
-    .where(and(eq(section.id, sectionId), eq(section.resumeId, resumeId)))
+    .where(and(eq(section.id, sectionId), ownedBy(owner)))
     .returning({ id: section.id })
 }
 
 export async function updateSection(
   db: DbOrTx,
-  resumeId: string,
+  owner: SectionOwner,
   sectionId: string,
   values: Partial<typeof section.$inferInsert>
 ) {
   return db
     .update(section)
     .set(values)
-    .where(and(eq(section.id, sectionId), eq(section.resumeId, resumeId)))
+    .where(and(eq(section.id, sectionId), ownedBy(owner)))
     .returning({ id: section.id })
 }
 
@@ -353,6 +379,25 @@ export async function findAccount(db: DbOrTx, userId: string) {
   return rows[0] ?? null
 }
 
+/**
+ * The language the account writes in — the headings a section of *its* own is
+ * created with, where a resume's come from `resume.language`.
+ *
+ * Narrowed here, like `findResumeLanguage`, so no caller downstream has to
+ * decide what an unshipped tag in a `text` column means.
+ */
+export async function findAccountLanguage(
+  db: DbOrTx,
+  userId: string
+): Promise<Locale> {
+  const rows = await db
+    .select({ locale: user.locale })
+    .from(user)
+    .where(eq(user.id, userId))
+
+  return toLocale(rows[0]?.locale)
+}
+
 export async function findAccountSkills(db: DbOrTx, userId: string) {
   return db
     .select()
@@ -391,12 +436,12 @@ export async function findAccountContact(db: DbOrTx, userId: string) {
   return rows[0] ?? null
 }
 
-/** The next free `position` on a resume's sections. */
-export async function nextSectionPosition(db: DbOrTx, resumeId: string) {
+/** The next free `position` on one owner's sections. */
+export async function nextSectionPosition(db: DbOrTx, owner: SectionOwner) {
   const rows = await db
     .select({ max: sql<number | null>`max(${section.position})` })
     .from(section)
-    .where(eq(section.resumeId, resumeId))
+    .where(ownedBy(owner))
 
   return (rows[0]?.max ?? -1) + 1
 }

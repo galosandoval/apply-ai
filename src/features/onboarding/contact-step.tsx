@@ -74,6 +74,7 @@ function NameAndContactForm() {
         education: old?.education ?? [],
         experience: old?.experience ?? [],
         skills: old?.skills ?? [],
+        sections: old?.sections ?? [],
         contact: {
           linkedIn: input?.linkedIn ?? null,
           location: input.location,
