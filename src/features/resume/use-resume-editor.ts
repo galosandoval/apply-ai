@@ -56,7 +56,7 @@ export type SaveState = "idle" | "saving" | "saved" | "failed"
  * the document below it hold no state of their own beyond a caret.
  */
 export function useResumeEditor(resumeId: string) {
-  const utils = api.useContext()
+  const utils = api.useUtils()
   const resumeQuery = api.resume.readById.useQuery(
     { resumeId },
     { enabled: !!resumeId }
@@ -314,7 +314,7 @@ type PendingFields = {
 function useFieldAutosave({ resumeId, patch, resync, save }: ResumeCache) {
   const t = useTranslations("resumeEditor")
 
-  const utils = api.useContext()
+  const utils = api.useUtils()
 
   // What each pending path looked like before the user started typing into it,
   // and the timer that will send it.

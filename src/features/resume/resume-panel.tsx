@@ -13,6 +13,7 @@ import {
 import { MarkdownField } from "~/components/markdown-field"
 import { formatFieldFlag, parseFieldFlag } from "~/lib/resume-field-path"
 import { useClearedValue } from "~/components/use-cleared-value"
+import { useTypedValue } from "~/components/use-typed-value"
 import { useValidationText } from "~/components/use-validation-text"
 import {
   type AddedSectionPreset,
@@ -127,6 +128,7 @@ function Field({
   onCommit: () => void
 }) {
   const id = `field-${field.path}`
+  const write = (value: string) => onChange(field.path, value)
 
   if (field.input === "checkbox") {
     return (
@@ -143,12 +145,16 @@ function Field({
     <div className="flex flex-col gap-1">
       <Label htmlFor={id}>{field.label}</Label>
 
-      <FieldControl
-        field={field}
-        id={id}
-        onChange={(value) => onChange(field.path, value)}
-        onCommit={onCommit}
-      />
+      {field.input === "markdown" ? (
+        <MarkdownField
+          id={id}
+          onChange={write}
+          onCommit={onCommit}
+          value={field.value}
+        />
+      ) : (
+        <LineField field={field} id={id} onChange={write} onCommit={onCommit} />
+      )}
 
       {field.error && <FieldError message={field.error} />}
     </div>
@@ -207,8 +213,8 @@ function FlagField({
   )
 }
 
-/** The input the field's shape asks for: a line, or markdown with its toolbar. */
-function FieldControl({
+/** One line of text, its caret held still by `useTypedValue`. */
+function LineField({
   field,
   id,
   onChange,
@@ -219,24 +225,14 @@ function FieldControl({
   onChange: (value: string) => void
   onCommit: () => void
 }) {
-  if (field.input === "markdown") {
-    return (
-      <MarkdownField
-        id={id}
-        onChange={onChange}
-        onCommit={onCommit}
-        value={field.value}
-      />
-    )
-  }
+  const typed = useTypedValue(field.value, onChange)
 
   return (
     <Input
       disabled={field.disabled}
       id={id}
       onBlur={onCommit}
-      onChange={(event) => onChange(event.target.value)}
-      value={field.value}
+      {...typed.props}
     />
   )
 }

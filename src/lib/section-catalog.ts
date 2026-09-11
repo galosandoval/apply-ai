@@ -57,8 +57,16 @@ export type DisplaySectionPresetGroup = {
   presets: DisplaySectionPreset[]
 }
 
-/** The `t` from `useTranslations("sectionCatalog")`. */
-export type SectionCatalogTranslate = (key: string) => string
+/**
+ * The `t` from `useTranslations("sectionCatalog")`.
+ *
+ * `has` is asked for because the catalog has one optional string — `aliases.*`
+ * — and reading a message that is not there is an error next-intl reports, so
+ * the absence has to be checked rather than inferred from what comes back.
+ */
+export type SectionCatalogTranslate = ((key: string) => string) & {
+  has: (key: string) => boolean
+}
 
 export const sectionCatalog: SectionPresetGroup[] = [
   {
@@ -176,20 +184,19 @@ function displayPreset(
  * The headings a preset also answers to, or none.
  *
  * The one catalog string that is legitimately missing — most presets are
- * already called what a document calls them — so a message that comes back as
- * its own key is read as "no aliases" rather than as an alias named
- * `aliases.hobbies`.
+ * already called what a document calls them — so it is asked for only once
+ * `has` says it is there. Reading it regardless would make every preset
+ * without aliases report a missing message, once per keystroke in the picker.
  */
 function aliasesFor(presetId: string, t: SectionCatalogTranslate) {
   const key = `aliases.${presetId}`
-  const value = t(key)
 
-  return value.endsWith(key)
-    ? []
-    : value
-        .split(",")
-        .map((alias) => alias.trim())
-        .filter(Boolean)
+  if (!t.has(key)) return []
+
+  return t(key)
+    .split(",")
+    .map((alias) => alias.trim())
+    .filter(Boolean)
 }
 
 /** Everything about a preset a heading or a query may match. */

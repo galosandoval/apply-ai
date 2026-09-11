@@ -25,7 +25,7 @@ function NameAndContactForm() {
   const errorText = useErrorText()
   const t = useTranslations("onboarding.contact")
   const { goToStep } = useOnboardingStep()
-  const utils = api.useContext()
+  const utils = api.useUtils()
   const { id } = useUser()
   const { data: profile, status } = api.profile.read.useQuery(undefined, {
     enabled: !!id
