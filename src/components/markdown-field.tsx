@@ -6,6 +6,7 @@ import { Button } from "~/components/ui/button"
 import { FontBoldIcon, Link2Icon, ListBulletIcon } from "@radix-ui/react-icons"
 import { Textarea } from "~/components/ui/textarea"
 import { applyMarkdownAction, type MarkdownAction } from "~/lib/resume-markdown"
+import { useTypedValue } from "~/components/use-typed-value"
 
 /**
  * An icon carries no accessible name, so `titleKey` is both the tooltip and the
@@ -49,6 +50,10 @@ export function MarkdownField({
   const t = useTranslations("resumeEditor.markdown")
   const textarea = useRef<HTMLTextAreaElement>(null)
 
+  // Same reason as the panel's line inputs: the value comes back a tick after
+  // the keystroke, and a caret in the middle of the text would not survive it.
+  const typed = useTypedValue(value, onChange)
+
   // Where the caret goes once the new text has rendered. A button that leaves
   // the caret where it was is a button that has to be followed by a click.
   const [caret, setCaret] = useState<{ start: number; end: number } | null>(
@@ -74,7 +79,7 @@ export function MarkdownField({
       end: element.selectionEnd
     })
 
-    onChange(next.text)
+    typed.onChange(next.text)
     setCaret({ start: next.start, end: next.end })
   }
 
@@ -102,11 +107,11 @@ export function MarkdownField({
       <Textarea
         id={id}
         onBlur={onCommit}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => typed.onChange(event.target.value)}
         placeholder={placeholder}
         ref={textarea}
         rows={6}
-        value={value}
+        value={typed.value}
       />
     </div>
   )

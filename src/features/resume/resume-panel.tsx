@@ -13,6 +13,7 @@ import {
 import { MarkdownField } from "~/components/markdown-field"
 import { formatFieldFlag, parseFieldFlag } from "~/lib/resume-field-path"
 import { useClearedValue } from "~/components/use-cleared-value"
+import { useTypedValue } from "~/components/use-typed-value"
 import { useValidationText } from "~/components/use-validation-text"
 import {
   type AddedSectionPreset,
@@ -231,12 +232,37 @@ function FieldControl({
   }
 
   return (
+    <LineField field={field} id={id} onChange={onChange} onCommit={onCommit} />
+  )
+}
+
+/**
+ * One line of text.
+ *
+ * The typed text is echoed locally by `useTypedValue` — the cached resume
+ * behind `field.value` answers a tick late, and a controlled input that is told
+ * its own value a tick late is one whose caret jumps to the end.
+ */
+function LineField({
+  field,
+  id,
+  onChange,
+  onCommit
+}: {
+  field: PanelField
+  id: string
+  onChange: (value: string) => void
+  onCommit: () => void
+}) {
+  const typed = useTypedValue(field.value, onChange)
+
+  return (
     <Input
       disabled={field.disabled}
       id={id}
       onBlur={onCommit}
-      onChange={(event) => onChange(event.target.value)}
-      value={field.value}
+      onChange={(event) => typed.onChange(event.target.value)}
+      value={typed.value}
     />
   )
 }
