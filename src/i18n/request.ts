@@ -11,7 +11,7 @@ const formats = {
   }
 } as const
 
-/** Walks a dotted message path (`onboarding.import.title`) into the tree. */
+/** Walks a dotted message path (`onboarding.fork.title`) into the tree. */
 function lookup(messages: Messages, path: string) {
   const value = path
     .split(".")

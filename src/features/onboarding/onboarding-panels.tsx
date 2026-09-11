@@ -3,7 +3,10 @@
 import { ContactStep } from "~/features/onboarding/contact-step"
 import { EducationStep } from "~/features/onboarding/education-step"
 import { ExperienceStep } from "~/features/onboarding/experience-step"
-import { ImportStep } from "~/features/onboarding/import-step"
+import {
+  forkHeadingId,
+  OnboardingFork
+} from "~/features/onboarding/onboarding-fork"
 import { SkillsStep } from "~/features/onboarding/skills-step"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 
@@ -20,7 +23,9 @@ export function OnboardingPanels() {
   return (
     <div
       role="region"
-      aria-labelledby={`onboarding-step-${activeStep}`}
+      aria-labelledby={
+        activeStep ? `onboarding-step-${activeStep}` : forkHeadingId
+      }
       className="m-auto w-full max-w-3xl py-12 max-sm:py-8"
     >
       <ActivePanel />
@@ -31,7 +36,7 @@ export function OnboardingPanels() {
 function ActivePanel() {
   const { activeStep } = useOnboardingStep()
 
-  if (activeStep === "import") return <ImportStep />
+  if (!activeStep) return <OnboardingFork />
   if (activeStep === "contact") return <ContactStep />
   if (activeStep === "education") return <EducationStep />
   if (activeStep === "experience") return <ExperienceStep />

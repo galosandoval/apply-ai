@@ -1,15 +1,16 @@
 "use client"
 
-import { createContext, useContext } from "react"
+import { createContext, useContext, useState } from "react"
 
 /**
- * In step order. `OnboardingShell` owns which one is showing.
+ * The forms, in order. Onboarding's entry is the fork, not a step — importing a
+ * resume is one of the two ways in, so it is not a crumb on the trail either
+ * route ends up walking.
  *
  * Ids only — the crumb labels are copy, and live under `onboarding.steps` in
  * the message files so the trail reads in the user's language.
  */
 export const onboardingSteps = [
-  "import",
   "contact",
   "education",
   "experience",
@@ -18,22 +19,54 @@ export const onboardingSteps = [
 
 export type OnboardingStepId = (typeof onboardingSteps)[number]
 
-const OnboardingStepContext = createContext<{
-  activeStep: OnboardingStepId
-  goToStep: (step: OnboardingStepId) => void
-} | null>(null)
+/**
+ * Where onboarding is. `activeStep` is null on the fork, which wears no trail:
+ * until a route is chosen there is no path behind the user to draw.
+ */
+export type OnboardingRoute = {
+  activeStep: OnboardingStepId | null
+  /** What the import said on its way out, when the forms caught it. */
+  importNotice: string
+}
 
+/** The entry screen: two routes offered, neither taken. */
+export const forkRoute: OnboardingRoute = { activeStep: null, importNotice: "" }
+
+/**
+ * The route for an open step. `importNotice` is only worth passing on the way
+ * to the forms from a failed import — moving on clears it.
+ */
+export function stepRoute(
+  activeStep: OnboardingStepId,
+  importNotice = ""
+): OnboardingRoute {
+  return { activeStep, importNotice }
+}
+
+const OnboardingStepContext = createContext<
+  | (OnboardingRoute & {
+      goToStep: (step: OnboardingStepId, importNotice?: string) => void
+    })
+  | null
+>(null)
+
+/**
+ * Owns which step is open, so the header trail and the page's panel read the
+ * same one. Both sit under it, and neither can be the owner.
+ */
 export function OnboardingStepProvider({
-  activeStep,
-  goToStep,
   children
 }: {
-  activeStep: OnboardingStepId
-  goToStep: (step: OnboardingStepId) => void
   children: React.ReactNode
 }) {
+  const [route, setRoute] = useState(forkRoute)
+
+  const goToStep = (step: OnboardingStepId, importNotice?: string) => {
+    setRoute(stepRoute(step, importNotice))
+  }
+
   return (
-    <OnboardingStepContext.Provider value={{ activeStep, goToStep }}>
+    <OnboardingStepContext.Provider value={{ ...route, goToStep }}>
       {children}
     </OnboardingStepContext.Provider>
   )

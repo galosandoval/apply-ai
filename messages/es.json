@@ -112,16 +112,26 @@
       "hint": "Año, año y mes, o fecha completa"
     },
     "steps": {
-      "import": "Importar",
       "contact": "Contacto",
       "education": "Formación",
       "experience": "Experiencia laboral",
       "skills": "Habilidades"
     },
-    "import": {
-      "title": "Empieza con tu currículum actual",
-      "upload": "Sube un PDF",
-      "reading": "Leyendo tu currículum...",
+    "fork": {
+      "title": "¿Cómo quieres crear tu perfil?",
+      "description": "Dos maneras de empezar, y ambas llegan al mismo sitio. En cualquier caso puedes revisar y editar todo antes de usarlo.",
+      "import": {
+        "title": "Importar un currículum",
+        "description": "Sube un PDF y completaremos tus datos de contacto, experiencia laboral, formación y habilidades.",
+        "action": "Sube un PDF",
+        "reading": "Leyendo tu currículum..."
+      },
+      "forms": {
+        "title": "Completar los formularios",
+        "description": "Responde tú mismo cuatro formularios breves: contacto, formación, experiencia laboral y habilidades.",
+        "action": "Empezar los formularios"
+      },
+      "uploading": "{fileName}: esto tarda unos segundos.",
       "imported": "Se importaron {experience, plural, one {# empleo} other {# empleos}}, {education, plural, one {# institución} other {# instituciones}} y {skills, plural, one {# grupo de habilidades} other {# grupos de habilidades}}.",
       "notPdf": "Ese archivo no es un PDF.",
       "tooLarge": "Ese PDF es muy grande. Debe pesar menos de 8 MB.",

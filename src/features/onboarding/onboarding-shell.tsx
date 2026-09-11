@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef } from "react"
 import { ProtectedNavbar } from "~/components/navbar/protected-navbar"
 import {
   Breadcrumb,
@@ -14,20 +14,18 @@ import {
 import {
   OnboardingStepProvider,
   onboardingSteps,
-  useOnboardingStep,
-  type OnboardingStepId
+  useOnboardingStep
 } from "~/features/onboarding/use-onboarding-step"
 
 /**
- * Onboarding is one route with five steps, and the trail sits in the app header —
- * so which step is open has to be state above the page, not inside it. This
- * shell owns it and hands it to the header and the panel alike.
+ * Onboarding is one route: a fork, and then four steps behind whichever way it
+ * is taken. The trail sits in the app header, so where the user is has to be
+ * state above the page — the provider owns it, and the header and the panel
+ * both read it.
  */
 export function OnboardingShell({ children }: { children: React.ReactNode }) {
-  const [activeStep, setActiveStep] = useState<OnboardingStepId>("import")
-
   return (
-    <OnboardingStepProvider activeStep={activeStep} goToStep={setActiveStep}>
+    <OnboardingStepProvider>
       <ProtectedNavbar>
         <OnboardingBreadcrumbs />
       </ProtectedNavbar>
@@ -53,8 +51,8 @@ function OnboardingBreadcrumbs() {
 
   /*
     Steps advance on submit as well as on click, and the trail scrolls sideways
-    once the window is too narrow to hold all five — so the step you just moved
-    to can land off-screen with nothing to say it changed.
+    once the window is too narrow to hold all of them — so the step you just
+    moved to can land off-screen with nothing to say it changed.
   */
   useEffect(() => {
     activeStepRef.current?.scrollIntoView({
@@ -63,8 +61,12 @@ function OnboardingBreadcrumbs() {
     })
   }, [activeStep])
 
+  // The fork is a choice between two routes, not a place on either of them.
+  // A trail behind it would promise the same four steps whichever is taken.
+  if (!activeStep) return null
+
   /*
-    A trail rather than tabs: the five steps are one ordered path through the
+    A trail rather than tabs: the steps are one ordered path through the
     profile, and the crumb you are on is the one page of it that is open. Every
     other crumb stays clickable — the order is a suggestion, not a lock.
   */
