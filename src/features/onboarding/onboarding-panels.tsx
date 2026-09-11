@@ -3,9 +3,13 @@
 import { ContactStep } from "~/features/onboarding/contact-step"
 import { EducationStep } from "~/features/onboarding/education-step"
 import { ExperienceStep } from "~/features/onboarding/experience-step"
-import { ImportStep } from "~/features/onboarding/import-step"
+import { OnboardingFork } from "~/features/onboarding/onboarding-fork"
 import { SkillsStep } from "~/features/onboarding/skills-step"
-import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
+import {
+  type OnboardingStepId,
+  panelHeadingId,
+  useOnboardingStep
+} from "~/features/onboarding/use-onboarding-step"
 
 /**
  * Only the open step is mounted, so each one still loads its profile data and
@@ -20,18 +24,16 @@ export function OnboardingPanels() {
   return (
     <div
       role="region"
-      aria-labelledby={`onboarding-step-${activeStep}`}
+      aria-labelledby={panelHeadingId(activeStep)}
       className="m-auto w-full max-w-3xl py-12 max-sm:py-8"
     >
-      <ActivePanel />
+      <ActivePanel activeStep={activeStep} />
     </div>
   )
 }
 
-function ActivePanel() {
-  const { activeStep } = useOnboardingStep()
-
-  if (activeStep === "import") return <ImportStep />
+function ActivePanel({ activeStep }: { activeStep: OnboardingStepId | null }) {
+  if (!activeStep) return <OnboardingFork />
   if (activeStep === "contact") return <ContactStep />
   if (activeStep === "education") return <EducationStep />
   if (activeStep === "experience") return <ExperienceStep />

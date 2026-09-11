@@ -45,6 +45,18 @@ export async function read(db: Database, userId: string) {
   return { ...found, contact, education, experience, skills }
 }
 
+/**
+ * Whether onboarding has already been walked. The contact step is the first
+ * thing either route through the fork writes, and it requires both of these —
+ * so a row carrying them is a profile, and the user who owns it has no reason
+ * to be shown the way in a second time.
+ */
+export async function hasProfile(db: Database, userId: string) {
+  const found = await repo.findByUserId(db, userId)
+
+  return Boolean(found?.firstName && found.profession)
+}
+
 export async function upsertNameAndContact(
   db: Database,
   userId: string,

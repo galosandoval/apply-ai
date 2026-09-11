@@ -112,20 +112,31 @@
       "hint": "Year, year and month, or a full date"
     },
     "steps": {
-      "import": "Import",
       "contact": "Contact",
       "education": "Education",
       "experience": "Work Experience",
       "skills": "Skills"
     },
-    "import": {
-      "title": "Start with your current resume",
-      "upload": "Upload a PDF",
-      "reading": "Reading your resume...",
+    "fork": {
+      "title": "How do you want to build your profile?",
+      "description": "Two ways in, and they end up in the same place. Either way you review and edit everything before it is used.",
+      "import": {
+        "title": "Import a resume",
+        "description": "Upload a PDF and we'll fill in your contact info, work history, education, and skills for you.",
+        "action": "Upload a PDF",
+        "reading": "Reading your resume..."
+      },
+      "forms": {
+        "title": "Fill in the forms",
+        "description": "Answer four short forms yourself: contact, education, work experience, and skills.",
+        "action": "Start the forms"
+      },
+      "uploading": "{fileName} — this takes a few seconds.",
       "imported": "Imported {experience, plural, one {# job} other {# jobs}}, {education, plural, one {# school} other {# schools}}, and {skills, plural, one {# skill group} other {# skill groups}}.",
       "notPdf": "That file isn't a PDF.",
       "tooLarge": "That PDF is too large. Keep it under 8MB.",
-      "unreadable": "Could not read that file."
+      "unreadable": "Could not read that file.",
+      "unreadablePdf": "We couldn’t read any text in that PDF, so we’ve brought you to the forms. If it was a scan or an image, try exporting a text-based PDF instead."
     },
     "contact": {
       "title": "How can employers get in touch with you?",

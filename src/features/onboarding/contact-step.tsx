@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl"
 import { useEffect } from "react"
 import { MyInput } from "~/components/my-input"
+import { Alert, AlertDescription } from "~/components/ui/alert"
 import { Button } from "~/components/ui/button"
 import {
   type InsertContactSchema,
@@ -24,7 +25,7 @@ export function ContactStep() {
 function NameAndContactForm() {
   const errorText = useErrorText()
   const t = useTranslations("onboarding.contact")
-  const { goToStep } = useOnboardingStep()
+  const { goToStep, importNotice } = useOnboardingStep()
   const utils = api.useUtils()
   const { id } = useUser()
   const { data: profile, status } = api.profile.read.useQuery(undefined, {
@@ -100,88 +101,100 @@ function NameAndContactForm() {
   }, [setFocus])
 
   return (
-    <OnboardingFormLayout
-      form={form}
-      handleSubmit={handleSubmit(onSubmit)}
-      title={t("title")}
-    >
-      <div className="flex gap-2 max-sm:flex-col">
-        <FormField
-          control={form.control}
-          name="firstName"
-          render={({ field }) => (
-            <MyInput field={field} label={t("firstName")} required />
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="lastName"
-          render={({ field }) => (
-            <MyInput field={field} label={t("lastName")} required />
-          )}
-        />
-      </div>
+    <>
+      {/*
+        Why the user is here, when an import sent them: the reader's own
+        explanation, carried over rather than restated.
+      */}
+      {importNotice ? (
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{importNotice}</AlertDescription>
+        </Alert>
+      ) : null}
 
-      <FormField
-        control={form.control}
-        name="profession"
-        render={({ field }) => (
-          <MyInput
-            placeholder={t("professionPlaceholder")}
-            field={field}
-            label={t("profession")}
-            required
+      <OnboardingFormLayout
+        form={form}
+        handleSubmit={handleSubmit(onSubmit)}
+        title={t("title")}
+      >
+        <div className="flex gap-2 max-sm:flex-col">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <MyInput field={field} label={t("firstName")} required />
+            )}
           />
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="location"
-        render={({ field }) => (
-          <MyInput
-            placeholder={t("locationPlaceholder")}
-            field={field}
-            label={t("location")}
-            required
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <MyInput field={field} label={t("lastName")} required />
+            )}
           />
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="phone"
-        render={({ field }) => <MyInput field={field} label={t("phone")} />}
-      />
+        </div>
 
-      <div className="flex gap-2 max-sm:flex-col">
         <FormField
           control={form.control}
-          name="linkedIn"
+          name="profession"
           render={({ field }) => (
             <MyInput
-              placeholder={t("linkedInPlaceholder")}
+              placeholder={t("professionPlaceholder")}
               field={field}
-              label={t("linkedIn")}
+              label={t("profession")}
+              required
             />
           )}
         />
         <FormField
           control={form.control}
-          name="portfolio"
+          name="location"
           render={({ field }) => (
             <MyInput
-              placeholder={t("websitePlaceholder")}
+              placeholder={t("locationPlaceholder")}
               field={field}
-              label={t("website")}
+              label={t("location")}
+              required
             />
           )}
         />
-      </div>
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => <MyInput field={field} label={t("phone")} />}
+        />
 
-      <div className="flex w-full justify-end">
-        <Button loading={status === "pending"} type="submit">
-          {status === "pending" ? t("loading") : t("next")}
-        </Button>
-      </div>
-    </OnboardingFormLayout>
+        <div className="flex gap-2 max-sm:flex-col">
+          <FormField
+            control={form.control}
+            name="linkedIn"
+            render={({ field }) => (
+              <MyInput
+                placeholder={t("linkedInPlaceholder")}
+                field={field}
+                label={t("linkedIn")}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="portfolio"
+            render={({ field }) => (
+              <MyInput
+                placeholder={t("websitePlaceholder")}
+                field={field}
+                label={t("website")}
+              />
+            )}
+          />
+        </div>
+
+        <div className="flex w-full justify-end">
+          <Button loading={status === "pending"} type="submit">
+            {status === "pending" ? t("loading") : t("next")}
+          </Button>
+        </div>
+      </OnboardingFormLayout>
+    </>
   )
 }
