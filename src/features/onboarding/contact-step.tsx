@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl"
 import { useEffect } from "react"
 import { MyInput } from "~/components/my-input"
+import { Alert, AlertDescription } from "~/components/ui/alert"
 import { Button } from "~/components/ui/button"
 import {
   type InsertContactSchema,
@@ -106,12 +107,9 @@ function NameAndContactForm() {
         explanation, carried over rather than restated.
       */}
       {importNotice ? (
-        <div
-          role="alert"
-          className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-        >
-          {importNotice}
-        </div>
+        <Alert variant="destructive" className="mb-6">
+          <AlertDescription>{importNotice}</AlertDescription>
+        </Alert>
       ) : null}
 
       <OnboardingFormLayout

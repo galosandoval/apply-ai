@@ -14,6 +14,7 @@ import {
 import {
   OnboardingStepProvider,
   onboardingSteps,
+  stepHeadingId,
   useOnboardingStep
 } from "~/features/onboarding/use-onboarding-step"
 
@@ -79,17 +80,14 @@ function OnboardingBreadcrumbs() {
 
             <BreadcrumbItem>
               {step === activeStep ? (
-                <BreadcrumbPage
-                  ref={activeStepRef}
-                  id={`onboarding-step-${step}`}
-                >
+                <BreadcrumbPage ref={activeStepRef} id={stepHeadingId(step)}>
                   {t(step)}
                 </BreadcrumbPage>
               ) : (
                 <BreadcrumbLink asChild>
                   <button
                     type="button"
-                    id={`onboarding-step-${step}`}
+                    id={stepHeadingId(step)}
                     onClick={() => goToStep(step)}
                     className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >

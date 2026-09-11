@@ -20,6 +20,7 @@ import {
   type TestDatabase
 } from "~/server/db/test-database"
 import { type ParsedResume } from "~/server/modules/profile/parse-resume-pdf"
+import * as profileService from "~/server/modules/profile/profile.service"
 
 /**
  * The profile router — the account's master copy — driven through
@@ -428,6 +429,49 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
    * The column existed a step before anything wrote to it. This is that
    * writer — and the reason a new resume comes out in the right language.
    */
+  /*
+    Not a procedure — the onboarding layout calls this on the server to decide
+    whether to let the route render at all. #94: a returning user with a profile
+    does not see onboarding again.
+  */
+  describe("hasProfile", () => {
+    const filledContact = {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      profession: "Engineer",
+      location: "London, UK",
+      phone: "",
+      linkedIn: "",
+      portfolio: ""
+    }
+
+    it("is false for an account that has not filled the contact step", async () => {
+      await expect(profileService.hasProfile(db, fixture.owner)).resolves.toBe(
+        false
+      )
+    })
+
+    it("is true once a name and profession are on the row", async () => {
+      await callerFor(db, fixture.owner).profile.upsertNameAndContact(
+        filledContact
+      )
+
+      await expect(profileService.hasProfile(db, fixture.owner)).resolves.toBe(
+        true
+      )
+    })
+
+    it("does not read one account's profile as another's", async () => {
+      await callerFor(db, fixture.owner).profile.upsertNameAndContact(
+        filledContact
+      )
+
+      await expect(
+        profileService.hasProfile(db, fixture.stranger)
+      ).resolves.toBe(false)
+    })
+  })
+
   describe("profile.setLocale", () => {
     it("records the caller's interface language", async () => {
       await callerFor(db, fixture.owner).profile.setLocale({ locale: "es" })

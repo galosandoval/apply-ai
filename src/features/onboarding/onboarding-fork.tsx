@@ -4,19 +4,14 @@ import { useTranslations } from "next-intl"
 import { useRef, useState } from "react"
 import toast from "react-hot-toast"
 import { Button } from "~/components/ui/button"
-import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
+import { useErrorText } from "~/components/use-error-text"
+import {
+  forkHeadingId,
+  useOnboardingStep
+} from "~/features/onboarding/use-onboarding-step"
 import { api } from "~/utils/api"
 
 const MAX_FILE_SIZE_BYTES = 8_000_000
-
-/**
- * Thrown from a plain Promise, outside any component, so it can't reach for a
- * hook. The caller catches it and shows `onboarding.fork.unreadable`.
- */
-const UNREADABLE_FILE = "unreadable-file"
-
-/** The id the panel labels itself by while the fork is what's open. */
-export const forkHeadingId = "onboarding-fork-title"
 
 /**
  * Onboarding opens here: two routes to the same profile, neither of them the
@@ -25,21 +20,44 @@ export const forkHeadingId = "onboarding-fork-title"
  */
 export function OnboardingFork() {
   const t = useTranslations("onboarding.fork")
+  const errorText = useErrorText()
   const { goToStep } = useOnboardingStep()
   const utils = api.useUtils()
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState("")
-  /** A file this page turned away, before the server ever saw it. */
+  /**
+   * A file this page turned away, before the server ever saw it. It is not the
+   * import failing — the user picked the wrong thing and can pick again — so it
+   * stays on the fork rather than sending them down a route they didn't choose.
+   */
   const [rejection, setRejection] = useState("")
 
-  const { mutate, isPending, error } = api.profile.importFromPdf.useMutation({
+  const { mutate, isPending } = api.profile.importFromPdf.useMutation({
     onSuccess: async (counts) => {
       await utils.profile.read.invalidate()
 
       toast.success(t("imported", counts))
 
       goToStep("contact")
-    }
+    },
+
+    /*
+      A PDF that won't parse is a detour, not a dead end: the user goes on to
+      the forms — where they were headed anyway — and the explanation travels
+      with them. Nobody is left on a screen deciding which button re-explains
+      what just happened.
+
+      `BAD_REQUEST` is the one code this procedure raises about the file itself
+      — a PDF with no text it can read — so it earns its own copy. Anything else
+      is ours, and reads the way every other failed procedure in the app does.
+    */
+    onError: (error) =>
+      goToStep(
+        "contact",
+        error.data?.code === "BAD_REQUEST"
+          ? t("unreadablePdf")
+          : errorText(error)
+      )
   })
 
   const validateAndUpload = async (file: File) => {
@@ -55,12 +73,15 @@ export function OnboardingFork() {
 
     setRejection("")
 
-    setFileName(file.name)
-
     // The rejection used to escape unhandled — the reader's message went
-    // nowhere and the page sat on a filename that never uploaded.
+    // nowhere and the page sat on a filename that never uploaded. The name is
+    // set only once there is something to upload under it.
     try {
-      mutate({ fileBase64: await readAsBase64(file) })
+      const fileBase64 = await readAsBase64(file)
+
+      setFileName(file.name)
+
+      mutate({ fileBase64 })
     } catch {
       setRejection(t("unreadable"))
     }
@@ -74,9 +95,6 @@ export function OnboardingFork() {
 
     if (file) void validateAndUpload(file)
   }
-
-  // Whichever refused the file: this page, or the server that tried to read it.
-  const failure = rejection.length ? rejection : (error?.message ?? "")
 
   return (
     <div className="flex flex-col gap-8">
@@ -120,19 +138,12 @@ export function OnboardingFork() {
         </p>
       ) : null}
 
-      {/*
-        A PDF that won't parse is a detour, not a dead end: the explanation
-        travels with the user to the forms, which is where they were going to
-        end up anyway. Nobody is left on a screen with nothing to press.
-      */}
-      {failure ? (
-        <div role="alert" className="flex flex-col items-start gap-2">
-          <p className="text-sm text-destructive">{failure}</p>
-
-          <Button type="button" onClick={() => goToStep("contact", failure)}>
-            {t("forms.action")}
-          </Button>
-        </div>
+      {/* Nothing was uploaded, so there is nowhere to send them: say what was
+          wrong with the file and leave both routes where they were. */}
+      {rejection ? (
+        <p role="alert" className="text-sm text-destructive">
+          {rejection}
+        </p>
       ) : null}
     </div>
   )
@@ -182,7 +193,7 @@ function readAsBase64(file: File) {
     const reader = new FileReader()
 
     reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "")
-    reader.onerror = () => reject(new Error(UNREADABLE_FILE))
+    reader.onerror = () => reject(new Error("Could not read that file"))
     reader.readAsDataURL(file)
   })
 }

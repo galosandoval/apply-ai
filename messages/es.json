@@ -135,7 +135,8 @@
       "imported": "Se importaron {experience, plural, one {# empleo} other {# empleos}}, {education, plural, one {# institución} other {# instituciones}} y {skills, plural, one {# grupo de habilidades} other {# grupos de habilidades}}.",
       "notPdf": "Ese archivo no es un PDF.",
       "tooLarge": "Ese PDF es muy grande. Debe pesar menos de 8 MB.",
-      "unreadable": "No se pudo leer ese archivo."
+      "unreadable": "No se pudo leer ese archivo.",
+      "unreadablePdf": "No pudimos leer ningún texto en ese PDF, así que te trajimos a los formularios. Si era un escaneo o una imagen, intenta exportar un PDF con texto."
     },
     "contact": {
       "title": "¿Cómo pueden contactarte los empleadores?",

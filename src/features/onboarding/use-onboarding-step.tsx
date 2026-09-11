@@ -25,23 +25,33 @@ export type OnboardingStepId = (typeof onboardingSteps)[number]
  */
 export type OnboardingRoute = {
   activeStep: OnboardingStepId | null
-  /** What the import said on its way out, when the forms caught it. */
-  importNotice: string
+  /**
+   * What the import said on its way out, when the forms caught it. `null` when
+   * the user came to a step under their own steam — there is nothing to
+   * explain, which is a different thing from an explanation that says nothing.
+   */
+  importNotice: string | null
 }
 
 /** The entry screen: two routes offered, neither taken. */
-export const forkRoute: OnboardingRoute = { activeStep: null, importNotice: "" }
+export const forkRoute: OnboardingRoute = {
+  activeStep: null,
+  importNotice: null
+}
 
 /**
- * The route for an open step. `importNotice` is only worth passing on the way
- * to the forms from a failed import — moving on clears it.
+ * What labels the open panel, in one place: the trail writes these ids onto its
+ * crumbs and the fork onto its heading, and the panel points `aria-labelledby`
+ * at whichever is showing. Two rules for this is how the panel ends up
+ * labelled by an element that isn't on the page.
  */
-export function stepRoute(
-  activeStep: OnboardingStepId,
-  importNotice = ""
-): OnboardingRoute {
-  return { activeStep, importNotice }
-}
+export const forkHeadingId = "onboarding-fork-title"
+
+export const stepHeadingId = (step: OnboardingStepId) =>
+  `onboarding-step-${step}`
+
+export const panelHeadingId = (activeStep: OnboardingStepId | null) =>
+  activeStep ? stepHeadingId(activeStep) : forkHeadingId
 
 const OnboardingStepContext = createContext<
   | (OnboardingRoute & {
@@ -61,8 +71,12 @@ export function OnboardingStepProvider({
 }) {
   const [route, setRoute] = useState(forkRoute)
 
+  /**
+   * `importNotice` is only worth passing on the way to the forms from a failed
+   * import — moving on clears it.
+   */
   const goToStep = (step: OnboardingStepId, importNotice?: string) => {
-    setRoute(stepRoute(step, importNotice))
+    setRoute({ activeStep: step, importNotice: importNotice ?? null })
   }
 
   return (
