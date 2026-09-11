@@ -38,6 +38,27 @@ export function ResumeListView() {
     )
   }
 
+  /*
+    An account with no resumes hits this list right after signing up, so the
+    empty case has to point at the one action that fills it rather than leave
+    a blank grid.
+  */
+  if (resumes.length === 0) {
+    return (
+      <main className="grid h-full place-items-center p-4">
+        <div className="flex max-w-sm flex-col items-center gap-2 text-center">
+          <h2 className="text-lg font-semibold">{t("emptyHeading")}</h2>
+
+          <p className="text-sm text-muted-foreground">{t("emptyBlurb")}</p>
+
+          <Button asChild className="mt-2" size="sm">
+            <Link href={appPath.newResume}>{t("emptyAction")}</Link>
+          </Button>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <div className="grid gap-2 p-4 md:grid-cols-2 lg:grid-cols-4">
       {resumes.map((resume) => (

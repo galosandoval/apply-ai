@@ -100,6 +100,9 @@
   },
   "resumeList": {
     "loading": "Loading...",
+    "emptyHeading": "No resumes yet",
+    "emptyBlurb": "Paste a job posting and we'll build a resume tailored to it.",
+    "emptyAction": "Create your first resume",
     "noJobDescription": "No job description saved",
     "delete": "Delete",
     "deleteFailed": "Could not delete that resume."
