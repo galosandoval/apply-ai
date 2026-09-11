@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { type Database, type DbOrTx } from "~/server/db/types"
+import { readAccountSections } from "~/server/modules/resume/section.service"
 import * as repo from "./profile.repository"
 import {
   type AddEducationInput,
@@ -29,20 +30,25 @@ import {
 const notFound = (message: string) =>
   new TRPCError({ code: "NOT_FOUND", message })
 
-/** The profile aggregate: the user's row plus contact, education, experience, skills. */
+/**
+ * The profile aggregate: the user's row plus contact, education, experience,
+ * skills — and the sections the account is the master copy of, which say what a
+ * resume drawn from it holds and in what order.
+ */
 export async function read(db: Database, userId: string) {
   const found = await repo.findByUserId(db, userId)
 
   if (!found) throw notFound("User not found")
 
-  const [contact, education, experience, skills] = await Promise.all([
+  const [contact, education, experience, skills, sections] = await Promise.all([
     repo.findContact(db, userId),
     repo.findEducation(db, userId),
     repo.findExperience(db, userId),
-    repo.findSkills(db, userId)
+    repo.findSkills(db, userId),
+    readAccountSections(db, userId)
   ])
 
-  return { ...found, contact, education, experience, skills }
+  return { ...found, contact, education, experience, skills, sections }
 }
 
 /**

@@ -72,7 +72,7 @@ export async function readById(db: Database, userId: string, resumeId: string) {
     repo.findExperience(db, resumeId),
     repo.findEducation(db, resumeId),
     repo.findContact(db, resumeId),
-    repo.findSections(db, resumeId)
+    repo.findSections(db, { resumeId })
   ])
 
   return {
@@ -364,7 +364,7 @@ export async function refreshFromAccount(
 
   const account = await readAccountSeed(db, userId)
 
-  const existing = await repo.findSections(db, resumeId)
+  const existing = await repo.findSections(db, { resumeId })
   const skillsSection = existing.find((row) => row.kind === "skills")
 
   await db.transaction(async (tx) => {
@@ -376,7 +376,7 @@ export async function refreshFromAccount(
     // so it can be deleted — and re-adding a section the user removed is not a
     // refresh, it is overruling them.
     if (skillsSection) {
-      await repo.updateSection(tx, resumeId, skillsSection.id, {
+      await repo.updateSection(tx, { resumeId }, skillsSection.id, {
         componentType: "groupedList",
         content: { groups: skillGroupsFrom(account.skills) }
       })
@@ -605,13 +605,13 @@ async function writeTarget(
 
     case "section":
       if (target.kind === "label") {
-        await sections.writeLabel(db, resumeId, target.row, value)
+        await sections.writeLabel(db, { resumeId }, target.row, value)
         return
       }
 
       await sections.writeContent(
         db,
-        resumeId,
+        { resumeId },
         target.row,
         target.content,
         value
