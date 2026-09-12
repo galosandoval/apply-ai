@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto"
-import { readFile } from "node:fs/promises"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import spanishMessages from "../../../messages/es.json"
 import { coreSectionDefaults } from "~/lib/section-content"
+import { migrationStatements } from "./migration-statements"
+import { sectionSchemaAfterExpand } from "./section-fixture-schema"
 import { testDatabaseUrl } from "./test-database"
 
 /**
@@ -34,42 +35,6 @@ const backfilledId = (userId: string, kind: string) =>
   createHash("md5")
     .update(userId + kind)
     .digest("hex")
-
-async function backfillStatements() {
-  const sql = await readFile(migrationFile, "utf8")
-
-  return sql
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
-    .filter(Boolean)
-}
-
-/** The tables as they stand when the backfill runs. */
-const fixtureSchema = `
-  CREATE TABLE "apply-ai_user" (
-    "id" text PRIMARY KEY, "email" text NOT NULL,
-    "locale" text DEFAULT 'en' NOT NULL
-  );
-  CREATE TABLE "apply-ai_resume" ("id" text PRIMARY KEY, "user_id" text);
-  CREATE TABLE "apply-ai_section" (
-    "id" text PRIMARY KEY, "resume_id" text, "user_id" text,
-    "kind" text NOT NULL, "label" text NOT NULL,
-    "component_type" text NOT NULL, "position" integer NOT NULL,
-    "content" jsonb
-  );
-  CREATE TABLE "apply-ai_skill" (
-    "id" text PRIMARY KEY, "category" text NOT NULL, "all" text[] NOT NULL,
-    "position" integer NOT NULL, "user_id" text
-  );
-  CREATE TABLE "apply-ai_work" (
-    "id" text PRIMARY KEY, "position" integer DEFAULT 0 NOT NULL,
-    "user_id" text, "resume_id" text
-  );
-  CREATE TABLE "apply-ai_school" (
-    "id" text PRIMARY KEY, "position" integer DEFAULT 0 NOT NULL,
-    "user_id" text, "resume_id" text
-  );
-`
 
 /**
  * One account per combination that decides what the backfill writes: a full
@@ -127,7 +92,7 @@ describe.skipIf(!hasTestDatabase)("0017 account sections backfill", () => {
     await client.query("DROP SCHEMA IF EXISTS account_sections_test CASCADE")
     await client.query("CREATE SCHEMA account_sections_test")
     await client.query("SET search_path TO account_sections_test")
-    await client.query(fixtureSchema)
+    await client.query(sectionSchemaAfterExpand)
     await client.query(fixtureRows)
 
     await runBackfill()
@@ -139,7 +104,7 @@ describe.skipIf(!hasTestDatabase)("0017 account sections backfill", () => {
   })
 
   async function runBackfill() {
-    for (const statement of await backfillStatements()) {
+    for (const statement of await migrationStatements(migrationFile)) {
       await client.query(statement)
     }
   }

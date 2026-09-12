@@ -25,11 +25,24 @@
 -- there — `section` is small, and the scan is what the preflight has just done
 -- read-only anyway.
 --
+-- Added validated rather than as `NOT VALID` plus a later `VALIDATE
+-- CONSTRAINT`, which is the usual way to keep that lock short, because the
+-- runner would not let it pay: drizzle's migrator wraps every pending migration
+-- in one transaction, so the ACCESS EXCLUSIVE lock `NOT VALID` takes is held to
+-- commit whatever follows it. The split only buys a short lock once the two
+-- halves commit separately — two deploys, or a runner that commits between
+-- statements. Worth revisiting on the day `section` is big enough to notice;
+-- until then the split would be ceremony that reads like a safeguard.
+--
 -- The preflight is that scan, run before the `ALTER` so a deploy that cannot
 -- proceed says why. Postgres' own failure names the constraint and one example
 -- row; this names the count and points at the backfill, which is the thing that
 -- would have had to go wrong. Migrations run before the build (`vercel.json`),
 -- so failing here fails the deploy rather than the app.
+--
+-- What it is not is a second line of defence. It shares the `ALTER`'s
+-- transaction, so there is no row it could catch that the `ALTER` would let
+-- through — its whole value is the message.
 DO $$
 DECLARE
   ambiguous bigint;

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { splitStatements } from "./migration-statements"
 import { testDatabaseUrl } from "./test-database"
 
 /**
@@ -28,10 +29,7 @@ async function backfillStatements() {
 
   if (!backfill) throw new Error(`No backfill block in ${migrationFile}`)
 
-  return backfill
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
-    .filter(Boolean)
+  return splitStatements(backfill)
 }
 
 /**

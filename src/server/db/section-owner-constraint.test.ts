@@ -1,6 +1,7 @@
-import { readFile } from "node:fs/promises"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { migrationStatements } from "./migration-statements"
+import { sectionSchemaAfterExpand } from "./section-fixture-schema"
 import { testDatabaseUrl } from "./test-database"
 
 /**
@@ -28,42 +29,6 @@ const hasTestDatabase = !!testDatabaseUrl
 const backfillFile = "migrations/0017_account_sections_backfill.sql"
 const constraintFile = "migrations/0018_section_one_owner.sql"
 
-async function migrationStatements(file: string) {
-  const sql = await readFile(file, "utf8")
-
-  return sql
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
-    .filter(Boolean)
-}
-
-/** The tables as they stand when the constraint is added. */
-const fixtureSchema = `
-  CREATE TABLE "apply-ai_user" (
-    "id" text PRIMARY KEY, "email" text NOT NULL,
-    "locale" text DEFAULT 'en' NOT NULL
-  );
-  CREATE TABLE "apply-ai_resume" ("id" text PRIMARY KEY, "user_id" text);
-  CREATE TABLE "apply-ai_section" (
-    "id" text PRIMARY KEY, "resume_id" text, "user_id" text,
-    "kind" text NOT NULL, "label" text NOT NULL,
-    "component_type" text NOT NULL, "position" integer NOT NULL,
-    "content" jsonb
-  );
-  CREATE TABLE "apply-ai_skill" (
-    "id" text PRIMARY KEY, "category" text NOT NULL, "all" text[] NOT NULL,
-    "position" integer NOT NULL, "user_id" text
-  );
-  CREATE TABLE "apply-ai_work" (
-    "id" text PRIMARY KEY, "position" integer DEFAULT 0 NOT NULL,
-    "user_id" text, "resume_id" text
-  );
-  CREATE TABLE "apply-ai_school" (
-    "id" text PRIMARY KEY, "position" integer DEFAULT 0 NOT NULL,
-    "user_id" text, "resume_id" text
-  );
-`
-
 /**
  * Enough of a profile for the backfill to have something to write: an account
  * holding all three core kinds, an empty one it must skip, and a resume with a
@@ -86,16 +51,21 @@ const fixtureRows = `
 `
 
 /** A section row, by the owners it names — either, both, or neither. */
-const sectionRow = (
-  id: string,
-  resumeId: string | null,
-  userId: string | null
-) =>
-  `INSERT INTO "apply-ai_section" VALUES ('${id}', ${
-    resumeId ? `'${resumeId}'` : "NULL"
-  }, ${
-    userId ? `'${userId}'` : "NULL"
-  }, 'custom', 'Certificates', 'list', 9, NULL)`
+const sectionRow = ({
+  id,
+  resumeId = null,
+  userId = null
+}: {
+  id: string
+  resumeId?: string | null
+  userId?: string | null
+}) => {
+  const owner = (value: string | null) => (value ? `'${value}'` : "NULL")
+
+  return `INSERT INTO "apply-ai_section" VALUES ('${id}', ${owner(
+    resumeId
+  )}, ${owner(userId)}, 'custom', 'Certificates', 'list', 9, NULL)`
+}
 
 let client: Client
 
@@ -116,7 +86,7 @@ describe.skipIf(!hasTestDatabase)("0018 one owner per section", () => {
     await client.query("DROP SCHEMA IF EXISTS section_owner_test CASCADE")
     await client.query("CREATE SCHEMA section_owner_test")
     await client.query("SET search_path TO section_owner_test")
-    await client.query(fixtureSchema)
+    await client.query(sectionSchemaAfterExpand)
     await client.query(fixtureRows)
   }
 
@@ -149,7 +119,9 @@ describe.skipIf(!hasTestDatabase)("0018 one owner per section", () => {
     await run(constraintFile)
 
     await expect(
-      client.query(sectionRow("s-both", "r-1", "u-full"))
+      client.query(
+        sectionRow({ id: "s-both", resumeId: "r-1", userId: "u-full" })
+      )
     ).rejects.toThrow(/section_one_owner/)
   })
 
@@ -157,9 +129,9 @@ describe.skipIf(!hasTestDatabase)("0018 one owner per section", () => {
     await backfilledSchema()
     await run(constraintFile)
 
-    await expect(
-      client.query(sectionRow("s-orphan", null, null))
-    ).rejects.toThrow(/section_one_owner/)
+    await expect(client.query(sectionRow({ id: "s-orphan" }))).rejects.toThrow(
+      /section_one_owner/
+    )
   })
 
   it("still accepts a row with exactly one owner", async () => {
@@ -167,16 +139,18 @@ describe.skipIf(!hasTestDatabase)("0018 one owner per section", () => {
     await run(constraintFile)
 
     await expect(
-      client.query(sectionRow("s-master", null, "u-full"))
+      client.query(sectionRow({ id: "s-master", userId: "u-full" }))
     ).resolves.toBeDefined()
     await expect(
-      client.query(sectionRow("s-snapshot-2", "r-1", null))
+      client.query(sectionRow({ id: "s-snapshot-2", resumeId: "r-1" }))
     ).resolves.toBeDefined()
   })
 
   it("names the ambiguous rows rather than leaving Postgres to", async () => {
     await backfilledSchema()
-    await client.query(sectionRow("s-both", "r-1", "u-full"))
+    await client.query(
+      sectionRow({ id: "s-both", resumeId: "r-1", userId: "u-full" })
+    )
 
     await expect(run(constraintFile)).rejects.toThrow(/1 section row/)
   })

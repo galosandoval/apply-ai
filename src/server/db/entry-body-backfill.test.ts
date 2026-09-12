@@ -1,7 +1,7 @@
-import { readFile } from "node:fs/promises"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { renderResumeMarkdown } from "~/lib/resume-markdown"
+import { migrationStatements, withoutComments } from "./migration-statements"
 import { testDatabaseUrl } from "./test-database"
 
 /**
@@ -29,21 +29,10 @@ const migrationFile = "migrations/0013_drop_bullets_and_description.sql"
  * that ships, and Postgres reads them as nothing.
  */
 async function backfillStatements() {
-  const sql = await readFile(migrationFile, "utf8")
-
   const isUpdate = (statement: string) =>
-    statement
-      .split("\n")
-      .filter((line) => !line.trim().startsWith("--"))
-      .join("\n")
-      .trim()
-      .toUpperCase()
-      .startsWith("UPDATE")
+    withoutComments(statement).toUpperCase().startsWith("UPDATE")
 
-  return sql
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
-    .filter(isUpdate)
+  return (await migrationStatements(migrationFile)).filter(isUpdate)
 }
 
 /** The tables as they stand at the moment the backfill runs: 0012 applied. */

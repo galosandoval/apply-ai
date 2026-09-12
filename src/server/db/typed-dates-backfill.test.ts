@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { migrationStatements, withoutComments } from "./migration-statements"
 import { testDatabaseUrl } from "./test-database"
 
 /**
@@ -29,18 +29,9 @@ const migrationFile = "migrations/0014_typed_dates_and_current.sql"
  * an edit that reorders the migration does not quietly stop testing half of it.
  */
 async function dataStatements() {
-  const sql = await readFile(migrationFile, "utf8")
+  const statements = await migrationStatements(migrationFile)
 
-  const withoutComments = (statement: string) =>
-    statement
-      .split("\n")
-      .filter((line) => !line.trim().startsWith("--"))
-      .join("\n")
-      .trim()
-
-  return sql
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
+  return statements
     .filter((statement) => !withoutComments(statement).startsWith("ALTER"))
     .filter((statement) => withoutComments(statement).length > 0)
 }
