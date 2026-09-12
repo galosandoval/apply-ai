@@ -1,6 +1,7 @@
-import { relations } from "drizzle-orm"
+import { relations, sql } from "drizzle-orm"
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -314,9 +315,9 @@ export const resumeRelations = relations(resume, ({ one, many }) => ({
  * master-copy/snapshot split `contact`, `work` and `school` already express,
  * with the owner named on both sides rather than only the resume: a master row
  * is what seeds a new resume, and a resume's own row is the snapshot that
- * cannot change under a document already sent. Both columns stay nullable
- * until the contract step adds the constraint that makes exactly one of them
- * present — `0015_section_account_owner.sql` says why that wait is deliberate.
+ * cannot change under a document already sent. Both columns are nullable and a
+ * check constraint makes exactly one of them present — `0015_section_account_owner.sql`
+ * says why that constraint had to wait for its own deploy.
  */
 export const section = pgTable(
   "section",
@@ -347,7 +348,16 @@ export const section = pgTable(
      * every read of a section starts from its owner.
      */
     index("section_resume_id_idx").on(table.resumeId),
-    index("section_user_id_idx").on(table.userId)
+    index("section_user_id_idx").on(table.userId),
+    /**
+     * Exactly one owner, enforced where the rows are rather than only in the
+     * service that writes them — `0018_section_one_owner.sql` says what each
+     * ambiguous row would have meant.
+     */
+    check(
+      "section_one_owner",
+      sql`("resume_id" IS NULL) <> ("user_id" IS NULL)`
+    )
   ]
 )
 
