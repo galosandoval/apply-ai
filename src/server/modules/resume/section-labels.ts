@@ -59,10 +59,15 @@ export type SectionLabeler = (path: string, fallback: string) => string
 export async function sectionLabelerFor(
   language: Locale
 ): Promise<SectionLabeler> {
-  const read = await messageReaderFor(language)
-
-  return (path, fallback) => read(path) ?? fallback
+  return labelerFrom(await messageReaderFor(language))
 }
+
+const labelerFrom =
+  (read: MessageReader): SectionLabeler =>
+  (path, fallback) =>
+    read(path) ?? fallback
+
+type MessageReader = (path: string) => string | undefined
 
 /**
  * One message path in a language, or in English, or nowhere.
@@ -72,7 +77,7 @@ export async function sectionLabelerFor(
  * ones — and a caller asking for one of those wants to know it is absent, not
  * to be handed the key.
  */
-async function messageReaderFor(language: Locale) {
+async function messageReaderFor(language: Locale): Promise<MessageReader> {
   const [messages, english] = await Promise.all([
     readMessages(language),
     language === routing.defaultLocale
@@ -108,7 +113,10 @@ export const presetLabelPath = (presetId: string) =>
 export async function sectionCatalogTranslatorFor(
   language: Locale
 ): Promise<SectionCatalogTranslate> {
-  const read = await messageReaderFor(language)
+  return catalogTranslatorFrom(await messageReaderFor(language))
+}
+
+function catalogTranslatorFrom(read: MessageReader): SectionCatalogTranslate {
   const at = (key: string) => read(`sectionCatalog.${key}`)
 
   const translate = (key: string) => at(key) ?? ""
@@ -116,4 +124,28 @@ export async function sectionCatalogTranslatorFor(
   translate.has = (key: string) => at(key) !== undefined
 
   return translate
+}
+
+/**
+ * Both halves of one resume's language: the labeler that *writes* a heading,
+ * and the catalog translator that *matches* one.
+ *
+ * One value rather than two arguments travelling side by side. They are not
+ * independent — both are built from the same `Locale`, and a caller resolving
+ * them separately can pass a labeler for one language beside a catalog for
+ * another, which would write a Spanish heading and then fail to recognise it.
+ * Asking for both costs what asking for one did: the message files are read
+ * once and both halves are built over that read.
+ */
+export type SectionLanguage = {
+  label: SectionLabeler
+  catalog: SectionCatalogTranslate
+}
+
+export async function sectionLanguageFor(
+  language: Locale
+): Promise<SectionLanguage> {
+  const read = await messageReaderFor(language)
+
+  return { label: labelerFrom(read), catalog: catalogTranslatorFrom(read) }
 }

@@ -20,7 +20,7 @@ import { school, work } from "~/server/db/schema"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
 import * as repo from "./resume.repository"
-import { sectionLabelerFor } from "./section-labels"
+import { sectionLanguageFor } from "./section-labels"
 import {
   type AddRowInput,
   type CreateResumeInput,
@@ -331,7 +331,10 @@ export async function generate(
     })
   }
 
-  const label = await sectionLabelerFor(language)
+  // Both halves of the resume's language at once: the copy the generated
+  // headings are written with, and the catalog copy the account's headings are
+  // matched against to decide which sections it already carries.
+  const sectionLanguage = await sectionLanguageFor(language)
 
   return create(
     db,
@@ -350,7 +353,7 @@ export async function generate(
       sections: sections.sectionsFromGeneration(
         parsed.data.sections,
         seed,
-        label
+        sectionLanguage
       )
     }
   )

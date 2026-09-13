@@ -379,27 +379,33 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
   })
 
   describe("the account's sections", () => {
-    it("arranges the generated ones around the account's own", async () => {
-      await db.insert(section).values(
-        [
-          {
-            kind: "experience",
-            label: "Work History",
-            componentType: "twoColumn"
-          },
-          {
-            kind: "custom",
-            label: "Certifications",
-            componentType: "list",
-            content: { items: ["AWS Solutions Architect"] }
-          }
-        ].map((row, position) => ({
+    /** Gives the account its own sections, numbered in the order written. */
+    const giveAccountSections = (
+      rows: Omit<typeof section.$inferInsert, "id" | "userId" | "position">[]
+    ) =>
+      db.insert(section).values(
+        rows.map((row, position) => ({
           ...row,
           id: createId(),
           userId: fixture.owner,
           position
         }))
       )
+
+    it("arranges the generated ones around the account's own", async () => {
+      await giveAccountSections([
+        {
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn"
+        },
+        {
+          kind: "custom",
+          label: "Certifications",
+          componentType: "list",
+          content: { items: ["AWS Solutions Architect"] }
+        }
+      ])
 
       stub.mockResolvedValue(
         drafted({ sections: [{ kind: "summary", entries: ["A paragraph"] }] })
@@ -419,6 +425,211 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
         "Certifications"
       ])
       expect(rows[2]?.content).toEqual({ items: ["AWS Solutions Architect"] })
+    })
+
+    it("drops a generated section the account already carries", async () => {
+      await giveAccountSections([
+        {
+          kind: "custom",
+          label: "Summary",
+          componentType: "richText",
+          content: { markdown: "The account's own summary" }
+        },
+        {
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn"
+        }
+      ])
+
+      stub.mockResolvedValue(
+        drafted({
+          sections: [
+            { kind: "summary", entries: ["Written for the posting"] },
+            { kind: "strengths", entries: ["Mentoring"] }
+          ]
+        })
+      )
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      const rows = await sectionsOf(resumeId)
+
+      // One Summary, and it is the account's — a generation adds sections, it
+      // does not overwrite the ones the user already keeps.
+      expect(rows.map((row) => row.label)).toEqual([
+        "Summary",
+        "Work History",
+        "Strengths"
+      ])
+      expect(rows[0]?.content).toEqual({
+        markdown: "The account's own summary"
+      })
+    })
+
+    it("reads the account's own heading for the section it carries", async () => {
+      // "Profile" is the catalog's own alias for a summary: what the account
+      // carries is decided by the same matching an imported heading gets, not
+      // by the one word this app happens to write the heading with.
+      await giveAccountSections([
+        {
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn"
+        },
+        {
+          kind: "custom",
+          label: "Profile",
+          componentType: "richText",
+          content: { markdown: "The account's own profile" }
+        }
+      ])
+
+      stub.mockResolvedValue(
+        drafted({
+          sections: [
+            { kind: "summary", entries: ["Written for the posting"] },
+            { kind: "strengths", entries: ["Mentoring"] }
+          ]
+        })
+      )
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      expect((await sectionsOf(resumeId)).map((row) => row.label)).toEqual([
+        "Work History",
+        "Profile",
+        "Strengths"
+      ])
+    })
+
+    it("reads a heading that names a carried section beside another", async () => {
+      // "Strengths and Skills" carries a strengths. Skills is tried before
+      // strengths in catalog order, so a match open to the whole catalog
+      // answers with a kind generation cannot add and reports the account as
+      // carrying neither — writing a second Strengths under the one the user
+      // already wrote.
+      await giveAccountSections([
+        {
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn"
+        },
+        {
+          kind: "custom",
+          label: "Strengths and Skills",
+          componentType: "tagList",
+          content: { tags: ["Mentoring"] }
+        }
+      ])
+
+      stub.mockResolvedValue(
+        drafted({
+          sections: [
+            { kind: "summary", entries: ["Written for the posting"] },
+            { kind: "strengths", entries: ["Written for the posting"] }
+          ]
+        })
+      )
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      const rows = await sectionsOf(resumeId)
+
+      expect(rows.map((row) => row.label)).toEqual([
+        "Summary",
+        "Work History",
+        "Strengths and Skills"
+      ])
+      expect(rows[2]?.content).toEqual({ tags: ["Mentoring"] })
+    })
+
+    it("drops a carried section wherever it would have been placed", async () => {
+      // Strengths sits *below* the seed, so it is the other half of the rule:
+      // one of each, whichever side the section would have gone on.
+      await giveAccountSections([
+        {
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn"
+        },
+        {
+          kind: "custom",
+          label: "Strengths",
+          componentType: "tagList",
+          content: { tags: ["The account's own"] }
+        }
+      ])
+
+      stub.mockResolvedValue(
+        drafted({
+          sections: [
+            { kind: "strengths", entries: ["Written for the posting"] },
+            { kind: "summary", entries: ["A paragraph"] }
+          ]
+        })
+      )
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      const rows = await sectionsOf(resumeId)
+
+      expect(rows.map((row) => row.label)).toEqual([
+        "Summary",
+        "Work History",
+        "Strengths"
+      ])
+      expect(rows[2]?.content).toEqual({ tags: ["The account's own"] })
+    })
+
+    it("reads the account's headings in the account's own language", async () => {
+      // The heading is matched through the resume's language, so a Spanish
+      // account carries a summary under a Spanish heading — a match on the
+      // English word would be a second Resumen on every Spanish resume.
+      await db
+        .update(user)
+        .set({ locale: "es" })
+        .where(eq(user.id, fixture.owner))
+
+      await giveAccountSections([
+        {
+          kind: "custom",
+          label: "Perfil profesional",
+          componentType: "richText",
+          content: { markdown: "Escrito por la usuaria" }
+        },
+        {
+          kind: "experience",
+          label: "Experiencia",
+          componentType: "twoColumn"
+        }
+      ])
+
+      stub.mockResolvedValue(
+        drafted({
+          sections: [{ kind: "summary", entries: ["Escrito para la vacante"] }]
+        })
+      )
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      const rows = await sectionsOf(resumeId)
+
+      expect(rows.map((row) => row.label)).toEqual([
+        "Perfil profesional",
+        "Experiencia"
+      ])
+      expect(rows[0]?.content).toEqual({ markdown: "Escrito por la usuaria" })
     })
   })
 
