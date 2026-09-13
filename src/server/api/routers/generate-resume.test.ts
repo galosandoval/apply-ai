@@ -507,6 +507,49 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
       ])
     })
 
+    it("reads a heading that names a carried section beside another", async () => {
+      // "Strengths and Skills" carries a strengths. Skills is tried before
+      // strengths in catalog order, so a match open to the whole catalog
+      // answers with a kind generation cannot add and reports the account as
+      // carrying neither — writing a second Strengths under the one the user
+      // already wrote.
+      await giveAccountSections([
+        {
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn"
+        },
+        {
+          kind: "custom",
+          label: "Strengths and Skills",
+          componentType: "tagList",
+          content: { tags: ["Mentoring"] }
+        }
+      ])
+
+      stub.mockResolvedValue(
+        drafted({
+          sections: [
+            { kind: "summary", entries: ["Written for the posting"] },
+            { kind: "strengths", entries: ["Written for the posting"] }
+          ]
+        })
+      )
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      const rows = await sectionsOf(resumeId)
+
+      expect(rows.map((row) => row.label)).toEqual([
+        "Summary",
+        "Work History",
+        "Strengths and Skills"
+      ])
+      expect(rows[2]?.content).toEqual({ tags: ["Mentoring"] })
+    })
+
     it("drops a carried section wherever it would have been placed", async () => {
       // Strengths sits *below* the seed, so it is the other half of the rule:
       // one of each, whichever side the section would have gone on.

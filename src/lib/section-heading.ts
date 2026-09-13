@@ -127,19 +127,31 @@ export function resolveSectionHeading(
 }
 
 /**
- * The catalog preset a heading reads as, or `null` when it matches none.
+ * Which of `among` a heading names, or `null` when it names none of them.
  *
  * The same match `resolveSectionHeading` makes, without the content — a caller
  * that only has to ask *which section is this* should not have to invent a body
  * to find out. Generation asks it of the account's own headings: whether a
  * resume already carries a Summary is a question about the heading the user
  * wrote, not about the one word this app would have written.
+ *
+ * `among` is required rather than defaulted to the whole catalog, because the
+ * two questions are not the same one. The import asks *what is this heading*
+ * and every candidate is a live answer; a caller here asks *is this heading one
+ * of these particular sections*, and letting the rest of the catalog answer
+ * lets a candidate nobody asked about take the heading first. The rules are
+ * tried candidate by candidate in catalog order, so with the whole catalog on
+ * the table "Strengths and Skills" qualifies the skills candidate before the
+ * rules ever reach strengths, and comes back as neither — a resume that plainly
+ * carries Strengths reads as carrying nothing, and generation writes a second
+ * one over the top of it.
  */
 export function matchSectionPreset(
   heading: string,
-  t: SectionCatalogTranslate
+  t: SectionCatalogTranslate,
+  among: readonly SectionPreset["id"][]
 ): SectionPreset["id"] | null {
-  return matchHeading(heading, t, "names")?.presetId ?? null
+  return matchHeading(heading, t, { width: "names", among })?.presetId ?? null
 }
 
 /**
@@ -153,6 +165,20 @@ export function matchSectionPreset(
  * short opening paragraph", and a section headed "Opening" is not a summary.
  */
 type MatchWidth = "names" | "text"
+
+/**
+ * How narrowly a heading is matched: which candidates may answer, and how much
+ * of each one's copy counts as a name it answers to.
+ *
+ * The two travel together because they are the same question asked twice —
+ * *what may this heading be* — and a caller that narrowed one without the other
+ * would be asking the widest form of a deliberately narrow question.
+ */
+type MatchNarrowing = {
+  width: MatchWidth
+  /** The presets on the table, or every candidate the catalog has when absent. */
+  among?: readonly SectionPreset["id"][]
+}
 
 /**
  * How a heading may match a candidate, in the order the rules are tried.
@@ -178,13 +204,13 @@ const matchRules = (
 function matchHeading(
   heading: string,
   t: SectionCatalogTranslate,
-  width: MatchWidth = "text"
+  { width, among }: MatchNarrowing = { width: "text" }
 ) {
   const needle = normalizeCatalogText(heading)
 
   if (!needle) return null
 
-  const candidates = candidatesFor(t)
+  const candidates = candidatesFor(t, among)
 
   for (const rule of matchRules(width)) {
     const match = candidates.find((candidate) => rule(needle, candidate))
@@ -195,8 +221,17 @@ function matchHeading(
   return null
 }
 
-/** Every name a heading can match, skills before the presets, in catalog order. */
-function candidatesFor(t: SectionCatalogTranslate): Candidate[] {
+/**
+ * The names a heading can match, skills before the presets, in catalog order.
+ *
+ * `among` keeps only the presets it lists. Skills is dropped by the same filter
+ * whenever one is given — it has no preset id, so it is never among them: it is
+ * the answer to *what is this heading*, never to *is this heading one of these*.
+ */
+function candidatesFor(
+  t: SectionCatalogTranslate,
+  among?: readonly SectionPreset["id"][]
+): Candidate[] {
   const skills = normalizeCatalogText(t(skillsHeadingKey))
 
   return [
@@ -216,7 +251,11 @@ function candidatesFor(t: SectionCatalogTranslate): Candidate[] {
       names: normalizeCatalogText([preset.label, ...preset.aliases].join(" ")),
       text: normalizeCatalogText(matchableText(preset))
     }))
-  ].filter((candidate) => candidate.label)
+  ].filter(
+    (candidate) =>
+      candidate.label &&
+      (!among || (candidate.presetId && among.includes(candidate.presetId)))
+  )
 }
 
 /** True when `needle` appears in `haystack` as whole words. */

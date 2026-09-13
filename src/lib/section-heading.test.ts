@@ -311,13 +311,19 @@ describe("a heading the catalog has another word for", () => {
 })
 
 describe("asking which section a heading names", () => {
+  // The set generation asks about: the two sections it is allowed to add.
+  const generated = ["summary", "strengths"] as const
+
+  const names = (heading: string, translate = t) =>
+    matchSectionPreset(heading, translate, generated)
+
   it("answers with the preset, by name or by alias, in either language", () => {
-    expect(matchSectionPreset("Summary", t)).toBe("summary")
-    expect(matchSectionPreset("Profile", t)).toBe("summary")
-    expect(matchSectionPreset("Perfil profesional", es)).toBe("summary")
-    expect(matchSectionPreset("Strengths", t)).toBe("strengths")
+    expect(names("Summary")).toBe("summary")
+    expect(names("Profile")).toBe("summary")
+    expect(names("Perfil profesional", es)).toBe("summary")
+    expect(names("Strengths")).toBe("strengths")
     // Skills is a kind rather than a preset — the picker offers no second one.
-    expect(matchSectionPreset("Technical Skills", t)).toBeNull()
+    expect(names("Technical Skills")).toBeNull()
   })
 
   it("does not read a preset's hint as one of its names", () => {
@@ -325,13 +331,33 @@ describe("asking which section a heading names", () => {
     // type, and the content shapes the fallback anyway. Here a wrong match
     // costs the user a whole section, so "A short opening paragraph" is copy
     // about a summary rather than another word for one.
-    expect(matchSectionPreset("Opening", t)).toBeNull()
-    expect(matchSectionPreset("Apertura", es)).toBeNull()
+    expect(names("Opening")).toBeNull()
+    expect(names("Apertura", es)).toBeNull()
   })
 
   it("answers null for a heading the catalog has no word for", () => {
-    expect(matchSectionPreset("Sabbatical", t)).toBeNull()
-    expect(matchSectionPreset("   ", t)).toBeNull()
+    expect(names("Sabbatical")).toBeNull()
+    expect(names("   ")).toBeNull()
+  })
+
+  it("lets no candidate outside the asked-about set take a heading", () => {
+    // A heading that names two sections is still one of the two asked about.
+    // Skills is tried before strengths in catalog order, so a match open to
+    // the whole catalog answers "skills" here — which is not one of the kinds
+    // the caller can act on, and comes back as "carries neither". The account
+    // would then get a second Strengths written beside the one it has.
+    expect(names("Strengths and Skills")).toBe("strengths")
+    expect(names("Skills and Strengths")).toBe("strengths")
+    expect(names("Summary & Skills")).toBe("summary")
+    expect(names("Habilidades y fortalezas", es)).toBe("strengths")
+  })
+
+  it("still answers null when the heading names only another section", () => {
+    // The narrowing is about who may answer, not about answering more often:
+    // a Certifications heading carries neither of the two, and saying it did
+    // would drop a section the user asked for.
+    expect(names("Certifications")).toBeNull()
+    expect(names("Education")).toBeNull()
   })
 })
 

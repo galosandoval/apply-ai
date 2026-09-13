@@ -1,7 +1,6 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { type Locale } from "~/i18n/routing"
-import { type SectionCatalogTranslate } from "~/lib/section-catalog"
 import {
   type AnySectionContent,
   coreSectionDefaults,
@@ -28,7 +27,7 @@ import { isResumeOwner, type SectionOwner } from "./resume.repository"
 import {
   presetLabelPath,
   sectionCatalogTranslatorFor,
-  type SectionLabeler,
+  type SectionLanguage,
   sectionLabelerFor,
   sectionLabelPath
 } from "./section-labels"
@@ -242,10 +241,9 @@ type RequestedSection = { kind: GeneratedSectionKind; entries: string[] }
 export function sectionsFromGeneration(
   requested: RequestedSection[],
   seed: NewSection[],
-  label: SectionLabeler,
-  t: SectionCatalogTranslate
+  language: SectionLanguage
 ): NewSection[] {
-  const taken = new Set<GeneratedSectionKind>(carriedKinds(seed, t))
+  const taken = new Set<GeneratedSectionKind>(carriedKinds(seed, language))
 
   const accepted = requested.flatMap((section) => {
     // A `Map` rather than an object: the kind is a string the model wrote, and
@@ -264,7 +262,7 @@ export function sectionsFromGeneration(
         placement: allowed.placement,
         section: {
           kind: "custom" as const,
-          label: label(sectionLabelPath(section.kind), section.kind),
+          label: language.label(sectionLabelPath(section.kind), section.kind),
           componentType: allowed.componentType,
           content: allowed.content(entries)
         }
@@ -292,17 +290,22 @@ export function sectionsFromGeneration(
  * has nothing to add.
  *
  * The allowlist's kinds are catalog preset ids on purpose, so the preset a
- * heading matches is directly the kind a generation would have asked for. Only
- * those kinds come back: a seeded Certifications is not something a generation
- * can ask for, and collecting it would put the two namespaces in one set, where
- * a preset that later shared a name with a generated kind would suppress it.
+ * heading matches is directly the kind a generation would have asked for. They
+ * are also the only candidates the heading is matched against, which is what
+ * keeps the question to the one being asked: a heading reading "Strengths and
+ * Skills" carries a strengths, and a match open to the whole catalog would let
+ * the skills candidate take it first and report neither.
  */
 function carriedKinds(
   seed: NewSection[],
-  t: SectionCatalogTranslate
+  language: SectionLanguage
 ): GeneratedSectionKind[] {
   return seed.flatMap((section) => {
-    const presetId = matchSectionPreset(section.label, t)
+    const presetId = matchSectionPreset(
+      section.label,
+      language.catalog,
+      generatedSectionKinds
+    )
 
     return presetId && isGeneratedSectionKind(presetId) ? [presetId] : []
   })
