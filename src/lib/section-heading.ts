@@ -85,6 +85,8 @@ type Candidate = {
   componentType: SectionComponentType
   /** Normalized label — what an exact or qualifying match compares with. */
   label: string
+  /** Normalized label and aliases — every name the section is called by. */
+  names: string
   /** Normalized label, hint and aliases together — the widest match. */
   text: string
 }
@@ -125,32 +127,66 @@ export function resolveSectionHeading(
 }
 
 /**
+ * The catalog preset a heading reads as, or `null` when it matches none.
+ *
+ * The same match `resolveSectionHeading` makes, without the content — a caller
+ * that only has to ask *which section is this* should not have to invent a body
+ * to find out. Generation asks it of the account's own headings: whether a
+ * resume already carries a Summary is a question about the heading the user
+ * wrote, not about the one word this app would have written.
+ */
+export function matchSectionPreset(
+  heading: string,
+  t: SectionCatalogTranslate
+): SectionPreset["id"] | null {
+  return matchHeading(heading, t, "names")?.presetId ?? null
+}
+
+/**
+ * How wide the last rule reaches: every name the catalog gives a section, or
+ * everything it says about it, the hint included.
+ *
+ * The import reads `text`, because a heading that matches nothing is shaped by
+ * its content anyway — a wrong preset there costs a component type. A caller
+ * asking *does this resume already have one of these* reads `names`, where a
+ * wrong match costs the user a section they asked for: Summary's hint is "A
+ * short opening paragraph", and a section headed "Opening" is not a summary.
+ */
+type MatchWidth = "names" | "text"
+
+/**
  * How a heading may match a candidate, in the order the rules are tried.
  *
  * Exact first, so "Languages" is the preset called Languages rather than
  * whatever else mentions the word. Then a candidate whose name the heading
  * qualifies ("Technical Skills"), then a shared stem, which is what carries a
  * document's "Certifications" onto the catalog's "Certificates" across a
- * suffix neither language spells the same way. The candidate's whole text is
+ * suffix neither language spells the same way. The candidate's own text is
  * tried last and is the widest: it is where a heading the catalog calls
  * something else — a "Profile" that is a Summary — is caught by the alias the
  * catalog records for it.
  */
-const matchRules: ((heading: string, candidate: Candidate) => boolean)[] = [
+const matchRules = (
+  width: MatchWidth
+): ((heading: string, candidate: Candidate) => boolean)[] => [
   (heading, candidate) => heading === candidate.label,
   (heading, candidate) => containsWord(heading, candidate.label),
   (heading, candidate) => shareStem(heading, candidate.label),
-  (heading, candidate) => containsWord(candidate.text, heading)
+  (heading, candidate) => containsWord(candidate[width], heading)
 ]
 
-function matchHeading(heading: string, t: SectionCatalogTranslate) {
+function matchHeading(
+  heading: string,
+  t: SectionCatalogTranslate,
+  width: MatchWidth = "text"
+) {
   const needle = normalizeCatalogText(heading)
 
   if (!needle) return null
 
   const candidates = candidatesFor(t)
 
-  for (const rule of matchRules) {
+  for (const rule of matchRules(width)) {
     const match = candidates.find((candidate) => rule(needle, candidate))
 
     if (match) return match
@@ -169,6 +205,7 @@ function candidatesFor(t: SectionCatalogTranslate): Candidate[] {
       kind: "skills" as const,
       componentType: "groupedList" as const,
       label: skills,
+      names: skills,
       text: skills
     },
     ...catalogPresets(t).map((preset) => ({
@@ -176,6 +213,7 @@ function candidatesFor(t: SectionCatalogTranslate): Candidate[] {
       kind: "custom" as const,
       componentType: preset.componentType,
       label: normalizeCatalogText(preset.label),
+      names: normalizeCatalogText([preset.label, ...preset.aliases].join(" ")),
       text: normalizeCatalogText(matchableText(preset))
     }))
   ].filter((candidate) => candidate.label)

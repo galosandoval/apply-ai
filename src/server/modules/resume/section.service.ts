@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { type Locale } from "~/i18n/routing"
+import { type SectionCatalogTranslate } from "~/lib/section-catalog"
 import {
   type AnySectionContent,
   coreSectionDefaults,
@@ -16,6 +17,7 @@ import {
 } from "~/lib/section-content"
 import {
   type ImportedSection,
+  matchSectionPreset,
   resolveSectionHeading
 } from "~/lib/section-heading"
 import { assertOwnsResume } from "~/server/api/ownership"
@@ -148,7 +150,7 @@ export function newSections(resumeId: string, sections: NewSection[]) {
   }))
 }
 
-/** Where a generated section sits against the core three. */
+/** Where a generated section sits against the sections the resume is seeded with. */
 type Placement = "above" | "below"
 
 /**
@@ -178,7 +180,11 @@ export type GeneratedSectionKind = (typeof generatedSectionKinds)[number]
  * model answers with; the heading is written from it, in the resume's language.
  *
  * A summary is the part of a resume most specific to the posting, so it sits
- * above the core sections; strengths are a footnote to a history, so below.
+ * above the sections the resume was seeded with; strengths are a footnote to a
+ * history, so below. Above and below *the account's* sections, whatever those
+ * are — the seed has been the account's own list since #97, and a placement
+ * pinned to the core three would put a generated Summary under a Certifications
+ * the user had moved to the top.
  */
 type GeneratedSectionRule = {
   componentType: SectionComponentType
@@ -224,15 +230,22 @@ type RequestedSection = { kind: GeneratedSectionKind; entries: string[] }
  * away a whole generation. A repeated kind is dropped for the same reason a
  * second Summary would be: the resume has one of each.
  *
+ * The seed counts towards that one-of-each. A generation adds sections; it
+ * never displaces one the user keeps, so a Summary the account already carries
+ * is the Summary the resume gets — with the label, the shape and the content
+ * the user gave it — and the generated one is dropped rather than written
+ * beside it or over it.
+ *
  * The headings come from `label`, like the seeded ones: what the generation
  * decides is which sections a resume has, never what language it is in.
  */
 export function sectionsFromGeneration(
   requested: RequestedSection[],
   seed: NewSection[],
-  label: SectionLabeler
+  label: SectionLabeler,
+  t: SectionCatalogTranslate
 ): NewSection[] {
-  const taken = new Set<string>()
+  const taken = new Set<GeneratedSectionKind>(carriedKinds(seed, t))
 
   const accepted = requested.flatMap((section) => {
     // A `Map` rather than an object: the kind is a string the model wrote, and
@@ -266,6 +279,37 @@ export function sectionsFromGeneration(
 
   return [...at("above"), ...seed, ...at("below")]
 }
+
+/**
+ * The generated kinds the seeded sections already cover.
+ *
+ * Read off the *heading*, through the same catalog matching an imported one
+ * gets, because the heading is the only thing that says which section this is:
+ * `kind` is `custom` for everything but the core rows and the skills marker, so
+ * a stored Summary and a stored Certifications are the same kind on the same
+ * table. Matching also means the account's own word for it counts — an account
+ * whose imported resume called it "Profile" carries a summary, and generation
+ * has nothing to add.
+ *
+ * The allowlist's kinds are catalog preset ids on purpose, so the preset a
+ * heading matches is directly the kind a generation would have asked for. Only
+ * those kinds come back: a seeded Certifications is not something a generation
+ * can ask for, and collecting it would put the two namespaces in one set, where
+ * a preset that later shared a name with a generated kind would suppress it.
+ */
+function carriedKinds(
+  seed: NewSection[],
+  t: SectionCatalogTranslate
+): GeneratedSectionKind[] {
+  return seed.flatMap((section) => {
+    const presetId = matchSectionPreset(section.label, t)
+
+    return presetId && isGeneratedSectionKind(presetId) ? [presetId] : []
+  })
+}
+
+const isGeneratedSectionKind = (kind: string): kind is GeneratedSectionKind =>
+  (generatedSectionKinds as readonly string[]).includes(kind)
 
 /**
  * The account's own sections, in its order — the master copy a new resume is

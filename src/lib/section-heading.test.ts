@@ -4,6 +4,7 @@ import spanish from "../../messages/es.json"
 import { sectionCatalogTranslator } from "./section-catalog-test-helper"
 import {
   type ImportedSectionContent,
+  matchSectionPreset,
   resolveSectionHeading
 } from "./section-heading"
 
@@ -306,6 +307,31 @@ describe("a heading the catalog has another word for", () => {
     expect(
       resolveSectionHeading("Perfil", prose("Un párrafo."), es)
     ).toMatchObject({ label: "Perfil", presetId: "summary" })
+  })
+})
+
+describe("asking which section a heading names", () => {
+  it("answers with the preset, by name or by alias, in either language", () => {
+    expect(matchSectionPreset("Summary", t)).toBe("summary")
+    expect(matchSectionPreset("Profile", t)).toBe("summary")
+    expect(matchSectionPreset("Perfil profesional", es)).toBe("summary")
+    expect(matchSectionPreset("Strengths", t)).toBe("strengths")
+    // Skills is a kind rather than a preset — the picker offers no second one.
+    expect(matchSectionPreset("Technical Skills", t)).toBeNull()
+  })
+
+  it("does not read a preset's hint as one of its names", () => {
+    // The import may match on the hint: a wrong preset there costs a component
+    // type, and the content shapes the fallback anyway. Here a wrong match
+    // costs the user a whole section, so "A short opening paragraph" is copy
+    // about a summary rather than another word for one.
+    expect(matchSectionPreset("Opening", t)).toBeNull()
+    expect(matchSectionPreset("Apertura", es)).toBeNull()
+  })
+
+  it("answers null for a heading the catalog has no word for", () => {
+    expect(matchSectionPreset("Sabbatical", t)).toBeNull()
+    expect(matchSectionPreset("   ", t)).toBeNull()
   })
 })
 
