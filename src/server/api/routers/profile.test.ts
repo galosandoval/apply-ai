@@ -553,8 +553,55 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
         fileBase64
       })
 
-      // The core three plus the two the document added.
+      // The three typed lists the document filled, plus the two it added.
       expect(counts.sections).toBe(5)
+    })
+
+    it("counts what the document had, not what the account holds", async () => {
+      // Nothing under any heading. The account still ends up holding the core
+      // three — they are seeded whether an import found anything or not — so a
+      // count taken off the account would congratulate the user on three
+      // sections this document never had.
+      extracts.mockResolvedValue(
+        extracted({
+          experience: [],
+          education: [],
+          skills: [],
+          sections: []
+        })
+      )
+
+      const counts = await callerFor(db, fixture.owner).profile.importFromPdf({
+        fileBase64
+      })
+
+      const held = await db
+        .select()
+        .from(section)
+        .where(eq(section.userId, fixture.owner))
+
+      expect(counts.sections).toBe(0)
+      expect(held).toHaveLength(3)
+    })
+
+    it("counts only the typed lists the document filled", async () => {
+      extracts.mockResolvedValue(
+        extracted({
+          education: [],
+          skills: [],
+          sections: [
+            extractedSection({ heading: "Hobbies", entries: ["Chess"] })
+          ]
+        })
+      )
+
+      const counts = await callerFor(db, fixture.owner).profile.importFromPdf({
+        fileBase64
+      })
+
+      // Experience, and the one heading it added. Not the empty Education and
+      // Skills the account keeps regardless.
+      expect(counts.sections).toBe(2)
     })
 
     it("reports a history the extraction capped", async () => {
@@ -602,6 +649,26 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
 
     expect(details?.email).toBe("ada@analytical.engine")
     expect(account?.email).not.toBe(details?.email)
+  })
+
+  it("keeps the address it had when the document prints none", async () => {
+    extracts.mockResolvedValue(extracted({ email: "ada@analytical.engine" }))
+
+    await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+    // A second resume — the same person, a version that leaves the address
+    // off. The import has nothing to put there, which is not the same as a
+    // reason to take away what the first one found.
+    extracts.mockResolvedValue(extracted({ email: "" }))
+
+    await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+    const [details] = await db
+      .select()
+      .from(contact)
+      .where(eq(contact.userId, fixture.owner))
+
+    expect(details?.email).toBe("ada@analytical.engine")
   })
 
   /**

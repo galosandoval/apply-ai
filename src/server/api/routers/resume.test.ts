@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq, isNull } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { toDownloadPayload } from "~/features/resume/resume-field-lens"
 import {
@@ -1086,6 +1086,45 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         { label: "Refreshed", items: ["Fortran"] }
       ])
       expect(found.contact.location).toBe("London, UK")
+    })
+
+    /**
+     * #98 taught the import to read the address off the document, which makes
+     * the profile's contact card the one a user puts on resumes. The sign-up
+     * address is better-auth's, and is only the answer while the card is empty.
+     */
+    it("takes the email off the contact card, not the account", async () => {
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      await db
+        .update(contact)
+        .set({ email: "ada@analytical.engine" })
+        .where(
+          and(
+            eq(contact.userId, fixture.owner.userId),
+            isNull(contact.resumeId)
+          )
+        )
+
+      await caller.resume.refreshFromAccount({ resumeId })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.contact.email).toBe("ada@analytical.engine")
+    })
+
+    it("falls back to the account when the card has no email", async () => {
+      // The fixture's card carries no address, so the sign-up one is all there
+      // is — an empty contact block is worse than better-auth's.
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      await caller.resume.refreshFromAccount({ resumeId })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.contact.email).toBe(`${fixture.owner.userId}@test.dev`)
     })
 
     it("refreshes only the resume it was asked about", async () => {

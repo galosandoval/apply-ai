@@ -15,7 +15,7 @@ import {
   type SectionKind
 } from "~/lib/section-content"
 import {
-  type ImportedSectionContent,
+  type ImportedSection,
   resolveSectionHeading
 } from "~/lib/section-heading"
 import { assertOwnsResume } from "~/server/api/ownership"
@@ -308,12 +308,6 @@ export async function readAccountSections(db: DbOrTx, userId: string) {
   }))
 }
 
-/** One section of an imported document: its heading, and what was under it. */
-export type ImportedSection = {
-  heading: string
-  content: ImportedSectionContent
-}
-
 /**
  * Writes an imported document's sections onto the account, replacing whatever a
  * previous import left.
@@ -334,14 +328,22 @@ export type ImportedSection = {
  * copy of every heading by hand. The core three are exempt and keep the
  * headings and the order the user gave them.
  *
- * The bluntness of that is known and is the cost of having no provenance on a
- * section row: a custom section the user added from the picker is indis-
- * tinguishable from one the last import wrote, so a re-import takes both. The
- * import is onboarding's, and onboarding runs before there is anything to add
- * by hand; marking provenance properly is a column and a migration, and belongs
- * with whatever first lets a user re-import from inside the editor.
+ * The bluntness of that is known, and is data loss the day it stops being
+ * onboarding's: a section row carries no provenance, so a custom section the
+ * user added from the picker is indistinguishable from one the last import
+ * wrote, and a re-import deletes both. It is survivable only because this is
+ * reachable from onboarding alone, which runs before there is anything to add
+ * by hand.
  *
- * @returns how many sections the account holds afterwards.
+ * So this is a precondition, not a preference. Anything that lets an existing
+ * profile re-import — the editor, a settings page, a second upload after
+ * onboarding — must add provenance to the section row and scope the delete to
+ * it *first* (#111); wiring a second caller to this function as it stands
+ * silently deletes the user's own sections.
+ *
+ * @returns how many of the document's own sections were written — the core
+ * three are not counted, because they are the account's and are there whether
+ * the document had anything to put in them or not.
  */
 export async function replaceImportedSections(
   tx: DbOrTx,
@@ -391,7 +393,7 @@ export async function replaceImportedSections(
 
   await repo.insertSections(tx, rows)
 
-  return kept.length + rows.length
+  return rows.length
 }
 
 /**

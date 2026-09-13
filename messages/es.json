@@ -140,8 +140,10 @@
       "tooLarge": "Ese PDF es muy grande. Debe pesar menos de 8 MB.",
       "unreadable": "No se pudo leer ese archivo.",
       "unreadablePdf": "No pudimos leer ningún texto en ese PDF, así que te trajimos a los formularios. Si era un escaneo o una imagen, intenta exportar un PDF con texto.",
-      "truncatedExperience": "Ese currículum incluía más empleos de los que importamos. Conservamos los {kept} más recientes: añade los demás tú mismo.",
-      "truncatedEducation": "Ese currículum incluía más instituciones de las que importamos. Conservamos las {kept} más recientes: añade las demás tú mismo."
+      "truncated": {
+        "experience": "Ese currículum incluía más empleos de los que importamos. Conservamos los {kept} más recientes: añade los demás tú mismo.",
+        "education": "Ese currículum incluía más instituciones de las que importamos. Conservamos las {kept} más recientes: añade las demás tú mismo."
+      }
     },
     "contact": {
       "title": "¿Cómo pueden contactarte los empleadores?",

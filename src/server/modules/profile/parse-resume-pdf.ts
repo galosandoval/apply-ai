@@ -1,7 +1,10 @@
 import { PDFParse } from "pdf-parse"
 import { z } from "zod"
 import { withNormalizedDates } from "~/lib/resume-date"
-import { type ImportedSectionContent } from "~/lib/section-heading"
+import {
+  type ImportedSection,
+  type ImportedSectionContent
+} from "~/lib/section-heading"
 import { maxSkills } from "~/server/db/crud-schema"
 
 /** The dates and the flag as a resume may have written them. */
@@ -91,22 +94,23 @@ export const parsedResumeSchema = z.object({
     .catch([])
 })
 
-export type ParsedResume = z.infer<typeof parsedResumeSchema>
+type ParsedResume = z.infer<typeof parsedResumeSchema>
 
-export type ParsedSection = z.infer<typeof parsedSectionSchema>
+type ParsedSection = z.infer<typeof parsedSectionSchema>
 
 /**
  * What `extractResumeFields` hands back: the parsed document, plus what the
  * caps took off it.
  *
- * The caps were silent until #98. A history longer than `maxExperience` is not
- * a detail — the user reads a confirmation, believes the import is complete,
- * and finds two jobs missing weeks later — so what was dropped travels with
- * what was kept, all the way to the toast.
+ * The caps were silent until #98. A history longer than its `historyCaps` entry
+ * is not a detail — the user reads a confirmation, believes the import is
+ * complete, and finds two jobs missing weeks later — so what was dropped
+ * travels with what was kept, all the way to the toast.
  */
-export type ExtractedResume = ParsedResume & {
-  truncated: { experience: boolean; education: boolean }
-}
+export type ExtractedResume = ParsedResume & { truncated: Truncation }
+
+/** Which of the capped lists the caps actually bit, keyed as the caps are. */
+export type Truncation = Record<keyof typeof historyCaps, boolean>
 
 /**
  * What the document put under a heading, as the resolver reads it.
@@ -138,7 +142,7 @@ function importedContent(section: ParsedSection): ImportedSectionContent {
  * array gave them. A section with no heading is dropped rather than written as
  * a blank one: the heading is the only part of it the user can recognise.
  */
-export function importedSections(parsed: ParsedResume) {
+export function importedSections(parsed: ParsedResume): ImportedSection[] {
   return parsed.sections
     .map((section, index) => ({
       ...section,
@@ -154,15 +158,29 @@ export function importedSections(parsed: ParsedResume) {
 }
 
 /**
- * How much history one import may keep.
+ * How much history one import may keep, per capped list.
  *
  * Applied here rather than asked of the model, so that *what was dropped* is a
- * fact this function knows. The prompt used to carry the same numbers, and a
+ * fact this module knows. The prompt used to carry the same numbers, and a
  * model that obeyed them truncated the history upstream where nothing could
  * see it — which is how a capped import came to report itself complete.
+ *
+ * One object rather than a constant each, so that the caps, the slicing and the
+ * `truncated` flags are all keyed by the same names: a third capped list is a
+ * line here and a line in the messages, not an edit in four files.
  */
-const maxExperience = 5
-const maxEducation = 4
+const historyCaps = {
+  experience: 5,
+  education: 4
+} as const
+
+/** Which of the caps this parse actually hit, keyed as `historyCaps` is. */
+function truncatedBy(parsed: ParsedResume): Truncation {
+  return {
+    experience: parsed.experience.length > historyCaps.experience,
+    education: parsed.education.length > historyCaps.education
+  }
+}
 
 /**
  * How many bullets one job's body may be asked for.
@@ -241,13 +259,10 @@ export async function extractResumeFields(text: string) {
 
   return {
     ...parsed,
-    experience: parsed.experience.slice(0, maxExperience),
-    education: parsed.education.slice(0, maxEducation),
+    experience: parsed.experience.slice(0, historyCaps.experience),
+    education: parsed.education.slice(0, historyCaps.education),
     skills: parsed.skills.slice(0, maxSkills),
-    truncated: {
-      experience: parsed.experience.length > maxExperience,
-      education: parsed.education.length > maxEducation
-    }
+    truncated: truncatedBy(parsed)
   }
 }
 

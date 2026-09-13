@@ -9,9 +9,19 @@ import {
   forkHeadingId,
   useOnboardingStep
 } from "~/features/onboarding/use-onboarding-step"
+import { type Truncation } from "~/server/modules/profile/parse-resume-pdf"
 import { api } from "~/utils/api"
 
 const MAX_FILE_SIZE_BYTES = 8_000_000
+
+/**
+ * The lists the extraction caps, in the order the user is told about them.
+ *
+ * Typed against `Truncation` so it cannot name a list the server does not cap,
+ * and so that a message key, a count and a flag are reached by the same name —
+ * which is what keeps a fourth capped list from being an edit in four files.
+ */
+const cappedLists: (keyof Truncation)[] = ["experience", "education"]
 
 /**
  * Onboarding opens here: two routes to the same profile, neither of them the
@@ -42,12 +52,14 @@ export function OnboardingFork() {
       // history the extraction capped is the one thing the user has to go and
       // finish by hand, and burying it in the same sentence as the totals is
       // how it stays unread.
-      if (truncated.experience) {
-        toast(t("truncatedExperience", { kept: counts.experience }))
-      }
-
-      if (truncated.education) {
-        toast(t("truncatedEducation", { kept: counts.education }))
+      //
+      // Driven off the flags the extraction sends rather than a branch per
+      // list: the caps are keyed by the same names as the counts and the
+      // messages, so a fourth capped list is a message, not another block here.
+      for (const list of cappedLists) {
+        if (truncated[list]) {
+          toast(t(`truncated.${list}`, { kept: counts[list] }))
+        }
       }
 
       goToStep("contact")

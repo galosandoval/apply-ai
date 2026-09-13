@@ -221,12 +221,12 @@ function seedFrom(account: AccountSeed): Pick<CreateResumeInput, "contact"> {
   // up with. Since #98 an import reads the email off the document, and that is
   // the address the user puts on resumes — `user.email` is better-auth's, and
   // is only the answer while the contact card has nothing.
-  const email = accountContact?.email?.trim() ?? ""
+  const contactCardEmail = accountContact?.email?.trim() ?? ""
 
   return {
     contact: {
       fullName: `${details?.firstName ?? ""} ${details?.lastName ?? ""}`.trim(),
-      email: email.length ? email : (details?.email ?? ""),
+      email: contactCardEmail || (details?.email ?? ""),
       location: accountContact?.location ?? "",
       phone: accountContact?.phone ?? "",
       linkedIn: accountContact?.linkedIn ?? "",

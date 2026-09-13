@@ -140,8 +140,10 @@
       "tooLarge": "That PDF is too large. Keep it under 8MB.",
       "unreadable": "Could not read that file.",
       "unreadablePdf": "We couldn’t read any text in that PDF, so we’ve brought you to the forms. If it was a scan or an image, try exporting a text-based PDF instead.",
-      "truncatedExperience": "That resume listed more jobs than we import. We kept the {kept} most recent — add any others yourself.",
-      "truncatedEducation": "That resume listed more schools than we import. We kept the {kept} most recent — add any others yourself."
+      "truncated": {
+        "experience": "That resume listed more jobs than we import. We kept the {kept} most recent — add any others yourself.",
+        "education": "That resume listed more schools than we import. We kept the {kept} most recent — add any others yourself."
+      }
     },
     "contact": {
       "title": "How can employers get in touch with you?",
