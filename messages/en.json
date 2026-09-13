@@ -135,11 +135,15 @@
         "action": "Start the forms"
       },
       "uploading": "{fileName} — this takes a few seconds.",
-      "imported": "Imported {experience, plural, one {# job} other {# jobs}}, {education, plural, one {# school} other {# schools}}, and {skills, plural, one {# skill group} other {# skill groups}}.",
+      "imported": "Imported {sections, plural, one {# section} other {# sections}}, including {experience, plural, one {# job} other {# jobs}}, {education, plural, one {# school} other {# schools}}, and {skills, plural, one {# skill group} other {# skill groups}}.",
       "notPdf": "That file isn't a PDF.",
       "tooLarge": "That PDF is too large. Keep it under 8MB.",
       "unreadable": "Could not read that file.",
-      "unreadablePdf": "We couldn’t read any text in that PDF, so we’ve brought you to the forms. If it was a scan or an image, try exporting a text-based PDF instead."
+      "unreadablePdf": "We couldn’t read any text in that PDF, so we’ve brought you to the forms. If it was a scan or an image, try exporting a text-based PDF instead.",
+      "truncated": {
+        "experience": "That resume listed more jobs than we import. We kept the {kept} most recent — add any others yourself.",
+        "education": "That resume listed more schools than we import. We kept the {kept} most recent — add any others yourself."
+      }
     },
     "contact": {
       "title": "How can employers get in touch with you?",

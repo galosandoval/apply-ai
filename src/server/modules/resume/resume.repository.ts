@@ -153,6 +153,20 @@ export async function findContact(db: DbOrTx, resumeId: string) {
 export type SectionOwner = { resumeId: string } | { userId: string }
 
 /**
+ * Which of the two an owner is, asked in one place.
+ *
+ * The question is asked wherever an owner reaches a query, a language or a set
+ * of insert columns, and the shape of the answer — `"resumeId" in owner` — is
+ * the kind of thing that reads as a typo at the fifth site. Naming it also
+ * names the account: the `else` branch of this is the master copy.
+ */
+export function isResumeOwner(
+  owner: SectionOwner
+): owner is { resumeId: string } {
+  return "resumeId" in owner
+}
+
+/**
  * The `WHERE` that scopes every section query to one owner.
  *
  * The account's own sections are spelled `resume_id IS NULL` as well, like the
@@ -163,7 +177,7 @@ export type SectionOwner = { resumeId: string } | { userId: string }
  * section id from somewhere else *find nothing* instead of being edited.
  */
 function ownedBy(owner: SectionOwner) {
-  return "resumeId" in owner
+  return isResumeOwner(owner)
     ? eq(section.resumeId, owner.resumeId)
     : and(eq(section.userId, owner.userId), isNull(section.resumeId))
 }
@@ -206,6 +220,26 @@ export async function deleteSection(
   return db
     .delete(section)
     .where(and(eq(section.id, sectionId), ownedBy(owner)))
+    .returning({ id: section.id })
+}
+
+/**
+ * Removes every section an owner holds that carries its own content and no
+ * typed rows behind it — which is every section an import writes.
+ *
+ * The import's half of replace-not-accumulate: a second import rewrites the
+ * sections the first one left rather than adding a second copy of every heading
+ * the document has. The core kinds are left alone because they are not the
+ * import's to replace — they hold the user's renamed headings and their order,
+ * and their content is the typed rows the same import is rewriting anyway.
+ *
+ * Scoped by `ownedBy` like every other section query, so it cannot reach a
+ * resume's snapshots or another account's rows.
+ */
+export async function deleteCustomSections(db: DbOrTx, owner: SectionOwner) {
+  return db
+    .delete(section)
+    .where(and(ownedBy(owner), eq(section.kind, "custom")))
     .returning({ id: section.id })
 }
 
@@ -386,6 +420,26 @@ export async function findAccount(db: DbOrTx, userId: string) {
  * Narrowed here, like `findResumeLanguage`, so no caller downstream has to
  * decide what an unshipped tag in a `text` column means.
  */
+/**
+ * Holds the account's row for the rest of the transaction.
+ *
+ * Read committed does not show one transaction another's uncommitted inserts,
+ * so two writes that each begin by asking "does this account have sections
+ * yet?" both answer no and both write a set — leaving the account holding two
+ * of everything on colliding positions. Serializing them on the `user` row
+ * makes the second read the first's rows and find there is nothing to do.
+ *
+ * The account row rather than the sections: the race is between writers who
+ * have found *no* rows, and there is nothing to lock in an empty result.
+ */
+export async function lockAccount(tx: DbOrTx, userId: string) {
+  await tx
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.id, userId))
+    .for("update")
+}
+
 export async function findAccountLanguage(
   db: DbOrTx,
   userId: string

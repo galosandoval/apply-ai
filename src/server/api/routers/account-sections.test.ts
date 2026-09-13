@@ -142,6 +142,56 @@ describe.skipIf(!hasTestDatabase)("account sections", () => {
       expect(added?.resumeId).toBeNull()
     })
 
+    /**
+     * An account the backfill never reached reads as the default set, and the
+     * set has to survive the first thing the user adds to it — a one-row
+     * account is one that has silently lost Skills, Experience and Education,
+     * and every resume made from it afterwards would be missing them too.
+     */
+    it("keeps the defaults when the first section is added to an empty account", async () => {
+      const caller = callerFor(db, fixture.owner)
+
+      const { sectionId } = await caller.section.add({
+        onAccount: true,
+        label: "Certificates",
+        componentType: "list"
+      })
+
+      const sections = await read(fixture.owner)
+
+      expect(sections.map((row) => row.kind)).toEqual([
+        ...coreSectionDefaults.map((core) => core.kind),
+        "custom"
+      ])
+      expect(sections.at(-1)?.id).toBe(sectionId)
+      expect(sections.at(-1)?.position).toBe(3)
+      // Rows of the account's own now, not stand-ins: the user can rename and
+      // reorder the ones they were shown all along.
+      expect(sections.every((row) => !row.isDefault)).toBe(true)
+    })
+
+    it("writes the defaults it stood in for as the account's own rows", async () => {
+      const caller = callerFor(db, fixture.owner)
+
+      await caller.section.add({
+        onAccount: true,
+        label: "Certificates",
+        componentType: "list"
+      })
+
+      const rows = await db
+        .select()
+        .from(section)
+        .where(eq(section.userId, fixture.owner))
+        .orderBy(asc(section.position))
+
+      expect(rows.map((row) => row.kind)).toEqual([
+        ...coreSectionDefaults.map((core) => core.kind),
+        "custom"
+      ])
+      expect(rows.every((row) => row.resumeId === null)).toBe(true)
+    })
+
     it("writes the heading in the account's language", async () => {
       await db
         .update(user)

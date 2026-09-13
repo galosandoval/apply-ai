@@ -44,6 +44,18 @@ import {
 export type ImportedSectionContent =
   { type: "prose"; text: string } | { type: "entries"; entries: string[] }
 
+/**
+ * One section of an imported document: its heading, and what was under it.
+ *
+ * Declared here rather than at either end of the import so that the module
+ * reading a PDF and the module writing sections name the same type instead of
+ * agreeing on a shape by accident.
+ */
+export type ImportedSection = {
+  heading: string
+  content: ImportedSectionContent
+}
+
 export type ResolvedSection = {
   /** The heading, exactly as the document wrote it. */
   label: string

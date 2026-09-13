@@ -11,7 +11,7 @@ import {
   vi
 } from "vitest"
 import { callerFor } from "~/server/api/test-caller"
-import { contact, school, skill, user, work } from "~/server/db/schema"
+import { contact, school, section, skill, user, work } from "~/server/db/schema"
 import {
   connectTestDatabase,
   disconnectTestDatabase,
@@ -19,7 +19,7 @@ import {
   testDatabaseUrl,
   type TestDatabase
 } from "~/server/db/test-database"
-import { type ParsedResume } from "~/server/modules/profile/parse-resume-pdf"
+import { type ExtractedResume } from "~/server/modules/profile/parse-resume-pdf"
 import * as profileService from "~/server/modules/profile/profile.service"
 
 /**
@@ -61,12 +61,13 @@ if (!hasTestDatabase) {
 let db: TestDatabase
 
 /** Everything an extraction can find, so a partial one is a subset of it. */
-function extracted(overrides: Partial<ParsedResume> = {}): ParsedResume {
+function extracted(overrides: Partial<ExtractedResume> = {}): ExtractedResume {
   return {
     firstName: "Ada",
     lastName: "Lovelace",
     profession: "Engineer",
     location: "London, UK",
+    email: "ada@lovelace.dev",
     phone: "555-0100",
     linkedIn: "linkedin.com/in/ada",
     portfolio: "ada.dev",
@@ -94,8 +95,17 @@ function extracted(overrides: Partial<ParsedResume> = {}): ParsedResume {
       }
     ],
     skills: [{ category: "Languages", all: ["TypeScript", "Go"] }],
+    sections: [],
+    truncated: { experience: false, education: false },
     ...overrides
   }
+}
+
+/** One section as the extraction returns it, defaults filled in. */
+function extractedSection(
+  overrides: Partial<ExtractedResume["sections"][number]>
+): ExtractedResume["sections"][number] {
+  return { heading: "", position: 0, entries: [], text: "", ...overrides }
 }
 
 async function seed() {
@@ -152,7 +162,7 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
       fileBase64
     })
 
-    expect(counts).toEqual({ experience: 1, education: 1, skills: 1 })
+    expect(counts).toMatchObject({ experience: 1, education: 1, skills: 1 })
 
     const [account] = await db
       .select()
@@ -245,7 +255,7 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
       fileBase64
     })
 
-    expect(counts).toEqual({ experience: 1, education: 0, skills: 0 })
+    expect(counts).toMatchObject({ experience: 1, education: 0, skills: 0 })
 
     const [account] = await db
       .select()
@@ -314,6 +324,351 @@ describe.skipIf(!hasTestDatabase)("profile.importFromPdf", () => {
       .where(eq(work.userId, fixture.owner))
 
     expect(jobs).toEqual([])
+  })
+
+  /**
+   * #98. A resume is more than the four things an applicant tracking system
+   * reads off it, and until now everything else in the document was dropped on
+   * the floor without a word. Each heading the extraction returns is resolved
+   * by `resolveSectionHeading` and written as a section of the account's own.
+   */
+  describe("every section in the document", () => {
+    /** The account's own sections, in the order the profile reads them. */
+    const accountSections = async (userId: string) =>
+      db
+        .select()
+        .from(section)
+        .where(eq(section.userId, userId))
+        .orderBy(asc(section.position))
+
+    /** Just the imported ones — the core three are not the import's to write. */
+    const importedSections = async (userId: string) =>
+      (await accountSections(userId)).filter((row) => row.kind === "custom")
+
+    const document = [
+      extractedSection({
+        heading: "Profile",
+        position: 0,
+        text: "An engineer who ships."
+      }),
+      extractedSection({
+        heading: "Certifications",
+        position: 1,
+        entries: ["AWS Certified Developer — 2024"]
+      }),
+      extractedSection({
+        heading: "Hobbies",
+        position: 2,
+        entries: ["Chess", "Bouldering"]
+      })
+    ]
+
+    it("writes a section per extracted heading, in the document's order", async () => {
+      extracts.mockResolvedValue(extracted({ sections: document }))
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      expect(
+        (await importedSections(fixture.owner)).map((row) => row.label)
+      ).toEqual(["Profile", "Certifications", "Hobbies"])
+    })
+
+    it("orders by the position the extraction gave, not the array", async () => {
+      extracts.mockResolvedValue(
+        extracted({
+          sections: [
+            extractedSection({
+              heading: "Hobbies",
+              position: 2,
+              entries: ["Chess"]
+            }),
+            extractedSection({
+              heading: "Profile",
+              position: 0,
+              text: "Ships."
+            })
+          ]
+        })
+      )
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      expect(
+        (await importedSections(fixture.owner)).map((row) => row.label)
+      ).toEqual(["Profile", "Hobbies"])
+    })
+
+    it("keeps the core three and appends the document's sections after them", async () => {
+      extracts.mockResolvedValue(extracted({ sections: document }))
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      const rows = await accountSections(fixture.owner)
+
+      expect(rows.map((row) => row.kind)).toEqual([
+        "skills",
+        "experience",
+        "education",
+        "custom",
+        "custom",
+        "custom"
+      ])
+
+      expect(rows.map((row) => row.position)).toEqual([0, 1, 2, 3, 4, 5])
+    })
+
+    /**
+     * The shape is `resolveSectionHeading`'s to decide and is asserted as
+     * values in #93. What is asserted here is that the import actually asks it
+     * — a heading that reaches the database as rich text because nobody
+     * resolved it is the same bug at the other end of the wire.
+     */
+    it("draws each section as the heading it matched says it should", async () => {
+      extracts.mockResolvedValue(extracted({ sections: document }))
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      expect(
+        (await importedSections(fixture.owner)).map((row) => row.componentType)
+      ).toEqual(["richText", "twoColumn", "tagList"])
+    })
+
+    it("keeps an unrecognised heading and shapes it from its content", async () => {
+      extracts.mockResolvedValue(
+        extracted({
+          sections: [
+            extractedSection({
+              heading: "Things I Have Broken",
+              entries: [
+                "The build, twice, in the same afternoon",
+                "A production database nobody had backed up"
+              ]
+            })
+          ]
+        })
+      )
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      const [imported] = await importedSections(fixture.owner)
+
+      // The heading is the user's own text, kept verbatim: nothing matched it,
+      // and a section that arrives called something else is a section they
+      // cannot find again.
+      expect(imported?.label).toBe("Things I Have Broken")
+      expect(imported?.componentType).toBe("list")
+      expect(imported?.content).toEqual({
+        items: [
+          "The build, twice, in the same afternoon",
+          "A production database nobody had backed up"
+        ]
+      })
+    })
+
+    it("keeps a heading in the document's own language, untranslated", async () => {
+      extracts.mockResolvedValue(
+        extracted({
+          sections: [
+            extractedSection({ heading: "Pasatiempos", entries: ["Ajedrez"] })
+          ]
+        })
+      )
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      const [imported] = await importedSections(fixture.owner)
+
+      expect(imported?.label).toBe("Pasatiempos")
+    })
+
+    it("replaces the previous import rather than accumulating", async () => {
+      const caller = callerFor(db, fixture.owner)
+
+      extracts.mockResolvedValue(extracted({ sections: document }))
+      await caller.profile.importFromPdf({ fileBase64 })
+
+      extracts.mockResolvedValue(
+        extracted({
+          sections: [
+            extractedSection({
+              heading: "Projects",
+              entries: ["Apply AI — 2025"]
+            })
+          ]
+        })
+      )
+      await caller.profile.importFromPdf({ fileBase64 })
+
+      expect(
+        (await importedSections(fixture.owner)).map((row) => row.label)
+      ).toEqual(["Projects"])
+
+      expect(
+        (await accountSections(fixture.owner)).map((row) => row.position)
+      ).toEqual([0, 1, 2, 3])
+    })
+
+    it("keeps the sections a partial extraction found", async () => {
+      extracts.mockResolvedValue(
+        extracted({
+          experience: [],
+          education: [],
+          skills: [],
+          sections: [
+            extractedSection({ heading: "Profile", text: "An engineer." }),
+            // Nothing to recognise it by, so there is nothing to write.
+            extractedSection({ heading: "   ", entries: ["Orphaned"] })
+          ]
+        })
+      )
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      expect(
+        (await importedSections(fixture.owner)).map((row) => row.label)
+      ).toEqual(["Profile"])
+    })
+
+    it("leaves another account's sections alone", async () => {
+      extracts.mockResolvedValue(extracted({ sections: document }))
+
+      await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+      expect(await accountSections(fixture.stranger)).toEqual([])
+    })
+  })
+
+  describe("the confirmation", () => {
+    it("counts every section, not only the typed three", async () => {
+      extracts.mockResolvedValue(
+        extracted({
+          sections: [
+            extractedSection({ heading: "Profile", text: "An engineer." }),
+            extractedSection({ heading: "Hobbies", entries: ["Chess"] })
+          ]
+        })
+      )
+
+      const counts = await callerFor(db, fixture.owner).profile.importFromPdf({
+        fileBase64
+      })
+
+      // The three typed lists the document filled, plus the two it added.
+      expect(counts.sections).toBe(5)
+    })
+
+    it("counts what the document had, not what the account holds", async () => {
+      // Nothing under any heading. The account still ends up holding the core
+      // three — they are seeded whether an import found anything or not — so a
+      // count taken off the account would congratulate the user on three
+      // sections this document never had.
+      extracts.mockResolvedValue(
+        extracted({
+          experience: [],
+          education: [],
+          skills: [],
+          sections: []
+        })
+      )
+
+      const counts = await callerFor(db, fixture.owner).profile.importFromPdf({
+        fileBase64
+      })
+
+      const held = await db
+        .select()
+        .from(section)
+        .where(eq(section.userId, fixture.owner))
+
+      expect(counts.sections).toBe(0)
+      expect(held).toHaveLength(3)
+    })
+
+    it("counts only the typed lists the document filled", async () => {
+      extracts.mockResolvedValue(
+        extracted({
+          education: [],
+          skills: [],
+          sections: [
+            extractedSection({ heading: "Hobbies", entries: ["Chess"] })
+          ]
+        })
+      )
+
+      const counts = await callerFor(db, fixture.owner).profile.importFromPdf({
+        fileBase64
+      })
+
+      // Experience, and the one heading it added. Not the empty Education and
+      // Skills the account keeps regardless.
+      expect(counts.sections).toBe(2)
+    })
+
+    it("reports a history the extraction capped", async () => {
+      extracts.mockResolvedValue(
+        extracted({ truncated: { experience: true, education: false } })
+      )
+
+      const counts = await callerFor(db, fixture.owner).profile.importFromPdf({
+        fileBase64
+      })
+
+      expect(counts.truncated).toEqual({ experience: true, education: false })
+    })
+
+    it("says nothing was dropped when nothing was", async () => {
+      extracts.mockResolvedValue(extracted())
+
+      const counts = await callerFor(db, fixture.owner).profile.importFromPdf({
+        fileBase64
+      })
+
+      expect(counts.truncated).toEqual({ experience: false, education: false })
+    })
+  })
+
+  /**
+   * #98. The one contact detail the import never read. The address someone
+   * signed up with is not necessarily the one printed on the resume they send
+   * to employers, and the document is the one being sent.
+   */
+  it("takes the email from the document rather than the account", async () => {
+    extracts.mockResolvedValue(extracted({ email: "ada@analytical.engine" }))
+
+    await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+    const [details] = await db
+      .select()
+      .from(contact)
+      .where(eq(contact.userId, fixture.owner))
+
+    const [account] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, fixture.owner))
+
+    expect(details?.email).toBe("ada@analytical.engine")
+    expect(account?.email).not.toBe(details?.email)
+  })
+
+  it("keeps the address it had when the document prints none", async () => {
+    extracts.mockResolvedValue(extracted({ email: "ada@analytical.engine" }))
+
+    await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+    // A second resume — the same person, a version that leaves the address
+    // off. The import has nothing to put there, which is not the same as a
+    // reason to take away what the first one found.
+    extracts.mockResolvedValue(extracted({ email: "" }))
+
+    await callerFor(db, fixture.owner).profile.importFromPdf({ fileBase64 })
+
+    const [details] = await db
+      .select()
+      .from(contact)
+      .where(eq(contact.userId, fixture.owner))
+
+    expect(details?.email).toBe("ada@analytical.engine")
   })
 
   /**

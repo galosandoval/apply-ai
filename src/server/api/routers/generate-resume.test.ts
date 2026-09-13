@@ -378,6 +378,50 @@ describe.skipIf(!hasTestDatabase)("resume.generate", () => {
     })
   })
 
+  describe("the account's sections", () => {
+    it("arranges the generated ones around the account's own", async () => {
+      await db.insert(section).values(
+        [
+          {
+            kind: "experience",
+            label: "Work History",
+            componentType: "twoColumn"
+          },
+          {
+            kind: "custom",
+            label: "Certifications",
+            componentType: "list",
+            content: { items: ["AWS Solutions Architect"] }
+          }
+        ].map((row, position) => ({
+          ...row,
+          id: createId(),
+          userId: fixture.owner,
+          position
+        }))
+      )
+
+      stub.mockResolvedValue(
+        drafted({ sections: [{ kind: "summary", entries: ["A paragraph"] }] })
+      )
+
+      const { resumeId } = await callerFor(db, fixture.owner).resume.generate({
+        jobDescription: posting
+      })
+
+      const rows = await sectionsOf(resumeId)
+
+      // A generation decides which sections it *adds*; which ones the resume
+      // starts with is still the account's to say.
+      expect(rows.map((row) => row.label)).toEqual([
+        "Summary",
+        "Work History",
+        "Certifications"
+      ])
+      expect(rows[2]?.content).toEqual({ items: ["AWS Solutions Architect"] })
+    })
+  })
+
   describe("the account's language", () => {
     /** Everything below generates for an account that reads Spanish. */
     const generateInSpanish = async () => {

@@ -34,10 +34,20 @@ export type CoreSectionKind = (typeof coreSectionKinds)[number]
  * which section its skills go back into, and a label the user is free to rename
  * cannot answer that. It is provenance, not storage.
  */
-export type SectionKind = CoreSectionKind | "custom" | "skills"
+export const sectionKinds = [...coreSectionKinds, "skills", "custom"] as const
+
+export type SectionKind = (typeof sectionKinds)[number]
 
 export function isCoreSectionKind(kind: string): kind is CoreSectionKind {
   return (coreSectionKinds as readonly string[]).includes(kind)
+}
+
+/**
+ * Narrows the `kind` a stored row arrives as — it is a `text` column, so the
+ * database hands back `string` however narrow the write path was.
+ */
+export function isSectionKind(kind: string): kind is SectionKind {
+  return (sectionKinds as readonly string[]).includes(kind)
 }
 
 /**
