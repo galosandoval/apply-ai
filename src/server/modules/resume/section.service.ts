@@ -14,6 +14,10 @@ import {
   type SectionContentTarget,
   type SectionKind
 } from "~/lib/section-content"
+import {
+  type ImportedSectionContent,
+  resolveSectionHeading
+} from "~/lib/section-heading"
 import { assertOwnsResume } from "~/server/api/ownership"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
@@ -21,6 +25,7 @@ import * as repo from "./resume.repository"
 import { isResumeOwner, type SectionOwner } from "./resume.repository"
 import {
   presetLabelPath,
+  sectionCatalogTranslatorFor,
   type SectionLabeler,
   sectionLabelerFor,
   sectionLabelPath
@@ -301,6 +306,92 @@ export async function readAccountSections(db: DbOrTx, userId: string) {
     content: null,
     isDefault: true
   }))
+}
+
+/** One section of an imported document: its heading, and what was under it. */
+export type ImportedSection = {
+  heading: string
+  content: ImportedSectionContent
+}
+
+/**
+ * Writes an imported document's sections onto the account, replacing whatever a
+ * previous import left.
+ *
+ * The headings are the user's: each one is written verbatim, in the language
+ * the document used, and `resolveSectionHeading` contributes only the shape it
+ * draws as and the preset it matched. A heading that matches nothing is still a
+ * section — that is the whole of #93's fallback, and dropping it here would
+ * undo it.
+ *
+ * The document's order is kept among the imported sections, appended after the
+ * core three. The extraction reports where each section sat relative to the
+ * others it returned; it does not report where Experience sat among them, so
+ * interleaving would mean inventing a position the document never gave us.
+ *
+ * Replace rather than append: a user who imports a second resume is correcting
+ * the first, not adding to it, and appending would leave them deleting a second
+ * copy of every heading by hand. The core three are exempt and keep the
+ * headings and the order the user gave them.
+ *
+ * The bluntness of that is known and is the cost of having no provenance on a
+ * section row: a custom section the user added from the picker is indis-
+ * tinguishable from one the last import wrote, so a re-import takes both. The
+ * import is onboarding's, and onboarding runs before there is anything to add
+ * by hand; marking provenance properly is a column and a migration, and belongs
+ * with whatever first lets a user re-import from inside the editor.
+ *
+ * @returns how many sections the account holds afterwards.
+ */
+export async function replaceImportedSections(
+  tx: DbOrTx,
+  userId: string,
+  imported: ImportedSection[]
+) {
+  // An account the backfill never reached reads as the defaults and holds no
+  // rows. Writing them first — it takes the account's lock — is what keeps the
+  // core three once this appends. See `writeStandInSections`.
+  await writeStandInSections(tx, userId)
+  await repo.deleteCustomSections(tx, { userId })
+
+  const kept = await repo.findSections(tx, { userId })
+  const t = await sectionCatalogTranslatorFor(
+    await repo.findAccountLanguage(tx, userId)
+  )
+
+  // After the last section the account keeps, by *position* rather than by
+  // count: a user who removed a section leaves a gap behind, and numbering the
+  // imported ones from the count would land one of them on a position a core
+  // section already holds.
+  const start = Math.max(-1, ...kept.map((row) => row.position)) + 1
+
+  const rows = imported.map((section, index) => {
+    const resolved = resolveSectionHeading(section.heading, section.content, t)
+
+    return {
+      id: createId(),
+      userId,
+      resumeId: null,
+      // `resolved.kind` is deliberately not written. It can only be `skills`,
+      // which is provenance — it says which section a refresh from the account
+      // puts the `skill` rows back into — and the account already holds exactly
+      // one section making that claim. #93 leaves the choice here on purpose:
+      // "keeping one of them as the account's is the writer's call, made where
+      // the sibling sections are visible". This is that call, and it keeps the
+      // one already there. A second heading that reads as skills ("Soft
+      // Skills") arrives with its content and its own label intact, as a
+      // section the user owns rather than as a rival claim on the same rows.
+      kind: "custom" as const,
+      label: resolved.label,
+      componentType: resolved.componentType,
+      position: start + index,
+      content: resolved.content
+    }
+  })
+
+  await repo.insertSections(tx, rows)
+
+  return kept.length + rows.length
 }
 
 /**

@@ -1,7 +1,10 @@
 import { createId } from "@paralleldrive/cuid2"
 import { TRPCError } from "@trpc/server"
 import { type Database, type DbOrTx } from "~/server/db/types"
-import { readAccountSections } from "~/server/modules/resume/section.service"
+import {
+  readAccountSections,
+  replaceImportedSections
+} from "~/server/modules/resume/section.service"
 import * as repo from "./profile.repository"
 import {
   type AddEducationInput,
@@ -13,9 +16,10 @@ import {
   type UpsertNameAndContactInput
 } from "./profile.schema"
 import {
+  type ExtractedResume,
   extractPdfText,
   extractResumeFields,
-  type ParsedResume
+  importedSections
 } from "./parse-resume-pdf"
 
 // Business rules for the profile aggregate.
@@ -216,28 +220,37 @@ export async function importFromPdf(
     })
   })
 
-  await db.transaction((tx) => writeParsedResume(tx, userId, parsed))
+  const sections = await db.transaction((tx) =>
+    writeParsedResume(tx, userId, parsed)
+  )
 
   return {
+    sections,
     experience: parsed.experience.length,
     education: parsed.education.length,
-    skills: parsed.skills.length
+    skills: parsed.skills.length,
+    // The caps are the extraction's, and until #98 nobody downstream was told
+    // they had bitten. A confirmation that counts what was kept and says
+    // nothing about what was dropped reads as a complete import.
+    truncated: parsed.truncated
   }
 }
 
-async function writeParsedResume(
+/**
+ * The contact details the document printed, over whatever was there.
+ *
+ * The email included, which it never was before #98: the address someone signed
+ * up with is not necessarily the one on the resume they send to employers, and
+ * the document is the one being sent.
+ */
+async function writeParsedContact(
   tx: DbOrTx,
   userId: string,
-  parsed: ParsedResume
+  parsed: ExtractedResume
 ) {
-  await repo.updateNameAndProfession(tx, userId, {
-    firstName: parsed.firstName,
-    lastName: parsed.lastName,
-    profession: parsed.profession
-  })
-
   const contactValues = {
     location: parsed.location,
+    email: parsed.email,
     phone: parsed.phone,
     linkedIn: parsed.linkedIn,
     portfolio: parsed.portfolio
@@ -248,12 +261,23 @@ async function writeParsedResume(
   if (existingContact) {
     await repo.updateContact(tx, userId, contactValues)
   } else {
-    await repo.insertContact(tx, {
-      ...contactValues,
-      id: createId(),
-      userId
-    })
+    await repo.insertContact(tx, { ...contactValues, id: createId(), userId })
   }
+}
+
+/** @returns how many sections the account holds once the import is written. */
+async function writeParsedResume(
+  tx: DbOrTx,
+  userId: string,
+  parsed: ExtractedResume
+) {
+  await repo.updateNameAndProfession(tx, userId, {
+    firstName: parsed.firstName,
+    lastName: parsed.lastName,
+    profession: parsed.profession
+  })
+
+  await writeParsedContact(tx, userId, parsed)
 
   await repo.deleteExperience(tx, userId)
   await repo.deleteEducation(tx, userId)
@@ -294,6 +318,12 @@ async function writeParsedResume(
       }))
     )
   }
+
+  // Every heading the document had that is not one of the typed four, in the
+  // order it printed them — see `replaceImportedSections`. In the same
+  // transaction as the typed rows above, because a profile holding half a
+  // document is a profile the user has to work out the shape of.
+  return replaceImportedSections(tx, userId, importedSections(parsed))
 }
 
 /** Replaces the profile's skills with `input.skills`. */

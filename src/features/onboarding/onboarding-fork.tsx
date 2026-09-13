@@ -33,10 +33,22 @@ export function OnboardingFork() {
   const [rejection, setRejection] = useState("")
 
   const { mutate, isPending } = api.profile.importFromPdf.useMutation({
-    onSuccess: async (counts) => {
+    onSuccess: async ({ truncated, ...counts }) => {
       await utils.profile.read.invalidate()
 
       toast.success(t("imported", counts))
+
+      // Said separately, and after, because it is not part of the good news: a
+      // history the extraction capped is the one thing the user has to go and
+      // finish by hand, and burying it in the same sentence as the totals is
+      // how it stays unread.
+      if (truncated.experience) {
+        toast(t("truncatedExperience", { kept: counts.experience }))
+      }
+
+      if (truncated.education) {
+        toast(t("truncatedEducation", { kept: counts.education }))
+      }
 
       goToStep("contact")
     },

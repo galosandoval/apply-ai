@@ -217,10 +217,16 @@ async function readUserLocale(db: Database, userId: string): Promise<Locale> {
 function seedFrom(account: AccountSeed): Pick<CreateResumeInput, "contact"> {
   const { details, contact: accountContact } = account
 
+  // The address on the profile's contact card before the one the account signed
+  // up with. Since #98 an import reads the email off the document, and that is
+  // the address the user puts on resumes — `user.email` is better-auth's, and
+  // is only the answer while the contact card has nothing.
+  const email = accountContact?.email?.trim() ?? ""
+
   return {
     contact: {
       fullName: `${details?.firstName ?? ""} ${details?.lastName ?? ""}`.trim(),
-      email: details?.email ?? "",
+      email: email.length ? email : (details?.email ?? ""),
       location: accountContact?.location ?? "",
       phone: accountContact?.phone ?? "",
       linkedIn: accountContact?.linkedIn ?? "",

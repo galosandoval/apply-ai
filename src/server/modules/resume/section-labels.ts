@@ -14,6 +14,7 @@
  * be looking at it in whichever interface language.
  */
 
+import { type SectionCatalogTranslate } from "~/lib/section-catalog"
 import { type Locale, routing } from "~/i18n/routing"
 
 type Messages = Record<string, unknown>
@@ -58,6 +59,20 @@ export type SectionLabeler = (path: string, fallback: string) => string
 export async function sectionLabelerFor(
   language: Locale
 ): Promise<SectionLabeler> {
+  const read = await messageReaderFor(language)
+
+  return (path, fallback) => read(path) ?? fallback
+}
+
+/**
+ * One message path in a language, or in English, or nowhere.
+ *
+ * English stands in per *path* rather than per file: the message files are kept
+ * in step, so the only strings legitimately missing from one are the optional
+ * ones — and a caller asking for one of those wants to know it is absent, not
+ * to be handed the key.
+ */
+async function messageReaderFor(language: Locale) {
   const [messages, english] = await Promise.all([
     readMessages(language),
     language === routing.defaultLocale
@@ -65,10 +80,8 @@ export async function sectionLabelerFor(
       : readMessages(routing.defaultLocale)
   ])
 
-  return (path, fallback) =>
-    lookup(messages, path) ??
-    (english ? lookup(english, path) : undefined) ??
-    fallback
+  return (path: string) =>
+    lookup(messages, path) ?? (english ? lookup(english, path) : undefined)
 }
 
 /** The heading a core or generated section is created with. */
@@ -77,3 +90,30 @@ export const sectionLabelPath = (kind: string) => `sectionLabels.${kind}`
 /** The heading a section added from the catalog picker is created with. */
 export const presetLabelPath = (presetId: string) =>
   `sectionCatalog.presets.${presetId}.label`
+
+/**
+ * The catalog translator, for a server caller that has to *match* copy rather
+ * than write it.
+ *
+ * `SectionLabeler` cannot do this job: it takes a fallback and has no `has`, so
+ * a missing alias would come back as whatever the caller passed instead of as
+ * absent. This is the shape `useTranslations("sectionCatalog")` has, built over
+ * the same message files, so `resolveSectionHeading` matches an imported
+ * heading against exactly the copy the picker shows.
+ *
+ * Missing keys resolve to the empty string rather than to the key, so a preset
+ * the messages have not caught up with contributes nothing to a match instead
+ * of matching the word "presets".
+ */
+export async function sectionCatalogTranslatorFor(
+  language: Locale
+): Promise<SectionCatalogTranslate> {
+  const read = await messageReaderFor(language)
+  const at = (key: string) => read(`sectionCatalog.${key}`)
+
+  const translate = (key: string) => at(key) ?? ""
+
+  translate.has = (key: string) => at(key) !== undefined
+
+  return translate
+}

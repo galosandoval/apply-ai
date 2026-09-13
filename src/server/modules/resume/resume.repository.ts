@@ -223,6 +223,26 @@ export async function deleteSection(
     .returning({ id: section.id })
 }
 
+/**
+ * Removes every section an owner holds that carries its own content and no
+ * typed rows behind it — which is every section an import writes.
+ *
+ * The import's half of replace-not-accumulate: a second import rewrites the
+ * sections the first one left rather than adding a second copy of every heading
+ * the document has. The core kinds are left alone because they are not the
+ * import's to replace — they hold the user's renamed headings and their order,
+ * and their content is the typed rows the same import is rewriting anyway.
+ *
+ * Scoped by `ownedBy` like every other section query, so it cannot reach a
+ * resume's snapshots or another account's rows.
+ */
+export async function deleteCustomSections(db: DbOrTx, owner: SectionOwner) {
+  return db
+    .delete(section)
+    .where(and(ownedBy(owner), eq(section.kind, "custom")))
+    .returning({ id: section.id })
+}
+
 export async function updateSection(
   db: DbOrTx,
   owner: SectionOwner,
