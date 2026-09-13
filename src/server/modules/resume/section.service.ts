@@ -6,6 +6,8 @@ import {
   coreSectionDefaults,
   emptySectionContent,
   isCoreSectionKind,
+  isSectionComponentType,
+  isSectionKind,
   parseSectionContent,
   replaceSectionContentString,
   type SectionComponentType,
@@ -16,7 +18,7 @@ import { assertOwnsResume } from "~/server/api/ownership"
 import { type Database, type DbOrTx } from "~/server/db/types"
 import { assertCoversExactly } from "./reorder"
 import * as repo from "./resume.repository"
-import { type SectionOwner } from "./resume.repository"
+import { isResumeOwner, type SectionOwner } from "./resume.repository"
 import {
   presetLabelPath,
   type SectionLabeler,
@@ -66,34 +68,6 @@ export type NewSection = {
 export type SkillGroup = { label: string; items: string[] }
 
 /**
- * The sections every resume starts with, with the account's skills already in
- * the one that holds them.
- *
- * What they are and what order they come in is `coreSectionDefaults`, shared
- * with the renderer's fallback — the defaults and the renderer cannot drift if
- * there is only one list.
- *
- * Skills arrives as *content* rather than as rows of its own: it is an ordinary
- * content-bearing section now, and the account's copy is snapshotted into it
- * the way contact details are snapshotted into `contact`.
- *
- * `label` writes the headings in the resume's own language, keyed by `kind`.
- * Its English answer is the same string `coreSectionDefaults` carries, which is
- * what the fallback below is for: the list stays readable on its own, and a
- * message file that has not caught up yet cannot leave a resume headless.
- */
-export function defaultSections(
-  skillGroups: SkillGroup[],
-  label: SectionLabeler
-): NewSection[] {
-  return coreSectionDefaults.map((section) => ({
-    ...section,
-    label: label(sectionLabelPath(section.kind), section.label),
-    content: section.kind === "skills" ? { groups: skillGroups } : null
-  }))
-}
-
-/**
  * The sections a new resume is created with: the account's own, snapshotted.
  *
  * The account is the master copy — its order is the order a new resume starts
@@ -102,6 +76,12 @@ export function defaultSections(
  * skills: editing the account afterwards must not rewrite a document already
  * created.
  *
+ * The account's *order* is what carries, not its numbers: these come back in
+ * the account's order and `newSections` renumbers them from zero. An account
+ * whose positions have gaps in them — a removed section leaves one — would
+ * otherwise seed a resume with the same gaps, and a generated Summary has to
+ * be placed among them.
+ *
  * Read through `readAccountSections` rather than from the rows directly, so an
  * account the backfill has not reached is answered by the same fallback the
  * profile shows. Two readers with a fallback each would be two places to
@@ -109,7 +89,7 @@ export function defaultSections(
  *
  * Skills is the one section whose content is not the account's to hold: the
  * account keeps `skill` rows, and this is where they become the section's
- * content, exactly as `defaultSections` does it.
+ * content.
  */
 export async function sectionsForNewResume(
   db: Database,
@@ -118,20 +98,33 @@ export async function sectionsForNewResume(
 ): Promise<NewSection[]> {
   const rows = await readAccountSections(db, userId)
 
-  return rows.map((row) => ({
-    // `kind`, `component_type` and `content` are a text and a jsonb column, so
-    // a stored row arrives as `string` and `unknown`. What may be written into
-    // them is this service's to say and it says it on the way in — narrowing
-    // again here could only differ by dropping a section the user can see on
-    // their profile, which is a worse answer than trusting the write path.
-    kind: row.kind as SectionKind,
-    label: row.label,
-    componentType: row.componentType as SectionComponentType,
-    content:
-      row.kind === "skills"
-        ? { groups: skillGroups }
-        : (row.content as AnySectionContent | null)
-  }))
+  // `kind`, `component_type` and `content` are a text and a jsonb column, so a
+  // stored row arrives as `string` and `unknown`. Narrowed rather than cast:
+  // the write path is the only one that *should* have filled these, but the
+  // backfill wrote rows that never went through it, and a cast here would copy
+  // whatever it left onto every resume made afterwards — unread until
+  // something tried to draw it.
+  return rows.flatMap((row) => {
+    // A component type nothing can render is not a section the user loses by
+    // it being dropped: there is no component to draw it with either way.
+    if (!isSectionKind(row.kind) || !isSectionComponentType(row.componentType))
+      return []
+
+    return [
+      {
+        kind: row.kind,
+        label: row.label,
+        componentType: row.componentType,
+        // Content that doesn't match the component it is filed under is
+        // dropped and the section kept: an empty Certifications is a heading
+        // the user can refill, where dropping it is a section that vanished.
+        content:
+          row.kind === "skills"
+            ? { groups: skillGroups }
+            : parseSectionContent(row.componentType, row.content)
+      }
+    ]
+  })
 }
 
 /**
@@ -288,7 +281,7 @@ export function sectionsFromGeneration(
  * the `skill` rows keyed by `userId`, and it is the snapshot onto a resume that
  * turns them into content.
  */
-export async function readAccountSections(db: Database, userId: string) {
+export async function readAccountSections(db: DbOrTx, userId: string) {
   const rows = await repo.findSections(db, { userId })
 
   if (rows.length) return rows.map((row) => ({ ...row, isDefault: false }))
@@ -343,14 +336,14 @@ async function ownerFor(
  * the account's own — the language the account reads in.
  */
 async function languageOf(db: Database, owner: SectionOwner): Promise<Locale> {
-  return "resumeId" in owner
+  return isResumeOwner(owner)
     ? repo.findResumeLanguage(db, owner.resumeId)
     : repo.findAccountLanguage(db, owner.userId)
 }
 
 /** The columns that say who owns a row, as an insert takes them. */
 function ownerColumns(owner: SectionOwner) {
-  return "resumeId" in owner
+  return isResumeOwner(owner)
     ? { resumeId: owner.resumeId, userId: null }
     : { userId: owner.userId, resumeId: null }
 }
@@ -377,7 +370,7 @@ export async function add(
     // In one transaction with the write below: a set of defaults written
     // without the section they were written for would be the user adding
     // Certifications and getting three sections that are not it.
-    if (!("resumeId" in owner)) await writeStandInSections(tx, owner.userId)
+    if (!isResumeOwner(owner)) await writeStandInSections(tx, owner.userId)
 
     const position = await repo.nextSectionPosition(tx, owner)
 
@@ -416,29 +409,27 @@ export async function add(
  * and every resume seeded from it afterwards, would silently lose Skills,
  * Experience and Education.
  *
- * The stand-ins are what gets written, in the account's language, so the user
- * ends up owning exactly the sections they were already being shown.
+ * The stand-ins are what gets written, read back from `readAccountSections`
+ * rather than rebuilt here: a second builder of the same defaults is a second
+ * place for them to disagree, and the whole point is that the user ends up
+ * owning exactly the sections they were already being shown. All this adds is
+ * an id apiece — a stand-in carries its `kind` as one, and a real row needs a
+ * real one.
  */
 async function writeStandInSections(tx: DbOrTx, userId: string) {
-  const existing = await repo.findSections(tx, { userId })
+  await repo.lockAccount(tx, userId)
 
-  if (existing.length) return
+  const rows = await readAccountSections(tx, userId)
 
-  const label = await sectionLabelerFor(
-    await repo.findAccountLanguage(tx, userId)
-  )
+  // An account already holding rows of its own is one the user has been
+  // editing — there is nothing being stood in for.
+  if (rows.some((row) => !row.isDefault)) return
 
   await repo.insertSections(
     tx,
-    coreSectionDefaults.map((section, position) => ({
-      id: createId(),
-      userId,
-      resumeId: null,
-      kind: section.kind,
-      label: label(sectionLabelPath(section.kind), section.label),
-      componentType: section.componentType,
-      position,
-      content: null
+    rows.map(({ isDefault: _isDefault, ...row }) => ({
+      ...row,
+      id: createId()
     }))
   )
 }
@@ -494,7 +485,7 @@ export async function reorder(
   assertCoversExactly(
     existing,
     input.sectionIds,
-    "resumeId" in owner ? "section of the resume" : "section of the profile"
+    isResumeOwner(owner) ? "section of the resume" : "section of the profile"
   )
 
   await db.transaction(async (tx) => {

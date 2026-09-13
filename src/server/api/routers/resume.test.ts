@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { toDownloadPayload } from "~/features/resume/resume-field-lens"
 import {
   type AnySectionContent,
+  coreSectionDefaults,
   type SectionComponentType,
   type SectionKind
 } from "~/lib/section-content"
@@ -800,10 +801,23 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       const found = await caller.resume.readById({ resumeId })
 
-      expect(found.sections.map((row) => row.kind)).toEqual([
-        "skills",
-        "experience",
-        "education"
+      // The whole default set, not just its kinds: a fallback that got the
+      // headings or the components wrong would still pass a kinds-only check
+      // and still render a resume nobody would send.
+      expect(
+        found.sections.map((row) => ({
+          kind: row.kind,
+          label: row.label,
+          componentType: row.componentType,
+          position: row.position
+        }))
+      ).toEqual(
+        coreSectionDefaults.map((core, position) => ({ ...core, position }))
+      )
+      // Skills is filled on the fallback path too — the account's skills are
+      // rows, and a stand-in section still has to be the one they land in.
+      expect(skillGroupsOf(found)).toEqual([
+        { label: "Languages", items: ["TypeScript", "Go"] }
       ])
     })
 
@@ -832,6 +846,71 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
         "Toolkit",
         "Experience"
       ])
+    })
+
+    /**
+     * The edit snapshotting most plausibly leaks through: `content` is a jsonb
+     * column, so a snapshot that copied the object rather than its value would
+     * pass the rename check above and still rewrite a document already sent.
+     */
+    it("is unchanged when an account section's content is rewritten", async () => {
+      await accountSections([
+        {
+          kind: "custom",
+          label: "Certifications",
+          componentType: "list",
+          content: { items: ["AWS Solutions Architect"] }
+        }
+      ])
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const accountCerts = (await caller.profile.read()).sections[0]
+
+      expect(accountCerts).toBeDefined()
+
+      await caller.section.setContent({
+        onAccount: true,
+        sectionId: accountCerts?.id ?? "",
+        content: { items: ["Rewritten On The Account"] }
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.at(0)?.content).toEqual({
+        items: ["AWS Solutions Architect"]
+      })
+    })
+
+    /** Order is snapshotted like everything else — it is what the resume renders in. */
+    it("is unchanged when the account's sections are reordered afterwards", async () => {
+      await accountSections([
+        { kind: "skills", label: "Toolkit", componentType: "groupedList" },
+        { kind: "experience", label: "Experience", componentType: "twoColumn" },
+        { kind: "education", label: "Studies", componentType: "twoColumn" }
+      ])
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const accountIds = (await caller.profile.read()).sections.map(
+        (row) => row.id
+      )
+
+      await caller.section.reorder({
+        onAccount: true,
+        sectionIds: [...accountIds].reverse()
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.map((row) => row.label)).toEqual([
+        "Toolkit",
+        "Experience",
+        "Studies"
+      ])
+      expect(found.sections.map((row) => row.position)).toEqual([0, 1, 2])
     })
 
     /**
