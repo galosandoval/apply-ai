@@ -99,9 +99,10 @@ export async function readById(db: Database, userId: string, resumeId: string) {
  */
 type CreateOptions = {
   /**
-   * What a generation produced — the core three with its own arranged around
-   * them. A resume created any other way gets the core three, which is why
-   * they are the default rather than the caller's to remember.
+   * What a generation produced — the account's sections with its own arranged
+   * around them. A resume created any other way is seeded from the account
+   * here, which is why that is the default rather than the caller's to
+   * remember.
    */
   sections?: sections.NewSection[]
   /** The language it is written in. Defaults to the account's `locale`. */
@@ -126,15 +127,16 @@ export async function create(
 ) {
   const language = options.language ?? (await readUserLocale(db, userId))
 
-  // Read before the transaction opens: the default sections carry the
-  // account's skills as content, so building them is a query and not a
-  // rearrangement of what the caller passed.
+  // Read before the transaction opens: the seeded sections are the account's
+  // own rows with its skills as content, so building them is a pair of queries
+  // and not a rearrangement of what the caller passed.
   const list =
     options.sections ??
-    sections.defaultSections(
-      skillGroupsFrom(await repo.findAccountSkills(db, userId)),
-      await sectionLabelerFor(language)
-    )
+    (await sections.sectionsForNewResume(
+      db,
+      userId,
+      skillGroupsFrom(await repo.findAccountSkills(db, userId))
+    ))
 
   const resumeId = await db.transaction(async (tx) => {
     const created = await repo.insertResume(tx, {
@@ -286,6 +288,19 @@ export async function generate(
     readHistoryFor(db, userId)
   ])
 
+  // Seeded from the account like any other new resume: what a generation
+  // decides is which sections it *adds*, not which ones the user keeps.
+  //
+  // Read here rather than after the draft comes back, so the sections and the
+  // skills inside them are the account as of one moment — a model round trip
+  // is seconds long, and a profile edited during one would otherwise produce a
+  // resume that half agrees with the account.
+  const seed = await sections.sectionsForNewResume(
+    db,
+    userId,
+    skillGroupsFrom(account.skills)
+  )
+
   // The account's own language, not the one the request came in on: this is
   // the resume's language from here on, and it is what the model is told to
   // write in.
@@ -310,6 +325,8 @@ export async function generate(
     })
   }
 
+  const label = await sectionLabelerFor(language)
+
   return create(
     db,
     userId,
@@ -326,8 +343,8 @@ export async function generate(
       language,
       sections: sections.sectionsFromGeneration(
         parsed.data.sections,
-        skillGroupsFrom(account.skills),
-        await sectionLabelerFor(language)
+        seed,
+        label
       )
     }
   )

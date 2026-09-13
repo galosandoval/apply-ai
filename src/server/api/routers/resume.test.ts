@@ -3,6 +3,11 @@ import { TRPCError } from "@trpc/server"
 import { asc, eq } from "drizzle-orm"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { toDownloadPayload } from "~/features/resume/resume-field-lens"
+import {
+  type AnySectionContent,
+  type SectionComponentType,
+  type SectionKind
+} from "~/lib/section-content"
 import { callerFor } from "~/server/api/test-caller"
 import { downloadPdfSchema } from "~/server/db/crud-schema"
 import { type CreateResumeInput } from "~/server/modules/resume/resume.schema"
@@ -693,6 +698,194 @@ describe.skipIf(!hasTestDatabase)("resume router", () => {
 
       expect(rows).toHaveLength(3)
       expect(rows.every((row) => row.userId === null)).toBe(true)
+    })
+  })
+
+  describe("create — the sections come off the account", () => {
+    /**
+     * The account's own sections, in the order given — what the backfill
+     * leaves behind, plus whatever the user has done to it since.
+     */
+    async function accountSections(
+      rows: {
+        kind: SectionKind
+        label: string
+        componentType: SectionComponentType
+        content?: AnySectionContent
+      }[]
+    ) {
+      await db.insert(section).values(
+        rows.map((row, position) => ({
+          ...row,
+          id: createId(),
+          userId: fixture.owner.userId,
+          position
+        }))
+      )
+    }
+
+    it("seeds the resume from the account's sections, in the account's order", async () => {
+      await accountSections([
+        { kind: "education", label: "Studies", componentType: "twoColumn" },
+        { kind: "skills", label: "Toolkit", componentType: "groupedList" },
+        {
+          kind: "experience",
+          label: "Work History",
+          componentType: "twoColumn"
+        }
+      ])
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.map((row) => row.kind)).toEqual([
+        "education",
+        "skills",
+        "experience"
+      ])
+      expect(found.sections.map((row) => row.label)).toEqual([
+        "Studies",
+        "Toolkit",
+        "Work History"
+      ])
+      expect(found.sections.map((row) => row.position)).toEqual([0, 1, 2])
+    })
+
+    /**
+     * The point of the whole thing: adding Certifications to the account is
+     * how resume number two gets Certifications.
+     */
+    it("carries a section the account added, with its component and content", async () => {
+      await accountSections([
+        { kind: "experience", label: "Experience", componentType: "twoColumn" },
+        {
+          kind: "custom",
+          label: "Certifications",
+          componentType: "list",
+          content: { items: ["AWS Solutions Architect"] }
+        }
+      ])
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const added = (await caller.resume.readById({ resumeId })).sections.at(-1)
+
+      expect(added?.kind).toBe("custom")
+      expect(added?.label).toBe("Certifications")
+      expect(added?.componentType).toBe("list")
+      expect(added?.content).toEqual({ items: ["AWS Solutions Architect"] })
+    })
+
+    /** The account's skills are rows, not content — the snapshot is what joins them. */
+    it("fills the account's Skills section with the account's skills", async () => {
+      await accountSections([
+        { kind: "skills", label: "Toolkit", componentType: "groupedList" }
+      ])
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      expect(skillGroupsOf(await caller.resume.readById({ resumeId }))).toEqual(
+        [{ label: "Languages", items: ["TypeScript", "Go"] }]
+      )
+    })
+
+    /** A pre-migration account has no rows, and still gets a whole resume. */
+    it("falls back to the default set for an account with no sections", async () => {
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.map((row) => row.kind)).toEqual([
+        "skills",
+        "experience",
+        "education"
+      ])
+    })
+
+    it("is unchanged when an account section is edited afterwards", async () => {
+      await accountSections([
+        { kind: "skills", label: "Toolkit", componentType: "groupedList" },
+        { kind: "experience", label: "Experience", componentType: "twoColumn" }
+      ])
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      const accountSkills = (await caller.profile.read()).sections[0]
+
+      expect(accountSkills).toBeDefined()
+
+      await caller.section.rename({
+        onAccount: true,
+        sectionId: accountSkills?.id ?? "",
+        label: "Renamed On The Account"
+      })
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.map((row) => row.label)).toEqual([
+        "Toolkit",
+        "Experience"
+      ])
+    })
+
+    /**
+     * The account reached through the router rather than through an insert:
+     * an account the backfill never touched holds no rows at all, and adding
+     * one to it must leave the defaults it was reading as standing.
+     */
+    it("keeps the defaults a section was added alongside on the account", async () => {
+      const caller = callerFor(db, fixture.owner.userId)
+
+      await caller.section.add({
+        onAccount: true,
+        label: "Certifications",
+        componentType: "list"
+      })
+
+      const { resumeId } = await caller.resume.create(draft())
+
+      const found = await caller.resume.readById({ resumeId })
+
+      expect(found.sections.map((row) => row.kind)).toEqual([
+        "skills",
+        "experience",
+        "education",
+        "custom"
+      ])
+      expect(found.sections.at(-1)?.label).toBe("Certifications")
+      expect(skillGroupsOf(found)).toEqual([
+        { label: "Languages", items: ["TypeScript", "Go"] }
+      ])
+    })
+
+    it("keeps a section added to a resume off the account", async () => {
+      await accountSections([
+        { kind: "experience", label: "Experience", componentType: "twoColumn" }
+      ])
+
+      const caller = callerFor(db, fixture.owner.userId)
+      const { resumeId } = await caller.resume.create(draft())
+
+      await caller.section.add({
+        resumeId,
+        label: "Certificates",
+        componentType: "list"
+      })
+
+      const profile = await caller.profile.read()
+
+      expect(profile.sections.map((row) => row.label)).toEqual(["Experience"])
+      expect(
+        (await caller.resume.readById({ resumeId })).sections.map(
+          (row) => row.label
+        )
+      ).toEqual(["Experience", "Certificates"])
     })
   })
 

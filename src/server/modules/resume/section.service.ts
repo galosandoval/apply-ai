@@ -94,6 +94,47 @@ export function defaultSections(
 }
 
 /**
+ * The sections a new resume is created with: the account's own, snapshotted.
+ *
+ * The account is the master copy — its order is the order a new resume starts
+ * in, and a section added to it is on every resume made afterwards without
+ * anyone adding it again. Snapshotted rather than referenced, like contact and
+ * skills: editing the account afterwards must not rewrite a document already
+ * created.
+ *
+ * Read through `readAccountSections` rather than from the rows directly, so an
+ * account the backfill has not reached is answered by the same fallback the
+ * profile shows. Two readers with a fallback each would be two places to
+ * disagree about what a pre-migration account has.
+ *
+ * Skills is the one section whose content is not the account's to hold: the
+ * account keeps `skill` rows, and this is where they become the section's
+ * content, exactly as `defaultSections` does it.
+ */
+export async function sectionsForNewResume(
+  db: Database,
+  userId: string,
+  skillGroups: SkillGroup[]
+): Promise<NewSection[]> {
+  const rows = await readAccountSections(db, userId)
+
+  return rows.map((row) => ({
+    // `kind`, `component_type` and `content` are a text and a jsonb column, so
+    // a stored row arrives as `string` and `unknown`. What may be written into
+    // them is this service's to say and it says it on the way in — narrowing
+    // again here could only differ by dropping a section the user can see on
+    // their profile, which is a worse answer than trusting the write path.
+    kind: row.kind as SectionKind,
+    label: row.label,
+    componentType: row.componentType as SectionComponentType,
+    content:
+      row.kind === "skills"
+        ? { groups: skillGroups }
+        : (row.content as AnySectionContent | null)
+  }))
+}
+
+/**
  * Rows for a new resume's sections, numbered from the order given.
  *
  * Positions are assigned here rather than by each caller, so a resume created
@@ -177,20 +218,20 @@ const generatedSectionAllowlist = new Map<
 type RequestedSection = { kind: GeneratedSectionKind; entries: string[] }
 
 /**
- * A generated resume's sections, in render order: the core three with whatever
- * the generation was allowed to add arranged around them.
+ * A generated resume's sections, in render order: the ones it is seeded with
+ * and whatever the generation was allowed to add arranged around them.
  *
  * A kind outside the allowlist is dropped and the rest of the resume is kept —
  * one section the components don't know how to draw is not a reason to throw
  * away a whole generation. A repeated kind is dropped for the same reason a
  * second Summary would be: the resume has one of each.
  *
- * The headings come from `label`, like the core three: what the generation
+ * The headings come from `label`, like the seeded ones: what the generation
  * decides is which sections a resume has, never what language it is in.
  */
 export function sectionsFromGeneration(
   requested: RequestedSection[],
-  skillGroups: SkillGroup[],
+  seed: NewSection[],
   label: SectionLabeler
 ): NewSection[] {
   const taken = new Set<string>()
@@ -225,11 +266,7 @@ export function sectionsFromGeneration(
       .filter((entry) => entry.placement === placement)
       .map((entry) => entry.section)
 
-  return [
-    ...at("above"),
-    ...defaultSections(skillGroups, label),
-    ...at("below")
-  ]
+  return [...at("above"), ...seed, ...at("below")]
 }
 
 /**
@@ -334,23 +371,30 @@ export async function add(
   input: AddSectionInput
 ) {
   const owner = await ownerFor(db, userId, input)
+  const label = await presetLabel(db, owner, input)
 
-  const [position, label] = await Promise.all([
-    repo.nextSectionPosition(db, owner),
-    presetLabel(db, owner, input)
-  ])
+  const created = await db.transaction(async (tx) => {
+    // In one transaction with the write below: a set of defaults written
+    // without the section they were written for would be the user adding
+    // Certifications and getting three sections that are not it.
+    if (!("resumeId" in owner)) await writeStandInSections(tx, owner.userId)
 
-  const [created] = await repo.insertSections(db, [
-    {
-      id: createId(),
-      ...ownerColumns(owner),
-      kind: "custom",
-      label,
-      componentType: input.componentType,
-      position,
-      content: emptySectionContent(input.componentType)
-    }
-  ])
+    const position = await repo.nextSectionPosition(tx, owner)
+
+    const [row] = await repo.insertSections(tx, [
+      {
+        id: createId(),
+        ...ownerColumns(owner),
+        kind: "custom",
+        label,
+        componentType: input.componentType,
+        position,
+        content: emptySectionContent(input.componentType)
+      }
+    ])
+
+    return row
+  })
 
   if (!created) {
     throw new TRPCError({
@@ -360,6 +404,43 @@ export async function add(
   }
 
   return { sectionId: created.id }
+}
+
+/**
+ * Writes the defaults an account has been *reading* as its own rows, once,
+ * before the first section is added to it.
+ *
+ * An account the backfill never reached has no rows and reads as the default
+ * set — `readAccountSections` stands them in. Appending to that account without
+ * this would leave it holding the one row that was appended, so the profile,
+ * and every resume seeded from it afterwards, would silently lose Skills,
+ * Experience and Education.
+ *
+ * The stand-ins are what gets written, in the account's language, so the user
+ * ends up owning exactly the sections they were already being shown.
+ */
+async function writeStandInSections(tx: DbOrTx, userId: string) {
+  const existing = await repo.findSections(tx, { userId })
+
+  if (existing.length) return
+
+  const label = await sectionLabelerFor(
+    await repo.findAccountLanguage(tx, userId)
+  )
+
+  await repo.insertSections(
+    tx,
+    coreSectionDefaults.map((section, position) => ({
+      id: createId(),
+      userId,
+      resumeId: null,
+      kind: section.kind,
+      label: label(sectionLabelPath(section.kind), section.label),
+      componentType: section.componentType,
+      position,
+      content: null
+    }))
+  )
 }
 
 /** The preset's heading in the owner's language, or the client's own label. */
