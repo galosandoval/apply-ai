@@ -54,7 +54,13 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apply-ai
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/apply-ai-test
       APP_URL: http://localhost:3000
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Placeholder-tolerant on purpose. `src/env.ts` validates
+      # OPENAI_API_KEY as a non-empty string at import, so an unset secret
+      # fails four DB-backed suites at collection — ~170 tests silently never
+      # run and the rest still go green. Nothing here calls OpenAI; the
+      # requests are stubbed. The real key belongs on `run-phase`, where the
+      # agent can actually spend it, not on the gate.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'ci-placeholder-not-a-real-key' }}
       # Throwaway: better-auth only signs callbacks against this, and both
       # databases die with the job. Never a real secret's value.
       BETTER_AUTH_SECRET: ci-only-not-a-secret-0000000000000000000
