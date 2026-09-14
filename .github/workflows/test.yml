@@ -1,0 +1,76 @@
+name: Test
+
+# The gate the agent loop is held to, and the machine edge of that loop: a
+# failed run here on an `agent/**` branch is what retriggers
+# `agent-implement.yml` (`on: workflow_run`). It must stay the same command
+# `GATE_COMMAND` names in that file, or the harness and CI disagree about what
+# "done" is.
+#
+# Pushes to `agent/**` are included on purpose: a failed attempt that pushed a
+# handoff commit without opening a PR still has to retrigger the loop, and a
+# pull_request-only trigger would leave that case dead.
+on:
+  push:
+    branches: [main, 'agent/**']
+  pull_request:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # The two Postgres instances `.env.example` documents, on the ports it
+    # documents. The dev database exists only to satisfy `src/env.ts`'s
+    # `DATABASE_URL` validation; the integration tests connect to the test one.
+    # Without both, the DB-backed tests skip themselves and this gate goes
+    # green on a partial suite.
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apply-ai
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      test-db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apply-ai-test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apply-ai
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/apply-ai-test
+      APP_URL: http://localhost:3000
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Throwaway: better-auth only signs callbacks against this, and both
+      # databases die with the job. Never a real secret's value.
+      BETTER_AUTH_SECRET: ci-only-not-a-secret-0000000000000000000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Spelled out rather than run as one `&&` chain so a failure names which
+      # of the three fell over. The chain in GATE_COMMAND is the same work.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test

@@ -9,7 +9,10 @@ on:
   issues:
     types: [labeled]
   workflow_run:
-    workflows: ['TODO(shopfloor): name the CI workflow whose completion retriggers the loop']
+    # Our own suite, by name (.github/workflows/test.yml). It runs on pushes
+    # to `agent/**` as well as on pull requests, so a failed attempt that
+    # pushed a handoff commit without opening a PR still retriggers.
+    workflows: ['Test']
     types: [completed]
 
 # One run per branch: a second event while a run is in flight would put two
@@ -38,14 +41,30 @@ jobs:
   # the attempt trail here, because the job below is gated on this verdict and
   # so never runs to do it. That needs the PAT to be able to write issues.
   admit:
-    # Filters the human edge without filtering the machine edge out of
-    # existence: `github.event.label` is null on a workflow_run event, so a
-    # bare label condition would make that trigger fire a job that never runs.
-    # Redundant with what `shopfloor-admit` decides, and worth a line anyway:
-    # it keeps ordinary label traffic from starting a runner at all.
+    # A cheap pre-filter on both edges. Every condition here is decided again,
+    # authoritatively, inside `shopfloor-admit` — this exists only so the
+    # overwhelming majority of events that can never be a trigger don't boot a
+    # runner to be told so. Each edge is spelled out rather than negating the
+    # other, because the two triggers filter on different fields: the label
+    # event has no `workflow_run`, and the CI event has no `label`.
+    #
+    # `Test` runs on every push to main and on every pull request, so without
+    # the workflow_run half this job would start a runner on each of them. Only
+    # a *failed* run on an agent branch of this repository can retrigger the
+    # loop (`classifyTrigger` refuses every other conclusion), and a fork's
+    # `head_repository` is not ours.
+    #
+    # The remaining two machine-edge fences — the head commit's author, and the
+    # `Shopfloor-Loop: closed` trailer that keeps a successful run's cleanup
+    # commit from spending an attempt — need the commit itself, so they stay
+    # where they can read it, inside `shopfloor-admit`.
     if: >-
-      github.event_name != 'issues' ||
-      github.event.label.name == 'ready-for-agent'
+      (github.event_name == 'issues' &&
+      github.event.label.name == 'ready-for-agent') ||
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'agent/'))
     runs-on: ubuntu-latest
     outputs:
       admitted: ${{ steps.admit.outputs.admitted }}
@@ -62,11 +81,39 @@ jobs:
           # paints the repository red for ordinary traffic is a check people
           # delete. The verdict is read and echoed either way; nothing is
           # swallowed.
+          #
+          # What must not be swallowed with them is the undecided case: a
+          # missing AGENT_PAT, an npx that could not fetch the package, a
+          # crash. Those exit non-zero too, and reading only stdout renders
+          # them indistinguishable from "not admitted" — an empty verdict, a
+          # skipped job, a green check, and a pipeline that has quietly stopped
+          # running. So the verdict is required to be parseable JSON, and
+          # `undetermined` — what the bin reports when admission itself failed
+          # — fails this job loudly.
           set +e
           verdict="$(npx --yes --package @galosandoval/shopfloor@1.0.0 -- shopfloor-admit)"
           set -e
           echo "$verdict"
-          echo "admitted=$(echo "$verdict" | jq -r '.admitted')" >> "$GITHUB_OUTPUT"
+
+          # `jq -r .admitted` alone cannot tell "the verdict says no" from
+          # "there is no verdict" — both print something falsy — so the value
+          # is required to be the literal `true` or `false` a decided verdict
+          # carries. (`jq -e` is no good either: it exits non-zero on a `false`
+          # result, which is a perfectly ordinary refusal.)
+          admitted="$(printf '%s' "$verdict" | jq -r 'if has("admitted") then .admitted else empty end' 2>/dev/null)"
+          case "$admitted" in
+            true | false) ;;
+            *)
+              echo "::error::shopfloor-admit produced no readable verdict — admission never ran. Treating this as a failure, not a refusal."
+              exit 1
+              ;;
+          esac
+
+          if [ "$(printf '%s' "$verdict" | jq -r '.refusal // empty')" = "undetermined" ]; then
+            echo "::error::shopfloor-admit could not decide: $(printf '%s' "$verdict" | jq -r '.reason // "no reason given"')"
+            exit 1
+          fi
+          echo "admitted=${admitted}" >> "$GITHUB_OUTPUT"
 
   run-phase:
     needs: admit
