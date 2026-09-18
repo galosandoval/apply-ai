@@ -3,7 +3,12 @@
 import { useTranslations } from "next-intl"
 import { useLayoutEffect, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
-import { FontBoldIcon, Link2Icon, ListBulletIcon } from "@radix-ui/react-icons"
+import {
+  FontBoldIcon,
+  FontItalicIcon,
+  Link2Icon,
+  ListBulletIcon
+} from "@radix-ui/react-icons"
 import { Textarea } from "~/components/ui/textarea"
 import { applyMarkdownAction, type MarkdownAction } from "~/lib/resume-markdown"
 import { useTypedValue } from "~/components/use-typed-value"
@@ -16,15 +21,16 @@ const toolbar: {
   action: MarkdownAction
   /** Every Radix icon has this type; `FontBoldIcon` is just the one naming it. */
   Icon: typeof FontBoldIcon
-  titleKey: "boldTitle" | "linkTitle" | "bulletListTitle"
+  titleKey: "boldTitle" | "italicTitle" | "linkTitle" | "bulletListTitle"
 }[] = [
   { action: "bold", Icon: FontBoldIcon, titleKey: "boldTitle" },
+  { action: "italics", Icon: FontItalicIcon, titleKey: "italicTitle" },
   { action: "link", Icon: Link2Icon, titleKey: "linkTitle" },
   { action: "bulletList", Icon: ListBulletIcon, titleKey: "bulletListTitle" }
 ]
 
 /**
- * A rich-text field: a plain textarea, and three buttons that wrap or prefix
+ * A rich-text field: a plain textarea, and four buttons that wrap or prefix
  * the selection.
  *
  * The stored value is exactly what is typed, which is why there is no editing

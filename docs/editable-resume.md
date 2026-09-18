@@ -27,7 +27,7 @@ Nothing is typed into the document itself.
 | `src/lib/section-content.ts`                   | What a section is and may hold — shared by client and server.            |
 | `src/lib/section-heading.ts`                   | What an imported heading draws as — preset, shape and content.           |
 | `src/lib/resume-field-path.ts`                 | The grammar for addressing one editable string.                          |
-| `src/lib/resume-markdown.tsx`                  | The markdown subset: render, strip, and the three toolbar operations.    |
+| `src/lib/resume-markdown.tsx`                  | The markdown subset: render, strip, and the four toolbar operations.     |
 | `src/lib/paginate.ts`                          | Where the page breaks go, as a pure function.                            |
 | `src/features/resume/use-resume-editor.ts`     | The query, the debounced autosave, and every structural mutation.        |
 | `src/features/resume/use-resume-pagination.ts` | The measure-paginate-draw loop, and nothing else.                        |
@@ -378,7 +378,8 @@ not an eighth panel.
 
 ### Rich text is a constrained markdown subset
 
-Bold, links and bullet lists, in a plain textarea with three toolbar buttons.
+Bold, italic, links and bullet lists, in a plain textarea with four toolbar
+buttons.
 The stored value is exactly what was typed, so there is no sanitizer to get
 wrong and `stripMarkdown` gives a parser clean text for free. A second document
 model — an editing framework with its own formatting set — would have to be
@@ -397,8 +398,8 @@ scoring reads and a parser extracts.
 **There is no escape, and that is the one cost.** Text that looks like markdown
 is markdown, so a body holding `**` or `[label](url)` — typed today, or migrated
 from the plain-text columns by `0013` — gains the formatting it appears to ask
-for. A backslash rule would be a fourth rule in a subset whose whole argument is
-that it has three, reconciled forever against the toolbar, `stripMarkdown` and
+for. A backslash rule would be a fifth rule in a subset whose whole argument is
+that it has four, reconciled forever against the toolbar, `stripMarkdown` and
 the JSON Resume export. That is a standing cost against a shape a resume rarely
 has, and the failure it prevents is a bolded phrase rather than lost text.
 
@@ -409,7 +410,7 @@ write replaces. Existing bullets migrated by joining as `- ` lines, which is
 exactly what they rendered as. And the subset is now load-bearing for
 portability as well as for the page: an export to JSON Resume recovers
 `highlights[]` by walking the list items, which round-trips only while the
-subset stays bold, links and bullets.
+subset stays bold, italic, links and bullets.
 
 ### Dates are typed, and "still here" is a flag (#71)
 

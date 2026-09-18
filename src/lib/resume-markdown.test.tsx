@@ -50,6 +50,29 @@ describe("renderResumeMarkdown", () => {
     )
   })
 
+  it("renders italic", () => {
+    expect(render("A _italic_ word")).toContain("<p>A <em>italic</em> word</p>")
+  })
+
+  it("renders bold, italic and a link on one line", () => {
+    expect(
+      render("**Shipped** the _Argo_ refit — see [details](https://ada.dev)")
+    ).toContain(
+      '<p><strong>Shipped</strong> the <em>Argo</em> refit — see ' +
+        '<a class="underline" href="https://ada.dev" rel="noreferrer" target="_blank">details</a></p>'
+    )
+  })
+
+  it("still reads **bold** as one bold run, not two italic markers", () => {
+    expect(render("**bold**")).toBe("<div><p><strong>bold</strong></p></div>")
+  })
+
+  it("leaves an underscore touching a word character on either side literal", () => {
+    expect(render("Column user_id and snake_case_name stay put")).toContain(
+      "<p>Column user_id and snake_case_name stay put</p>"
+    )
+  })
+
   it("renders a link", () => {
     expect(render("See [my site](https://ada.dev) for more")).toContain(
       '<a class="underline" href="https://ada.dev" rel="noreferrer" target="_blank">my site</a>'
@@ -113,12 +136,11 @@ describe("renderResumeMarkdown", () => {
       expect(html).toContain("&lt;script&gt;")
     })
 
-    it("leaves headings, italics and code as literal text", () => {
-      const html = render("# Heading _italic_ `code`")
+    it("leaves headings and code as literal text", () => {
+      const html = render("# Heading `code`")
 
-      expect(html).toContain("<p># Heading _italic_ `code`</p>")
+      expect(html).toContain("<p># Heading `code`</p>")
       expect(html).not.toContain("<h1")
-      expect(html).not.toContain("<em")
       expect(html).not.toContain("<code")
     })
 
@@ -140,6 +162,8 @@ describe("renderResumeMarkdown", () => {
     it.each([
       ["an unclosed bold run", "A **bold word"],
       ["an unopened bold run", "A bold** word"],
+      ["an unclosed italic run", "A _italic word"],
+      ["an unopened italic run", "A italic_ word"],
       ["a link with no target", "A [label]() here"],
       ["a link with no label", "A []() here"],
       ["an empty bold run", "A **** here"],
@@ -168,6 +192,7 @@ describe("renderResumeMarkdown", () => {
 describe("stripMarkdown", () => {
   it.each([
     ["bold", "A **bold** word", "A bold word"],
+    ["italic", "A _italic_ word", "A italic word"],
     [
       "a link, keeping the label",
       "See [my site](https://ada.dev)",
@@ -240,6 +265,32 @@ describe("applyMarkdownAction", () => {
     })
   })
 
+  describe("italics", () => {
+    it("wraps the selection", () => {
+      expect(
+        mark(applyMarkdownAction("italics", draft("a [word] here")))
+      ).toBe("a _[word]_ here")
+    })
+
+    it("unwraps a selection with the markers just outside it", () => {
+      expect(
+        mark(applyMarkdownAction("italics", draft("a _[word]_ here")))
+      ).toBe("a [word] here")
+    })
+
+    it("unwraps a selection with the markers inside it", () => {
+      expect(
+        mark(applyMarkdownAction("italics", draft("a [_word_] here")))
+      ).toBe("a [word] here")
+    })
+
+    it("opens an empty pair with the caret inside it", () => {
+      expect(mark(applyMarkdownAction("italics", draft("a |here")))).toBe(
+        "a _|_here"
+      )
+    })
+  })
+
   describe("link", () => {
     it("makes the selection the label and selects the target to type over", () => {
       expect(
@@ -283,6 +334,7 @@ describe("applyMarkdownAction", () => {
   /** Every operation is its own inverse, so nothing accumulates markup. */
   it.each([
     ["bold", "a [word] here"],
+    ["italics", "a [word] here"],
     ["bulletList", "[one\ntwo]"]
   ] as const)(
     "round-trips %s back to the text it started as",
