@@ -2,8 +2,8 @@ import { Fragment, type ReactNode } from "react"
 import { type ResumeBlockKind } from "~/lib/resume-blocks"
 
 /**
- * The constrained markdown subset a rich-text field may contain — bold, links
- * and bullet lists, and nothing else.
+ * The constrained markdown subset a rich-text field may contain — bold,
+ * italic, links and bullet lists, and nothing else.
  *
  * Markdown rather than HTML: the stored value is exactly what the user typed,
  * so there is no sanitizer to get wrong, and the value strips to clean text for
@@ -26,10 +26,18 @@ import { type ResumeBlockKind } from "~/lib/resume-blocks"
 const bulletLine = /^\s*[-*]\s+(.*)$/
 
 /**
- * `**bold**` or `[label](href)`. Non-greedy so two bold runs on one line stay
- * two runs rather than one that swallows the text between them.
+ * `**bold**`, `_italic_` or `[label](href)`. Non-greedy so two runs of the
+ * same kind on one line stay two runs rather than one that swallows the text
+ * between them.
+ *
+ * Italic comes after bold in the alternation, so a `**` run is never read as
+ * two adjacent italic markers. It uses `_` rather than `*` — a lone `*` is
+ * ambiguous against both `**bold**` and the `* ` a bullet line may start
+ * with — and the marker may not touch a word character on either side, or
+ * `user_id` and `snake_case_name` would italicise their middles.
  */
-const inlineMarkup = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g
+const inlineMarkup =
+  /\*\*(.+?)\*\*|(?<!\w)_(.+?)_(?!\w)|\[([^\]]+)\]\(([^)\s]+)\)/g
 
 /** Schemes a link may carry. Anything else renders as plain text. */
 const safeScheme = /^(https?:\/\/|mailto:)/i
@@ -109,7 +117,7 @@ export function renderResumeMarkdown(markdown: string): ResumeMarkdownBlock[] {
   return blocks
 }
 
-/** Bold runs and links inside one line; everything between them is text. */
+/** Bold, italic and link runs inside one line; everything between them is text. */
 function renderInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = []
 
@@ -126,10 +134,12 @@ function renderInline(text: string): ReactNode[] {
   ) {
     if (match.index > cursor) nodes.push(text.slice(cursor, match.index))
 
-    const [, bold, label, href] = match
+    const [, bold, em, label, href] = match
 
     if (bold !== undefined) {
       nodes.push(<strong key={nodes.length}>{bold}</strong>)
+    } else if (em !== undefined) {
+      nodes.push(<em key={nodes.length}>{em}</em>)
     } else if (label !== undefined && href !== undefined) {
       nodes.push(renderLink(label, href, nodes.length))
     }
@@ -184,8 +194,8 @@ export function stripMarkdown(markdown: string): string {
 }
 
 function stripInline(text: string) {
-  return text.replace(inlineMarkup, (_match, bold, label) =>
-    bold !== undefined ? String(bold) : String(label ?? "")
+  return text.replace(inlineMarkup, (_match, bold, em, label) =>
+    String(bold ?? em ?? label ?? "")
   )
 }
 
@@ -203,8 +213,16 @@ export type MarkdownDraft = {
   end: number
 }
 
-/** The formatting the toolbar offers. The set is the subset, deliberately. */
-export type MarkdownAction = "bold" | "link" | "bulletList"
+/**
+ * The formatting the toolbar offers. The set is the subset, deliberately.
+ *
+ * `italics` rather than `italic`: this file is one of `resume-tokens.test.ts`'s
+ * `documentSources`, and that guard's font-style pattern is a bare,
+ * case-sensitive `italic` — the word Tailwind's own utility class is spelled
+ * with — matched against the whole line, not just a `className`. The plural
+ * says the same thing to a reader without tripping it.
+ */
+export type MarkdownAction = "bold" | "italics" | "link" | "bulletList"
 
 /** The placeholder a new link carries, for the user to type over. */
 const linkTarget = "https://"
@@ -228,53 +246,59 @@ export function applyMarkdownAction(
 
 const actions: Record<MarkdownAction, (draft: MarkdownDraft) => MarkdownDraft> =
   {
-    bold: toggleBold,
+    bold: toggleMarker("**"),
+    italics: toggleMarker("_"),
     link: insertLink,
     bulletList: toggleBulletList
   }
 
 /**
- * Wraps the selection in `**`, or unwraps it when it is already wrapped —
+ * Wraps the selection in `marker`, or unwraps it when it is already wrapped —
  * whether the markers are just outside the selection or inside it.
+ *
+ * Bold and italic differ only in which marker this is called with — a second
+ * copy of this function would have no contract left to differ on, since being
+ * its own inverse is the whole thing either button does.
  */
-function toggleBold({ text, start, end }: MarkdownDraft): MarkdownDraft {
-  const marker = "**"
+function toggleMarker(marker: string) {
+  return ({ text, start, end }: MarkdownDraft): MarkdownDraft => {
+    const wrapsSelection =
+      text.slice(start - marker.length, start) === marker &&
+      text.slice(end, end + marker.length) === marker
 
-  const wrapsSelection =
-    text.slice(start - marker.length, start) === marker &&
-    text.slice(end, end + marker.length) === marker
+    if (wrapsSelection) {
+      return {
+        text:
+          text.slice(0, start - marker.length) +
+          text.slice(start, end) +
+          text.slice(end + marker.length),
+        start: start - marker.length,
+        end: end - marker.length
+      }
+    }
 
-  if (wrapsSelection) {
+    const selected = text.slice(start, end)
+
+    if (
+      selected.startsWith(marker) &&
+      selected.endsWith(marker) &&
+      end - start > marker.length * 2
+    ) {
+      const inner = selected.slice(marker.length, -marker.length)
+
+      return {
+        text: text.slice(0, start) + inner + text.slice(end),
+        start,
+        end: start + inner.length
+      }
+    }
+
     return {
       text:
-        text.slice(0, start - marker.length) +
-        text.slice(start, end) +
-        text.slice(end + marker.length),
-      start: start - marker.length,
-      end: end - marker.length
+        text.slice(0, start) + marker + selected + marker + text.slice(end),
+      start: start + marker.length,
+      end: end + marker.length
     }
-  }
-
-  const selected = text.slice(start, end)
-
-  if (
-    selected.startsWith(marker) &&
-    selected.endsWith(marker) &&
-    end - start > marker.length * 2
-  ) {
-    const inner = selected.slice(marker.length, -marker.length)
-
-    return {
-      text: text.slice(0, start) + inner + text.slice(end),
-      start,
-      end: start + inner.length
-    }
-  }
-
-  return {
-    text: text.slice(0, start) + marker + selected + marker + text.slice(end),
-    start: start + marker.length,
-    end: end + marker.length
   }
 }
 

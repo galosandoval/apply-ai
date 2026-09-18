@@ -225,6 +225,7 @@
     "markdown": {
       "bulletListTitle": "Lista con viñetas",
       "boldTitle": "Negrita",
+      "italicTitle": "Cursiva",
       "linkTitle": "Enlace"
     },
     "fullName": "Nombre completo",

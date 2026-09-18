@@ -225,6 +225,7 @@
     "markdown": {
       "bulletListTitle": "Bullet list",
       "boldTitle": "Bold",
+      "italicTitle": "Italic",
       "linkTitle": "Link"
     },
     "fullName": "Full name",
