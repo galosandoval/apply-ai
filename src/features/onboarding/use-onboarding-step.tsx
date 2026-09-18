@@ -3,21 +3,12 @@
 import { createContext, useContext, useState } from "react"
 
 /**
- * The forms, in order. Onboarding's entry is the fork, not a step — importing a
- * resume is one of the two ways in, so it is not a crumb on the trail either
- * route ends up walking.
- *
- * Ids only — the crumb labels are copy, and live under `onboarding.steps` in
- * the message files so the trail reads in the user's language.
+ * The step a route names when it moves onboarding: `"contact"`, or the id of
+ * one of the account's own sections. The trail itself — which steps exist and
+ * in what order — is not fixed here; it is derived from the profile by
+ * `deriveOnboardingSteps` and drawn where the profile is read.
  */
-export const onboardingSteps = [
-  "contact",
-  "education",
-  "experience",
-  "skills"
-] as const
-
-export type OnboardingStepId = (typeof onboardingSteps)[number]
+export type OnboardingStepId = string
 
 /**
  * Where onboarding is. `activeStep` is null on the fork, which wears no trail:

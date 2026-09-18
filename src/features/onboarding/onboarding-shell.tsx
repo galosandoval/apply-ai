@@ -12,17 +12,22 @@ import {
   BreadcrumbSeparator
 } from "~/components/ui/breadcrumb"
 import {
+  deriveOnboardingSteps,
+  onboardingPanelKey
+} from "~/features/onboarding/onboarding-steps"
+import {
   OnboardingStepProvider,
-  onboardingSteps,
   stepHeadingId,
   useOnboardingStep
 } from "~/features/onboarding/use-onboarding-step"
+import { api } from "~/utils/api"
+import { useUser } from "~/utils/useUser"
 
 /**
- * Onboarding is one route: a fork, and then four steps behind whichever way it
- * is taken. The trail sits in the app header, so where the user is has to be
- * state above the page — the provider owns it, and the header and the panel
- * both read it.
+ * Onboarding is one route: a fork, and then a trail of steps behind whichever
+ * way it is taken — one per the account's own sections, contact leading. The
+ * trail sits in the app header, so where the user is has to be state above the
+ * page — the provider owns it, and the header and the panel both read it.
  */
 export function OnboardingShell({ children }: { children: React.ReactNode }) {
   return (
@@ -49,6 +54,16 @@ function OnboardingBreadcrumbs() {
   const t = useTranslations("onboarding.steps")
   const { activeStep, goToStep } = useOnboardingStep()
   const activeStepRef = useRef<HTMLSpanElement>(null)
+  const { id: userId } = useUser()
+
+  // The trail is derived from the profile's own sections rather than a fixed
+  // tuple, so it draws nothing beyond contact until the profile it is drawn
+  // from has loaded.
+  const { data: profile } = api.profile.read.useQuery(undefined, {
+    enabled: !!userId
+  })
+
+  const steps = deriveOnboardingSteps(profile ?? { sections: [] })
 
   /*
     Steps advance on submit as well as on click, and the trail scrolls sideways
@@ -63,7 +78,7 @@ function OnboardingBreadcrumbs() {
   }, [activeStep])
 
   // The fork is a choice between two routes, not a place on either of them.
-  // A trail behind it would promise the same four steps whichever is taken.
+  // A trail behind it would promise the same steps whichever is taken.
   if (!activeStep) return null
 
   /*
@@ -74,30 +89,47 @@ function OnboardingBreadcrumbs() {
   return (
     <Breadcrumb className="flex min-w-0 flex-1 justify-center">
       <BreadcrumbList className="flex-nowrap overflow-x-auto whitespace-nowrap py-2 max-md:justify-start">
-        {onboardingSteps.map((step, index) => (
-          <Fragment key={step}>
-            {index > 0 && <BreadcrumbSeparator />}
+        {steps.map((step, index) => {
+          // Contact is the one step that is not a section: its label is
+          // copy. Every other crumb is labelled with the heading stored on
+          // the section itself, in whatever language the account wrote it.
+          const label = step.label ?? t("contact")
 
-            <BreadcrumbItem>
-              {step === activeStep ? (
-                <BreadcrumbPage ref={activeStepRef} id={stepHeadingId(step)}>
-                  {t(step)}
-                </BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink asChild>
-                  <button
-                    type="button"
-                    id={stepHeadingId(step)}
-                    onClick={() => goToStep(step)}
-                    className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          // A step's own id only names the same core section by coincidence:
+          // it is stood in with its kind as its id until the account holds a
+          // row of its own, and gets a real one the moment it does. The
+          // panel key is what stays stable across that — see
+          // `onboardingPanelKey`.
+          const panelKey = onboardingPanelKey(step)
+
+          return (
+            <Fragment key={step.id}>
+              {index > 0 && <BreadcrumbSeparator />}
+
+              <BreadcrumbItem>
+                {panelKey === activeStep ? (
+                  <BreadcrumbPage
+                    ref={activeStepRef}
+                    id={stepHeadingId(panelKey)}
                   >
-                    {t(step)}
-                  </button>
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
-          </Fragment>
-        ))}
+                    {label}
+                  </BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    <button
+                      type="button"
+                      id={stepHeadingId(panelKey)}
+                      onClick={() => goToStep(panelKey)}
+                      className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      {label}
+                    </button>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
+          )
+        })}
       </BreadcrumbList>
     </Breadcrumb>
   )
