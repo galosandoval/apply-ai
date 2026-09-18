@@ -126,11 +126,14 @@ jobs:
 
     # Two Postgres instances on the ports `.env.example` documents, so the
     # gate below runs the same suite a maintainer runs locally. The dev
-    # database exists only to satisfy `src/env.ts`'s `DATABASE_URL`
-    # validation; the integration tests connect to the test one, which
-    # `src/server/db/test-database.ts` migrates on first connect and truncates
-    # between cases. Without them the DB-backed tests skip themselves and the
-    # gate would go green on a partial suite.
+    # database is what the verify phase's dev server runs against, and it is
+    # migrated below — nothing migrates it on boot, so without that step the
+    # app answers every request with `relation "apply-ai_user" does not exist`
+    # and the phase spends its turns discovering that. The integration tests
+    # connect to the test one instead, which `src/server/db/test-database.ts`
+    # migrates on first connect and truncates between cases. Without both the
+    # DB-backed tests skip themselves and the gate would go green on a partial
+    # suite.
     services:
       db:
         image: postgres:16
@@ -170,6 +173,24 @@ jobs:
       # checkout — so the modules have to be here before the first spawn, not
       # only after the agent gets around to installing them.
       - run: npm ci
+
+      # The agent commits its own work, and a runner's git has no identity.
+      # Without this every `git commit` it makes exits 128 with "Author
+      # identity unknown", which it then has to diagnose out of its own turn
+      # budget. `--global` rather than `--local`: the harness's own handoff
+      # commit is made from the same checkout.
+      - name: Give git an identity to commit as
+        run: |
+          git config --global user.name 'apply-ai agent'
+          git config --global user.email 'agent@users.noreply.github.com'
+
+      # The dev database ships empty. `test-database.ts` migrates the test one
+      # on first connect; nothing does the same for this one, and the verify
+      # phase signs up against it through a real dev server.
+      - name: Migrate the dev database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apply-ai
+        run: npm run db:migrate
 
       # Playwright's browser, for the verify phase's e2e specs. `--with-deps`
       # covers the OS libraries Chromium needs on a bare runner.
@@ -211,7 +232,12 @@ jobs:
           # spent by the line above.
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/apply-ai
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/apply-ai-test
-          APP_URL: http://localhost:3000
+          # 3100, not 3000: `playwright.config.ts` serves the app on 3100 and
+          # overrides APP_URL to match for its own `webServer`. Better-auth
+          # signs its callbacks against `env.APP_URL`, so a verify phase that
+          # starts a dev server by hand on 3100 against a 3000 APP_URL gets
+          # sign-ups that fail for a reason nothing in the app reports.
+          APP_URL: http://localhost:3100
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # Throwaway: better-auth only signs callbacks against this, and both
           # databases die with the job. Never a real secret's value.
