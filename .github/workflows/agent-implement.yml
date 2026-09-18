@@ -194,7 +194,32 @@ jobs:
 
       # Playwright's browser, for the verify phase's e2e specs. `--with-deps`
       # covers the OS libraries Chromium needs on a bare runner.
-      - run: npx playwright install --with-deps chromium
+      #
+      # The binaries are ~100MB of download on every run and only change when
+      # the pinned Playwright version does, so key the cache on the version
+      # `npm ci` resolved rather than on a lockfile hash. The apt-installed OS
+      # libraries do not live under ~/.cache/ms-playwright, hence the second
+      # step: a cache hit still needs `install-deps`, just not the download.
+      # `issues`/`workflow_run` events run on the default branch, so these runs
+      # read and write `main`'s cache scope and prime each other.
+      - name: Resolve the Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install the Playwright OS dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       # The harness spawns `claude` from PATH; nothing else on this runner
       # installs it. Pinned to the same version CLI_VERSION states below, so
