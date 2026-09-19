@@ -5,6 +5,11 @@
 Read the issue with `gh issue view {{ISSUE_NUMBER}}` and implement what it
 asks for. You are already on branch `{{BRANCH}}`; commit your work there.
 
+This run is **headless**. The CLI was spawned to finish on its own: nobody
+reads your output between turns, nothing answers a question you ask, and there
+is no turn after the one you stop on. What you committed on `{{BRANCH}}` is
+what survives — the working tree this run ends with is discarded.
+
 Follow the `implement` skill for how to carry the work out, and this
 repository's own conventions for what the result should look like:
 
@@ -62,5 +67,10 @@ For the verify phase, `e2e/` is a Playwright suite (`npm run test:e2e`,
 configured by `playwright.config.ts`); Chromium is already installed. Commit
 any screenshots you capture under `{{SCREENSHOTS_DIR}}` so they render inline
 on the pull request.
+
+A spec that walks onboarding through to a generated resume makes a **live
+OpenAI call**, so it runs in minutes rather than seconds. Budget for that —
+give the command a timeout that fits, and expect to wait rather than to
+iterate.
 
 <!-- /shopfloor:environment -->
