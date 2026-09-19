@@ -64,7 +64,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@galosandoval/shopfloor": "1.1.0",
+    "@galosandoval/shopfloor": "2.0.0",
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.10.3",
