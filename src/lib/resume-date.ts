@@ -18,7 +18,7 @@
  * second, and `formatResumeDateRange` puts them back together.
  */
 
-import { type Locale, toLocale } from "~/i18n/routing"
+import { displayTimeZone, type Locale, toLocale } from "~/i18n/routing"
 
 /** `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, and nothing else. */
 export const resumeDatePattern =
@@ -166,13 +166,13 @@ export function formatResumeDate(value: string, language: string) {
 
   const [year, month = "1", day = "1"] = value.split("-")
 
-  // UTC throughout: a date with no time is not a moment, and letting the
-  // runtime's zone decide is how `2017-09-01` prints as August.
+  // See `displayTimeZone`: a date with no time is not a moment, and letting
+  // the runtime's zone decide is how `2017-09-01` prints as August.
   const at = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
 
   return new Intl.DateTimeFormat(toLocale(language), {
     ...formatOptions[precision],
-    timeZone: "UTC"
+    timeZone: displayTimeZone
   }).format(at)
 }
 

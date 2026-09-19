@@ -226,7 +226,8 @@
       "bulletListTitle": "Bullet list",
       "boldTitle": "Bold",
       "italicTitle": "Italic",
-      "linkTitle": "Link"
+      "linkTitle": "Link",
+      "previewLabel": "Preview"
     },
     "fullName": "Full name",
     "moveUp": "Move up",

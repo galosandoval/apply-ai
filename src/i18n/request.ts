@@ -1,6 +1,6 @@
 import { hasLocale } from "next-intl"
 import { getRequestConfig } from "next-intl/server"
-import { routing } from "./routing"
+import { displayTimeZone, routing } from "./routing"
 
 type Messages = Record<string, unknown>
 
@@ -51,7 +51,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const isDev = process.env.NODE_ENV === "development"
 
   if (isDev || locale === routing.defaultLocale) {
-    return { locale, messages, formats }
+    return { locale, messages, formats, timeZone: displayTimeZone }
   }
 
   const fallback = (await import(`../../messages/en.json`)).default as Messages
@@ -60,6 +60,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale,
     messages,
     formats,
+    timeZone: displayTimeZone,
     getMessageFallback: ({ namespace, key }) => {
       const path = [namespace, key].filter(Boolean).join(".")
 

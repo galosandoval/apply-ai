@@ -387,6 +387,17 @@ reconciled with this one forever, for a feature nobody would notice. The honest
 cost is that typing markdown reads as dated to some users, which is exactly why
 the buttons are not optional: a phone keyboard is a bad place for asterisks.
 
+**The markers are still typed, but no longer unseen.** `MarkdownField` draws a
+live preview below the textarea, through `renderResumeMarkdown` — the same
+function the document and the PDF call, so the preview cannot drift from what
+actually prints. That closes most of the honest cost above: `**Shipped the
+migration**` sits in the textarea as those literal characters either way, but
+a user no longer has to trust that `- ` becomes a bullet without seeing it
+happen somewhere on the page. The resume editor hides the preview above the
+breakpoint where its own layout already puts the live document beside the
+panel; both onboarding steps, which have no document on the page at all, show
+it.
+
 **An entry's body is one of these fields** (#69). `work.bullets` (an array) and
 `school.description` (one string) were the same thing — "the text under this
 entry" — with two types and neither able to mix a paragraph with a list. They
