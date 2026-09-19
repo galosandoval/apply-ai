@@ -226,7 +226,8 @@
       "bulletListTitle": "Lista con viñetas",
       "boldTitle": "Negrita",
       "italicTitle": "Cursiva",
-      "linkTitle": "Enlace"
+      "linkTitle": "Enlace",
+      "previewLabel": "Vista previa"
     },
     "fullName": "Nombre completo",
     "moveUp": "Subir",

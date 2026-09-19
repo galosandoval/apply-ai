@@ -10,7 +10,11 @@ import {
   ListBulletIcon
 } from "@radix-ui/react-icons"
 import { Textarea } from "~/components/ui/textarea"
-import { applyMarkdownAction, type MarkdownAction } from "~/lib/resume-markdown"
+import {
+  applyMarkdownAction,
+  renderResumeMarkdown,
+  type MarkdownAction
+} from "~/lib/resume-markdown"
 import { useTypedValue } from "~/components/use-typed-value"
 
 /**
@@ -44,7 +48,8 @@ export function MarkdownField({
   onChange,
   onCommit,
   id,
-  placeholder
+  placeholder,
+  previewClassName
 }: {
   value: string
   onChange: (value: string) => void
@@ -52,6 +57,13 @@ export function MarkdownField({
   id: string
   /** Only where an empty field needs to say what belongs in it — onboarding. */
   placeholder?: string
+  /**
+   * Applied to the preview container. A class rather than a boolean, so the
+   * resume editor can hide the preview from the breakpoint where its own
+   * layout already puts the live document beside the panel, instead of the
+   * field needing a second, opposite prop for that one caller.
+   */
+  previewClassName?: string
 }) {
   const t = useTranslations("resumeEditor.markdown")
   const textarea = useRef<HTMLTextAreaElement>(null)
@@ -118,6 +130,38 @@ export function MarkdownField({
         rows={6}
         {...typed.props}
       />
+
+      <MarkdownPreview className={previewClassName} value={typed.props.value} />
+    </div>
+  )
+}
+
+/**
+ * A read-only render of the field's own value, through `renderResumeMarkdown` —
+ * the same function the resume document and the PDF call. Agreement between
+ * what this draws and what the resume prints is therefore structural rather
+ * than a thing someone remembered to keep true.
+ *
+ * A blank or whitespace-only value draws nothing, so an untouched form is not
+ * a column of grey boxes — see `markdown-field.test.tsx`.
+ */
+function MarkdownPreview({
+  className,
+  value
+}: {
+  className?: string
+  value: string
+}) {
+  const t = useTranslations("resumeEditor.markdown")
+
+  if (!value.trim()) return null
+
+  return (
+    <div
+      aria-label={t("previewLabel")}
+      className={`flex flex-col gap-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm ${className ?? ""}`}
+    >
+      {renderResumeMarkdown(value).map((block) => block.node)}
     </div>
   )
 }

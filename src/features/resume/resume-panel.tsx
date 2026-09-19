@@ -150,6 +150,10 @@ function Field({
           id={id}
           onChange={write}
           onCommit={onCommit}
+          // The desktop layout already puts the live document beside the
+          // panel from `lg` up, so the field's own preview would say the same
+          // thing twice — see `resume-editor-view.tsx`'s grid breakpoint.
+          previewClassName="lg:hidden"
           value={field.value}
         />
       ) : (
