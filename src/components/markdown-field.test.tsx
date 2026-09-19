@@ -13,7 +13,7 @@ import messages from "../../messages/en.json"
 
 const render = (value: string, previewClassName?: string) =>
   renderToStaticMarkup(
-    <NextIntlClientProvider locale="en" messages={messages}>
+    <NextIntlClientProvider locale="en" messages={messages} timeZone="UTC">
       <MarkdownField
         id="body"
         onChange={() => undefined}
