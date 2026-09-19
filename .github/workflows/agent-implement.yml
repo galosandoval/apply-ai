@@ -91,7 +91,7 @@ jobs:
           # `undetermined` — what the bin reports when admission itself failed
           # — fails this job loudly.
           set +e
-          verdict="$(npx --yes --package @galosandoval/shopfloor@1.1.0 -- shopfloor-admit)"
+          verdict="$(npx --yes --package @galosandoval/shopfloor@2.0.0 -- shopfloor-admit)"
           set -e
           echo "$verdict"
 
@@ -267,4 +267,4 @@ jobs:
           # Throwaway: better-auth only signs callbacks against this, and both
           # databases die with the job. Never a real secret's value.
           BETTER_AUTH_SECRET: ci-only-not-a-secret-0000000000000000000
-        run: npx --yes --package @galosandoval/shopfloor@1.1.0 -- shopfloor-run-phase
+        run: npx --yes --package @galosandoval/shopfloor@2.0.0 -- shopfloor-run-phase
