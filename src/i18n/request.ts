@@ -1,6 +1,6 @@
 import { hasLocale } from "next-intl"
 import { getRequestConfig } from "next-intl/server"
-import { routing } from "./routing"
+import { displayTimeZone, routing } from "./routing"
 
 type Messages = Record<string, unknown>
 
@@ -10,15 +10,6 @@ const formats = {
     long: { dateStyle: "long" }
   }
 } as const
-
-/**
- * Without a default, next-intl falls back to the runtime's zone — the server
- * renders in the container's (UTC on Vercel), the client re-renders in the
- * viewer's, and any formatted date hydrates to different markup. UTC matches
- * what `resume-date.ts` already formats in, so a resume reads the same date on
- * the server, in the browser, and in the PDF.
- */
-const timeZone = "UTC"
 
 /** Walks a dotted message path (`onboarding.fork.title`) into the tree. */
 function lookup(messages: Messages, path: string) {
@@ -60,7 +51,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const isDev = process.env.NODE_ENV === "development"
 
   if (isDev || locale === routing.defaultLocale) {
-    return { locale, messages, formats, timeZone }
+    return { locale, messages, formats, timeZone: displayTimeZone }
   }
 
   const fallback = (await import(`../../messages/en.json`)).default as Messages
@@ -69,7 +60,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale,
     messages,
     formats,
-    timeZone,
+    timeZone: displayTimeZone,
     getMessageFallback: ({ namespace, key }) => {
       const path = [namespace, key].filter(Boolean).join(".")
 

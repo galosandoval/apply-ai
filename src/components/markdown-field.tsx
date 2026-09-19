@@ -16,6 +16,7 @@ import {
   type MarkdownAction
 } from "~/lib/resume-markdown"
 import { useTypedValue } from "~/components/use-typed-value"
+import { cn } from "~/lib/utils"
 
 /**
  * An icon carries no accessible name, so `titleKey` is both the tooltip and the
@@ -131,7 +132,11 @@ export function MarkdownField({
         {...typed.props}
       />
 
-      <MarkdownPreview className={previewClassName} value={typed.props.value} />
+      <MarkdownPreview
+        className={previewClassName}
+        label={t("previewLabel")}
+        value={typed.props.value}
+      />
     </div>
   )
 }
@@ -147,19 +152,30 @@ export function MarkdownField({
  */
 function MarkdownPreview({
   className,
+  label,
   value
 }: {
   className?: string
+  /**
+   * Resolved by the field rather than here: one `useTranslations` for one
+   * namespace, and the preview stays a function of its props.
+   */
+  label: string
   value: string
 }) {
-  const t = useTranslations("resumeEditor.markdown")
-
   if (!value.trim()) return null
 
   return (
     <div
-      aria-label={t("previewLabel")}
-      className={`flex flex-col gap-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm ${className ?? ""}`}
+      aria-label={label}
+      className={cn(
+        "flex flex-col gap-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm",
+        className
+      )}
+      // A bare `div` has no role, and ARIA ignores a name on one — the label
+      // would reach a test and nothing else. `group` is nameable without
+      // claiming a landmark, so the preview announces itself as what it is.
+      role="group"
     >
       {renderResumeMarkdown(value).map((block) => block.node)}
     </div>

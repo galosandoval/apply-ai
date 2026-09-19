@@ -18,6 +18,17 @@ export const routing = defineRouting({
 export type Locale = (typeof routing.locales)[number]
 
 /**
+ * The zone every displayed date is formatted in.
+ *
+ * A date with no time is not a moment, so letting the runtime decide is how
+ * `2017-09-01` prints as August — and how a server render disagrees with the
+ * client's rehydration of it. One value, so the resume, the PDF and every
+ * `next-intl` format agree by construction rather than by three files
+ * happening to say the same string.
+ */
+export const displayTimeZone = "UTC"
+
+/**
  * A stored language tag as one of the locales the app ships.
  *
  * `user.locale` and `resume.language` are `text` columns, so that adding a

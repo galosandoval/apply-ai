@@ -217,6 +217,16 @@
     --resume-rhythm: 1;
 
     /*
+      The bullet indent, off the same step. It sits here rather than with the
+      other derived spacing under `.resume-document` because the markdown
+      renderer is drawn outside that element too — in the rich-text field's
+      live preview — and a token that resolves in only one of its two homes is
+      a padding that silently disappears in the other. No `--resume-rhythm` in
+      it: a disc hangs off its text, which the density knob does not move.
+    */
+    --resume-space-bullet: calc(var(--resume-space-step) * 6);
+
+    /*
       The five axes a style differentiates on: the faces, the heading treatment,
       the rule, the date column and one accent. Everything else is shared,
       because everything else is what parses.
@@ -351,7 +361,6 @@
     );
     --resume-space-heading: var(--resume-space-step);
     --resume-space-inline: var(--resume-space-step);
-    --resume-space-bullet: calc(var(--resume-space-step) * 6);
 
     /*
       The dash that opens a skills category — a mark, not a rule across

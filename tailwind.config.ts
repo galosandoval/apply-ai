@@ -56,10 +56,7 @@ const config = {
         "resume-section": "var(--resume-space-section)",
         "resume-entry": "var(--resume-space-entry)",
         "resume-inline": "var(--resume-space-inline)",
-        // Falls back to the token's own value under `.resume-document`, for the
-        // one caller — the rich-text field's live preview — that draws bullets
-        // outside it.
-        "resume-bullet": "var(--resume-space-bullet, 1.5rem)",
+        "resume-bullet": "var(--resume-space-bullet)",
         "resume-rule": "var(--resume-rule-weight)",
         "resume-rule-gap": "var(--resume-rule-gap)",
         "resume-tag-x": "var(--resume-tag-space-x)",
