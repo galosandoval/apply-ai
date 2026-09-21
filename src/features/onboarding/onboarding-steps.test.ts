@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   deriveOnboardingSteps,
+  nextOnboardingStep,
   onboardingPanelKey,
   type OnboardingProfile
 } from "~/features/onboarding/onboarding-steps"
@@ -80,5 +81,36 @@ describe("onboardingPanelKey", () => {
     expect(
       onboardingPanelKey({ id: "cuid-4", kind: "custom", label: "Projects" })
     ).toBe("cuid-4")
+  })
+})
+
+describe("nextOnboardingStep", () => {
+  const profile: OnboardingProfile = {
+    sections: [
+      { id: "s-skills", kind: "skills", label: "Skills" },
+      { id: "s-experience", kind: "experience", label: "Experience" },
+      { id: "s-projects", kind: "custom", label: "Projects" }
+    ]
+  }
+
+  it("advances from contact to the first section", () => {
+    expect(nextOnboardingStep(profile, "contact")).toBe("skills")
+  })
+
+  it("advances from one section to the next, keyed by panel key", () => {
+    expect(nextOnboardingStep(profile, "skills")).toBe("experience")
+    expect(nextOnboardingStep(profile, "experience")).toBe("s-projects")
+  })
+
+  it("returns null past the last step", () => {
+    expect(nextOnboardingStep(profile, "s-projects")).toBeNull()
+  })
+
+  it("returns null for a step not on the trail", () => {
+    expect(nextOnboardingStep(profile, "education")).toBeNull()
+  })
+
+  it("advances from contact straight past the end for a profile with no sections", () => {
+    expect(nextOnboardingStep({ sections: [] }, "contact")).toBeNull()
   })
 })

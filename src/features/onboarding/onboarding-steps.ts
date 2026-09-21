@@ -52,6 +52,29 @@ export function deriveOnboardingSteps(
   ]
 }
 
+/**
+ * The step after `currentKey` in the derived trail, or `null` past the last
+ * one — or for a key the trail does not carry at all.
+ *
+ * Onboarding used to advance by naming the next step outright: contact always
+ * went to education, education always to experience. That stopped being true
+ * the moment the trail was derived rather than fixed — the account's own
+ * order decides what follows a step, and a step that named its neighbour
+ * would be naming a section that might not be next, or might not be on the
+ * account at all. So a step advances by finding its own place in the same
+ * list the trail draws, which is the one thing that cannot disagree with what
+ * the trail shows.
+ */
+export function nextOnboardingStep(
+  profile: OnboardingProfile,
+  currentKey: string
+): string | null {
+  const keys = deriveOnboardingSteps(profile).map(onboardingPanelKey)
+  const index = keys.indexOf(currentKey)
+
+  return index === -1 ? null : (keys[index + 1] ?? null)
+}
+
 /** The three kinds that still open one of onboarding's own forms. */
 const onboardingFormKinds = ["education", "experience", "skills"]
 
