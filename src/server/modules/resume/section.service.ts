@@ -574,6 +574,36 @@ async function writeStandInSections(tx: DbOrTx, userId: string) {
   )
 }
 
+/**
+ * The account's real section ids for whichever of `sectionIds` are still
+ * stand-ins, materializing the defaults first when the account has none of its
+ * own yet.
+ *
+ * Onboarding is the one caller that can reach rename, remove and reorder
+ * before the account holds a single row — a fresh signup with no import shows
+ * the default set and lets the user act on it immediately, the same set `add`
+ * has always had to cope with. `readAccountSections` stands each default in
+ * under its own `kind` as an id, so a caller naming one before this is called
+ * can only ever name it that way. `writeStandInSections` mints a fresh row per
+ * default, with a fresh id unrelated to the kind — so a kind that survives the
+ * write is resolved back to whatever id the write actually gave it. An id that
+ * is already real, or that never matched a kind, is returned unchanged: the
+ * ownership check downstream is what refuses that one.
+ */
+async function materializeAccountSectionIds(
+  db: DbOrTx,
+  userId: string,
+  sectionIds: string[]
+): Promise<string[]> {
+  await writeStandInSections(db, userId)
+
+  const rows = await repo.findSections(db, { userId })
+  const byId = new Set(rows.map((row) => row.id))
+  const byKind = new Map(rows.map((row) => [row.kind, row.id]))
+
+  return sectionIds.map((id) => (byId.has(id) ? id : (byKind.get(id) ?? id)))
+}
+
 /** The preset's heading in the owner's language, or the client's own label. */
 async function presetLabel(
   db: Database,
@@ -601,11 +631,22 @@ export async function remove(
 ) {
   const owner = await ownerFor(db, userId, input)
 
-  const deleted = await repo.deleteSection(db, owner, input.sectionId)
+  const sectionId = await db.transaction(async (tx) => {
+    const resolved = isResumeOwner(owner)
+      ? [input.sectionId]
+      : await materializeAccountSectionIds(tx, owner.userId, [
+          input.sectionId
+        ])
 
-  if (!deleted.length) throw sectionNotFound()
+    const id = resolved[0] ?? input.sectionId
+    const deleted = await repo.deleteSection(tx, owner, id)
 
-  return { sectionId: input.sectionId }
+    if (!deleted.length) throw sectionNotFound()
+
+    return id
+  })
+
+  return { sectionId }
 }
 
 /**
@@ -620,21 +661,28 @@ export async function reorder(
   input: ReorderSectionsInput
 ) {
   const owner = await ownerFor(db, userId, input)
-  const existing = await repo.findSections(db, owner)
 
-  assertCoversExactly(
-    existing,
-    input.sectionIds,
-    isResumeOwner(owner) ? "section of the resume" : "section of the profile"
-  )
+  const sectionIds = await db.transaction(async (tx) => {
+    const resolved = isResumeOwner(owner)
+      ? input.sectionIds
+      : await materializeAccountSectionIds(tx, owner.userId, input.sectionIds)
 
-  await db.transaction(async (tx) => {
-    for (const [position, sectionId] of input.sectionIds.entries()) {
+    const existing = await repo.findSections(tx, owner)
+
+    assertCoversExactly(
+      existing,
+      resolved,
+      isResumeOwner(owner) ? "section of the resume" : "section of the profile"
+    )
+
+    for (const [position, sectionId] of resolved.entries()) {
       await repo.updateSection(tx, owner, sectionId, { position })
     }
+
+    return resolved
   })
 
-  return { sectionIds: input.sectionIds }
+  return { sectionIds }
 }
 
 /**
@@ -671,9 +719,18 @@ export async function rename(
   userId: string,
   input: RenameSectionInput
 ) {
-  await writeLabel(db, { userId }, input.sectionId, input.label)
+  const sectionId = await db.transaction(async (tx) => {
+    const [resolved] = await materializeAccountSectionIds(tx, userId, [
+      input.sectionId
+    ])
+    const id = resolved ?? input.sectionId
 
-  return { sectionId: input.sectionId }
+    await writeLabel(tx, { userId }, id, input.label)
+
+    return id
+  })
+
+  return { sectionId }
 }
 
 /**

@@ -264,6 +264,60 @@ describe.skipIf(!hasTestDatabase)("account sections", () => {
       expect(sections.map((row) => row.position)).toEqual([0, 1, 2])
     })
 
+    /**
+     * Onboarding is the one caller that can reach rename, remove and reorder
+     * before an account has any row of its own — a fresh signup with no import
+     * shows the default set and lets the user act on it straight away. Each of
+     * these skips `backfill`, unlike every test above, so what is under test is
+     * the stand-in itself, still named by its `kind`.
+     */
+    it("renames a still-default section, materializing it first", async () => {
+      const caller = callerFor(db, fixture.owner)
+
+      await caller.section.rename({
+        onAccount: true,
+        sectionId: "experience",
+        label: "Work History"
+      })
+
+      const sections = await read(fixture.owner)
+
+      expect(sections.find((row) => row.kind === "experience")?.label).toBe(
+        "Work History"
+      )
+      expect(sections.every((row) => !row.isDefault)).toBe(true)
+    })
+
+    it("removes a still-default section, materializing the rest", async () => {
+      const caller = callerFor(db, fixture.owner)
+
+      await caller.section.remove({ onAccount: true, sectionId: "education" })
+
+      const sections = await read(fixture.owner)
+
+      expect(sections.map((row) => row.kind)).toEqual(["skills", "experience"])
+      expect(sections.every((row) => !row.isDefault)).toBe(true)
+    })
+
+    it("reorders while still on the defaults", async () => {
+      const caller = callerFor(db, fixture.owner)
+
+      await caller.section.reorder({
+        onAccount: true,
+        sectionIds: ["education", "experience", "skills"]
+      })
+
+      const sections = await read(fixture.owner)
+
+      expect(sections.map((row) => row.kind)).toEqual([
+        "education",
+        "experience",
+        "skills"
+      ])
+      expect(sections.map((row) => row.position)).toEqual([0, 1, 2])
+      expect(sections.every((row) => !row.isDefault)).toBe(true)
+    })
+
     it("refuses a reorder that does not list every section", async () => {
       await backfill(fixture.owner)
 
