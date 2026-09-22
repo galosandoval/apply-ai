@@ -25,6 +25,7 @@ import OnboardingFormLayout from "~/features/onboarding/onboarding-form-layout"
 import { FormField } from "~/components/ui/form"
 import Image from "next/image"
 import { useAppForm } from "~/components/use-app-form"
+import { nextOnboardingStep } from "~/features/onboarding/onboarding-steps"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 import { appPath } from "~/lib/path"
 import { useErrorText } from "~/components/use-error-text"
@@ -48,13 +49,21 @@ export function SkillsStep() {
     enabled: !!userId
   })
 
+  const next = nextOnboardingStep(profile ?? { sections: [] }, "skills")
+
   const { mutate } = api.profile.upsertSkills.useMutation({
     onError: (error) => {
       toast.error(errorText(error))
       goToStep("skills")
     },
 
-    onMutate: () => router.push(appPath.newResume)
+    onMutate: () => {
+      if (next) {
+        goToStep(next)
+      } else {
+        router.push(appPath.newResume)
+      }
+    }
   })
 
   const form = useAppForm(insertSkillsSchema, {
@@ -148,7 +157,7 @@ export function SkillsStep() {
           </Button>
         )}
 
-        <Button type="submit">{t("done")}</Button>
+        <Button type="submit">{next ? t("next") : t("done")}</Button>
       </div>
     </OnboardingFormLayout>
   )

@@ -15,6 +15,9 @@ import { FormField } from "~/components/ui/form"
 import toast from "react-hot-toast"
 import { useUser } from "~/utils/useUser"
 import { useAppForm } from "~/components/use-app-form"
+import { useRouter } from "~/i18n/navigation"
+import { appPath } from "~/lib/path"
+import { nextOnboardingStep } from "~/features/onboarding/onboarding-steps"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 import { useErrorText } from "~/components/use-error-text"
 
@@ -26,6 +29,7 @@ function NameAndContactForm() {
   const errorText = useErrorText()
   const t = useTranslations("onboarding.contact")
   const { goToStep, importNotice } = useOnboardingStep()
+  const router = useRouter()
   const utils = api.useUtils()
   const { id } = useUser()
   const { data: profile, status } = api.profile.read.useQuery(undefined, {
@@ -90,7 +94,15 @@ function NameAndContactForm() {
       }))
     },
 
-    onMutate: () => goToStep("education")
+    onMutate: () => {
+      const next = nextOnboardingStep(profile ?? { sections: [] }, "contact")
+
+      if (next) {
+        goToStep(next)
+      } else {
+        router.push(appPath.newResume)
+      }
+    }
   })
 
   const onSubmit = (data: InsertContactSchema) => {

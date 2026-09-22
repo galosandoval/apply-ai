@@ -30,8 +30,11 @@ import {
 } from "~/components/ui/form"
 import { useAppForm } from "~/components/use-app-form"
 import { EntryDateFields } from "~/features/onboarding/entry-date-fields"
+import { nextOnboardingStep } from "~/features/onboarding/onboarding-steps"
 import { useOnboardingStep } from "~/features/onboarding/use-onboarding-step"
 import { useErrorText } from "~/components/use-error-text"
+import { useRouter } from "~/i18n/navigation"
+import { appPath } from "~/lib/path"
 
 const initialSchool: InsertEducationSchema["education"] = [
   {
@@ -52,6 +55,7 @@ export function EducationStep() {
   const errorText = useErrorText()
   const t = useTranslations("onboarding.education")
   const { goToStep } = useOnboardingStep()
+  const router = useRouter()
   const { id } = useUser()
 
   const { data: profile } = api.profile.read.useQuery(undefined, {
@@ -64,7 +68,15 @@ export function EducationStep() {
       goToStep("education")
     },
 
-    onMutate: () => goToStep("experience")
+    onMutate: () => {
+      const next = nextOnboardingStep(profile ?? { sections: [] }, "education")
+
+      if (next) {
+        goToStep(next)
+      } else {
+        router.push(appPath.newResume)
+      }
+    }
   })
 
   const form = useAppForm(insertEducationSchema, {

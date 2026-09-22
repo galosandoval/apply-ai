@@ -159,13 +159,13 @@
       "website": "URL del sitio web",
       "websitePlaceholder": "Ej: https://github.com/galosandoval",
       "loading": "Cargando...",
-      "next": "Siguiente: Formación académica"
+      "next": "Siguiente"
     },
     "education": {
       "title": "Formación académica",
       "addFirst": "Agregar una institución",
       "addAnother": "Agregar otra",
-      "next": "Siguiente: Experiencia laboral",
+      "next": "Siguiente",
       "institution": "Nombre de la institución",
       "institutionPlaceholder": "Ej: Universidad de California, Berkeley",
       "degree": "Título o certificado",
@@ -180,7 +180,7 @@
     },
     "experience": {
       "title": "Experiencia",
-      "next": "Siguiente: Habilidades",
+      "next": "Siguiente",
       "company": "Nombre de la empresa",
       "companyPlaceholder": "Ej: Google",
       "jobTitle": "Puesto",
@@ -195,6 +195,7 @@
     "skills": {
       "title": "Habilidades",
       "imageAlt": "Habilidades",
+      "next": "Siguiente",
       "done": "Listo: Empieza a generar currículums",
       "all": "Todas",
       "allPlaceholder": "Ej: Atención al cliente, soporte al cliente",
@@ -206,6 +207,9 @@
         "Ej: Backend",
         "Ej: Adicionales"
       ]
+    },
+    "section": {
+      "next": "Siguiente"
     }
   },
   "resumeEditor": {

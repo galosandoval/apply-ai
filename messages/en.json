@@ -159,13 +159,13 @@
       "website": "Website URL",
       "websitePlaceholder": "Ex: https://github.com/galosandoval",
       "loading": "Loading...",
-      "next": "Next: Education"
+      "next": "Next"
     },
     "education": {
       "title": "Education",
       "addFirst": "Add a school",
       "addAnother": "Add another",
-      "next": "Next: Work Experience",
+      "next": "Next",
       "institution": "Institution Name",
       "institutionPlaceholder": "Ex: University of California, Berkeley",
       "degree": "Degree/Certificate",
@@ -180,7 +180,7 @@
     },
     "experience": {
       "title": "Experience",
-      "next": "Next: Skills",
+      "next": "Next",
       "company": "Company Name",
       "companyPlaceholder": "Ex: Google",
       "jobTitle": "Title",
@@ -195,6 +195,7 @@
     "skills": {
       "title": "Skills",
       "imageAlt": "Skills",
+      "next": "Next",
       "done": "Done: Start generating resumes",
       "all": "All",
       "allPlaceholder": "Ex: Customer service, customer support",
@@ -206,6 +207,9 @@
         "Ex: Backend",
         "Ex: Additional"
       ]
+    },
+    "section": {
+      "next": "Next"
     }
   },
   "resumeEditor": {

@@ -145,7 +145,7 @@ export type StructureActions = {
 
 type Select = (selection: ResumeSelection) => void
 
-type SavedSection = SavedResume["sections"][number]
+export type SavedSection = SavedResume["sections"][number]
 
 /** One row of a core section: a job, a school, or a skill group. */
 type CoreRow = SavedResume[RowListName][number]
@@ -566,10 +566,16 @@ function coreEntryList(
   }
 }
 
-/** A custom section's content, as the shape registry describes it. */
-function contentList(
+/**
+ * A custom section's content, as the shape registry describes it.
+ *
+ * Exported for onboarding: a custom section found by import has never had an
+ * editor of its own beyond this one, so the step for it renders exactly what
+ * this produces rather than a second one written for the same content.
+ */
+export function contentList(
   section: SavedSection,
-  structure: StructureActions,
+  structure: Pick<StructureActions, "setContent">,
   t: PanelTranslate,
   contentT: PanelTranslate
 ): PanelList[] {
