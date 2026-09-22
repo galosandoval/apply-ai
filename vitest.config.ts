@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
     // Playwright owns `e2e/`; vitest would otherwise try to run those specs.
     exclude: ["e2e/**", "node_modules/**"],
     /**
